@@ -1,0 +1,12 @@
+---
+projectType: "zynqmp"
+externalTools:
+  vivado:
+    path: "/media/marvin/T9MF/Tools/Xilinx/Vivado"
+    version: 2022.2
+  vitis:
+    path: "/media/marvin/T9MF/Tools/Xilinx/Vitis"
+    version: 2022.2
+blocks:
+  vivado:
+    source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"

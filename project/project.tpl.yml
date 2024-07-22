@@ -1,0 +1,69 @@
+---
+projectType: "zynqmp"
+externalTools:
+  containerTool: "docker"
+  make:
+    maxBuildThreads: 16
+  vivado:
+    path: "/media/marvin/T9MF/Tools/Xilinx/Vivado"
+    version: 2022.2
+    license: "50000@ipeflex1.ipe.kit.edu"
+  vitis:
+    path: "/media/marvin/T9MF/Tools/Xilinx/Vitis"
+blocks:
+  atf:
+    project:
+      source: "https://github.com/Xilinx/arm-trusted-firmware.git"
+      # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
+    container:
+      image: "atf-builder-alma9"
+      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      # If no base images need to be built locally, the property 'baseImages' can be omitted
+  devicetree:
+    project:
+      source: "https://github.com/Xilinx/device-tree-xlnx.git"
+      # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
+    container:
+      image: "amd-xilinx-tools-alma9"
+      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      # If no base images need to be built locally, the property 'baseImages' can be omitted
+  fsbl:
+    container:
+      image: "amd-xilinx-tools-alma9"
+      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      # If no base images need to be built locally, the property 'baseImages' can be omitted
+  kernel:
+    project:
+      source: "https://github.com/Xilinx/linux-xlnx.git"
+      # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
+    container:
+      image: "kernel-builder-alma9"
+      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      # If no base images need to be built locally, the property 'baseImages' can be omitted
+  pmu-fw:
+    container:
+      image: "amd-xilinx-tools-alma9"
+      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      # If no base images need to be built locally, the property 'baseImages' can be omitted
+  rootfs:
+    container:
+      image: "alma8-rootfs-builder-alma8"
+      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      # If no base images need to be built locally, the property 'baseImages' can be omitted
+  u-boot:
+    project:
+      source: "https://github.com/Xilinx/u-boot-xlnx.git"
+      # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
+    container:
+      image: "u-boot-builder-alma9"
+      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      baseImages:
+        - "kernel-builder-alma9"
+  vivado:
+    project:
+      source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
+      branch: "main"
+    container:
+      image: "amd-xilinx-tools-alma9"
+      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      # If no base images need to be built locally, the property 'baseImages' can be omitted
