@@ -1,0 +1,15 @@
+---
+import:
+  - project-zynqmp-def.yml
+externalTools:
+  vivado:
+    path: "/media/marvin/T9MF/Tools/Xilinx/Vivado"
+    version: 2022.2
+    license: "50000@ipeflex1.ipe.kit.edu"
+  vitis:
+    path: "/media/marvin/T9MF/Tools/Xilinx/Vitis"
+blocks:
+  vivado:
+    project:
+      source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
+      branch: "main"

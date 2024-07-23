@@ -1,0 +1,6 @@
+---
+# Property 'projectType' must be specified outside this default project configuration file
+externalTools:
+  containerTool: "docker"
+  make:
+    maxBuildThreads: 16

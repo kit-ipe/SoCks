@@ -1,15 +1,14 @@
 ---
+import:
+  - project-def.yml
 projectType: "zynqmp"
 externalTools:
-  containerTool: "docker"
-  make:
-    maxBuildThreads: 16
   vivado:
-    path: "/media/marvin/T9MF/Tools/Xilinx/Vivado"
-    version: 2022.2
-    license: "50000@ipeflex1.ipe.kit.edu"
+    # Property 'path' must be specified outside this default project configuration file
+    # Property 'version' must be specified outside this default project configuration file
+    # Property 'license' must be specified outside this default project configuration file
   vitis:
-    path: "/media/marvin/T9MF/Tools/Xilinx/Vitis"
+    # Property 'path' must be specified outside this default project configuration file
 blocks:
   atf:
     project:
@@ -61,8 +60,8 @@ blocks:
         - "kernel-builder-alma9"
   vivado:
     project:
-      source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
-      branch: "main"
+      # Property 'source' must be specified outside this default project configuration file
+      # Property 'branch' must be specified outside this default project configuration file
     container:
       image: "amd-xilinx-tools-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
