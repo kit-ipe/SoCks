@@ -77,8 +77,4 @@ project_config = compose_project_configuration(config_file='project.yml')
 #print('\n\n')
 #print(project_config)
 
-try:
-    jsonschema.validate(project_config, schema)
-except jsonschema.ValidationError as e:
-    print('Validation of project configuration failed: '+e.schema.get('error_msg', e.message))
-    sys.exit(1)
+jsonschema.validate(project_config, schema)

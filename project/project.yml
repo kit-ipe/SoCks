@@ -11,5 +11,5 @@ externalTools:
 blocks:
   vivado:
     project:
-      source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
+      sources: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
       branch: "main"

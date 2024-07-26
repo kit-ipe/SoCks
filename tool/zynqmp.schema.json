@@ -71,20 +71,32 @@
       "properties": {
         "atf": {
           "type": "object",
-          "required": ["project", "container"],
+          "required": ["source", "builder", "project", "container"],
           "additionalProperties": false,
           "properties": {
+            "source": {
+              "description": "Source for obtaining the block",
+              "enum": ["local_build", "download", "pre-built"]
+            },
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            },
             "project": {
               "type": "object",
-              "required": ["source"],
+              "required": ["sources"],
               "additionalProperties": false,
               "properties": {
-                "source": {
+                "sources": {
                   "description": "Git clone URL or path to the Vivado project",
                   "type": "string"
                 },
                 "branch": {
                   "description": "Git repository branch",
+                  "type": "string"
+                },
+                "pre-built": {
+                  "description": "URL or path to the pre-built files",
                   "type": "string"
                 }
               }
@@ -115,20 +127,32 @@
         },
         "devicetree": {
           "type": "object",
-          "required": ["project", "container"],
+          "required": ["source", "builder", "project", "container"],
           "additionalProperties": false,
           "properties": {
+            "source": {
+              "description": "Source for obtaining the block",
+              "enum": ["local_build", "download", "pre-built"]
+            },
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            },
             "project": {
               "type": "object",
-              "required": ["source"],
+              "required": ["sources"],
               "additionalProperties": false,
               "properties": {
-                "source": {
+                "sources": {
                   "description": "Git clone URL or path to the Vivado project",
                   "type": "string"
                 },
                 "branch": {
                   "description": "Git repository branch",
+                  "type": "string"
+                },
+                "pre-built": {
+                  "description": "URL or path to the pre-built files",
                   "type": "string"
                 }
               }
@@ -159,9 +183,26 @@
         },
         "fsbl": {
           "type": "object",
-          "required": ["container"],
+          "required": ["source", "builder", "container"],
           "additionalProperties": false,
           "properties": {
+            "source": {
+              "description": "Source for obtaining the block",
+              "enum": ["local_build", "download", "pre-built"]
+            },
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            },
+            "project": {
+              "additionalProperties": false,
+              "properties": {
+                "pre-built": {
+                  "description": "URL or path to the pre-built files",
+                  "type": "string"
+                }
+              }
+            },
             "container": {
               "type": "object",
               "required": ["image"],
@@ -188,20 +229,32 @@
         },
         "kernel": {
           "type": "object",
-          "required": ["project", "container"],
+          "required": ["source", "builder", "project", "container"],
           "additionalProperties": false,
           "properties": {
+            "source": {
+              "description": "Source for obtaining the block",
+              "enum": ["local_build", "download", "pre-built"]
+            },
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            },
             "project": {
               "type": "object",
-              "required": ["source"],
+              "required": ["sources"],
               "additionalProperties": false,
               "properties": {
-                "source": {
+                "sources": {
                   "description": "Git clone URL or path to the Vivado project",
                   "type": "string"
                 },
                 "branch": {
                   "description": "Git repository branch",
+                  "type": "string"
+                },
+                "pre-built": {
+                  "description": "URL or path to the pre-built files",
                   "type": "string"
                 }
               }
@@ -232,9 +285,26 @@
         },
         "pmu-fw": {
           "type": "object",
-          "required": ["container"],
+          "required": ["source", "builder", "container"],
           "additionalProperties": false,
           "properties": {
+            "source": {
+              "description": "Source for obtaining the block",
+              "enum": ["local_build", "download", "pre-built"]
+            },
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            },
+            "project": {
+              "additionalProperties": false,
+              "properties": {
+                "pre-built": {
+                  "description": "URL or path to the pre-built files",
+                  "type": "string"
+                }
+              }
+            },
             "container": {
               "type": "object",
               "required": ["image"],
@@ -261,9 +331,26 @@
         },
         "rootfs": {
           "type": "object",
-          "required": ["container"],
+          "required": ["source", "builder", "container"],
           "additionalProperties": false,
           "properties": {
+            "source": {
+              "description": "Source for obtaining the block",
+              "enum": ["local_build", "download", "pre-built"]
+            },
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            },
+            "project": {
+              "additionalProperties": false,
+              "properties": {
+                "pre-built": {
+                  "description": "URL or path to the pre-built files",
+                  "type": "string"
+                }
+              }
+            },
             "container": {
               "type": "object",
               "required": ["image"],
@@ -290,20 +377,32 @@
         },
         "u-boot": {
           "type": "object",
-          "required": ["project", "container"],
+          "required": ["source", "builder", "project", "container"],
           "additionalProperties": false,
           "properties": {
+            "source": {
+              "description": "Source for obtaining the block",
+              "enum": ["local_build", "download", "pre-built"]
+            },
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            },
             "project": {
               "type": "object",
-              "required": ["source"],
+              "required": ["sources"],
               "additionalProperties": false,
               "properties": {
-                "source": {
+                "sources": {
                   "description": "Git clone URL or path to the Vivado project",
                   "type": "string"
                 },
                 "branch": {
                   "description": "Git repository branch",
+                  "type": "string"
+                },
+                "pre-built": {
+                  "description": "URL or path to the pre-built files",
                   "type": "string"
                 }
               }
@@ -334,20 +433,32 @@
         },
         "vivado": {
           "type": "object",
-          "required": ["project", "container"],
+          "required": ["source", "builder", "project", "container"],
           "additionalProperties": false,
           "properties": {
+            "source": {
+              "description": "Source for obtaining the block",
+              "enum": ["local_build", "download", "pre-built"]
+            },
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            },
             "project": {
               "type": "object",
-              "required": ["source"],
+              "required": ["sources"],
               "additionalProperties": false,
               "properties": {
-                "source": {
+                "sources": {
                   "description": "Git clone URL or path to the Vivado project",
                   "type": "string"
                 },
                 "branch": {
                   "description": "Git repository branch",
+                  "type": "string"
+                },
+                "pre-built": {
+                  "description": "URL or path to the pre-built files",
                   "type": "string"
                 }
               }
