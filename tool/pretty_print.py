@@ -27,7 +27,3 @@ def print_build(message: str, end: str = '\n', flush: bool = False):
 
 def print_clean(message: str, end: str = '\n', flush: bool = False):
     print(_magenta + message + _end, end=end, flush=flush)
-
-
-def print_bash_output(message: str, end: str = '\n', flush: bool = False):
-    print(_blue + message + _end, end=end, flush=flush)
