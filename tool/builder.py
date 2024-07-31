@@ -10,20 +10,31 @@ class Builder:
     Base class for all builder classes
     """
 
-    def __init__(self, block_name):
+    def __init__(self, block_name, project_dir):
         # Directories
-        self.project_dir = '.'# JUST FOR DEBUGGING
-        self.repo_dir = self.project_dir+'/temp/'+block_name+'/repo'
-        self.output_dir = self.project_dir+'/temp/'+block_name+'/output'
+        self.project_dir = project_dir
+        self.patch_dir = self.project_dir+'/'+block_name+'/patches/'
+        self.repo_dir = self.project_dir+'/temp/'+block_name+'/repo/'
+        self.output_dir = self.project_dir+'/temp/'+block_name+'/output/'
+
+        # Files
+        # Flag to remember if patches have already been applied
+        self.patches_applied_flag = self.project_dir+'/temp/'+block_name+'/.patchesapplied'
+        # File containing all patches to be used
+        self.patch_cfg_file = self.patch_dir+'/.patches.cfg'
+
         # Git branches
         self.git_local_ref_branch = '__ref'
         self.git_local_dev_branch = '__temp'
 
-
+    #
+    # ToDo: Most likely this function can be removed
+    #
     @staticmethod
-    def _run_sh_command(command, logfile=None, visible=True, visible_lines=20):
+    def _run_sh_command_limited_output(command, logfile=None, visible=True, visible_lines=20):
         """ (Google documentation style: https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
-        Runs a sh command. This function does not work properly for commands that show a progress bar or someting similar.
+        Runs a sh command. This function does not work properly for commands that show
+        a progress bar or someting similar.
 
         Args:
             command:
@@ -119,15 +130,18 @@ class Builder:
 
 
     @staticmethod
-    def _run_animated_sh_command(command):
+    def _run_sh_command(command, logfile=None):
         """ (Google documentation style: https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
-        Runs a sh command. This function can display all commands properly.
+        Runs a sh command. If a logfile is used this function does not work properly
+        for commands that show a progress bar or someting similar.
 
         Args:
             command:
                 The command to execute. Example: '/usr/bin/ping www.google.com'.
                 The executable should be given with the full path, as mentioned
                 here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
+            logfile:
+                Path of the logfile. None if no log file is to be used.
 
         Returns:
             None
@@ -136,12 +150,16 @@ class Builder:
             None
         """
 
-        subprocess.run(command, shell=True, check=True)
+        if logfile:
+            subprocess.run(' '.join(command+['2>&1', '|', 'tee', '--append', logfile]), shell=True, check=True)
+        else:
+            subprocess.run(' '.join(command), shell=True, check=True)
 
 
     def init_repo(self):
         """
-        Clone and initialize the git repo. All operations are skipped, if the repo already exists.
+        Clone and initialize the git repo. All operations are skipped, if the repo
+        already exists.
         """
 
         if(not os.path.isdir(self.source_repo_dir)):
@@ -149,29 +167,45 @@ class Builder:
             try:
                 os.makedirs(self.output_dir, exist_ok=True)
                 os.makedirs(self.repo_dir, exist_ok=True)
+
+                Builder._run_sh_command(['git', 'clone', '--recursive', '--branch', self.source_repo_branch, self.source_repo_url, self.source_repo_dir])
+                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'switch', '-c', self.git_local_ref_branch])
+                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'switch', '-c', self.git_local_dev_branch])
             except Exception as e:
-                pretty_print.print_error('An error occurred: '+str(e))
-                sys.exit(1)
-            try:
-                Builder._run_animated_sh_command(' '.join(["/usr/bin/git", "clone", "--recursive", "--branch", self.source_repo_branch, self.source_repo_url, self.source_repo_dir]))
-                Builder._run_animated_sh_command(' '.join(["git", "-C", self.source_repo_dir, "checkout", "--orphan", self.git_local_ref_branch]))
-                Builder._run_animated_sh_command(' '.join(["git", "-C", self.source_repo_dir, "checkout", "--orphan", self.git_local_dev_branch]))
-            except subprocess.CalledProcessError as e:
-                pretty_print.print_error('An error occurred while cloning the repository: '+str(e))
+                pretty_print.print_error('An error occurred while initializing the repository: '+str(e))
                 sys.exit(1)
         else:
             pretty_print.print_build('-> No need to fetch the repo...')
 
-#    def apply_patches():
-#        """
-#        ToDo: Add description
-#
-#        """
-#        if(os.path.isfile(self.patches_applied_flag)):
-#            print_build('-> Applying patches...\n')
-#            try:
-#            #
-#            # ToDo: Commands
-#            #
-#        else:
-#            print_build('-> No need to apply patches...\n')
+
+    def apply_patches(self):
+        """
+        This function iterates over all patches listed in self.patch_cfg_file and
+        applies them to the repo. All operations are skipped, if the patches have
+        already been applied.
+
+        The git branch self.git_local_ref_branch is used as a reference with all
+        existing patches applied.
+        The git branch self.git_local_dev_branch is used as the local development
+        branch. New patches can be created from this branch.
+        """
+        if(not os.path.isfile(self.patches_applied_flag)):
+            pretty_print.print_build('-> Applying patches...')
+            try:
+                if os.path.isfile(self.patch_cfg_file):
+                    with open(self.patch_cfg_file) as patches:
+                        for patch in patches:
+                            if patch:
+                                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'am', self.patch_dir+'/'+patch])
+                
+                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'checkout', self.git_local_ref_branch])
+                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'merge', self.git_local_dev_branch])
+                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'checkout', self.git_local_dev_branch])
+                # Create the flasg if it doesn't exist and update the timestamps
+                with open(self.patches_applied_flag, 'w'):
+                    os.utime(self.patches_applied_flag, None)
+            except Exception as e:
+                pretty_print.print_error('An error occurred while applying patches: '+str(e))
+                sys.exit(1)
+        else:
+            pretty_print.print_build('-> No need to apply patches...')

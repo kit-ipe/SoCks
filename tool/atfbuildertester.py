@@ -3,6 +3,7 @@
 import atfbuilder
 import subprocess
 
-atfbuilder = atfbuilder.ATFBuilder()
+atfbuilder = atfbuilder.ATFBuilder(project_dir='../project/')
 
 atfbuilder.init_repo()
+atfbuilder.apply_patches()
