@@ -27,14 +27,13 @@ class Builder:
         self._git_local_ref_branch = '__ref'
         self._git_local_dev_branch = '__temp'
 
-    #
-    # ToDo: Most likely this function can be removed
-    #
+
     @staticmethod
-    def _run_sh_command_limited_output(command, logfile=None, visible=True, visible_lines=20):
+    def _run_sh_command(command, logfile=None, scrolling_output=False, visible_lines=20):
         """ (Google documentation style: https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
-        Runs a sh command. This function does not work properly for commands that show
-        a progress bar or someting similar.
+        Runs a sh command. If the srolling view is enabled or the output is to be logged,
+        this function loses some output of commands that display a progress bar or
+        someting similar. The 'tee' shell command has the same issue.
 
         Args:
             command:
@@ -43,30 +42,39 @@ class Builder:
                 here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
             logfile:
                 Path of the logfile. None if no log file is to be used.
-            visible:
-                If True the output of the command will be printed.
+            scrolling_output:
+                If True, the output of the sh command is printed in a scrolling view.
+                The printed output is updated at runtime and the latest lines are
+                always displayed.
             visible_lines:
-                Maximum number of sh output lines to be printed. The output is updated
-                at run time and the latest lines are always displayed.
+                Maximum number of sh output lines to be printed if scolling_output
+                is True.
 
         Returns:
             None
 
         Raises:
-            None
+            subprocess.CalledProcessError: If the return code of the subprocess is not 0 
         """
 
-        # Prepare to handle the command line output of the command
+        # If scolling output is disabled and the output should not be hidden or logged, subprocess.run can be used to run the subprocess
+        if scrolling_output == False and visible_lines != 0 and logfile == None:
+            subprocess.run(' '.join(command), shell=True, check=True)
+            return
+
+        # Prepare to process the command line output of the command
         printed_lines = 0
         last_lines = []
 
         def update_last_lines(line):
+            if visible_lines <= 0:
+                return
             if len(last_lines) >= visible_lines:
                 last_lines.pop(0)
             last_lines.append(line)
         
         # Start the subprocess
-        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(' '.join(command), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         # Continuously read from the process output
         while True:
@@ -125,35 +133,7 @@ class Builder:
 
         # Check return code
         if process.returncode != 0:
-            pretty_print.print_error('Error: The following sh command failed: \''+' '.join(command)+'\'')
-            sys.exit(1)
-
-
-    @staticmethod
-    def _run_sh_command(command, logfile=None):
-        """ (Google documentation style: https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
-        Runs a sh command. If a logfile is used this function does not work properly
-        for commands that show a progress bar or someting similar.
-
-        Args:
-            command:
-                The command to execute. Example: '/usr/bin/ping www.google.com'.
-                The executable should be given with the full path, as mentioned
-                here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
-            logfile:
-                Path of the logfile. None if no log file is to be used.
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        if logfile:
-            subprocess.run(' '.join(command+['2>&1', '|', 'tee', '--append', logfile]), shell=True, check=True)
-        else:
-            subprocess.run(' '.join(command), shell=True, check=True)
+            raise subprocess.CalledProcessError(process.returncode, ' '.join(command))
 
 
     def init_repo(self):
@@ -201,7 +181,7 @@ class Builder:
                 Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'checkout', self._git_local_ref_branch])
                 Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'merge', self._git_local_dev_branch])
                 Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'checkout', self._git_local_dev_branch])
-                # Create the flasg if it doesn't exist and update the timestamps
+                # Create the flag if it doesn't exist and update the timestamps
                 with open(self._patches_applied_flag, 'w'):
                     os.utime(self._patches_applied_flag, None)
             except Exception as e:
