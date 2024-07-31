@@ -12,20 +12,20 @@ class Builder:
 
     def __init__(self, block_name, project_dir):
         # Directories
-        self.project_dir = project_dir
-        self.patch_dir = self.project_dir+'/'+block_name+'/patches/'
-        self.repo_dir = self.project_dir+'/temp/'+block_name+'/repo/'
-        self.output_dir = self.project_dir+'/temp/'+block_name+'/output/'
+        self._project_dir = project_dir
+        self._patch_dir = self._project_dir+'/'+block_name+'/patches/'
+        self._repo_dir = self._project_dir+'/temp/'+block_name+'/repo/'
+        self._output_dir = self._project_dir+'/temp/'+block_name+'/output/'
 
         # Files
         # Flag to remember if patches have already been applied
-        self.patches_applied_flag = self.project_dir+'/temp/'+block_name+'/.patchesapplied'
+        self._patches_applied_flag = self._project_dir+'/temp/'+block_name+'/.patchesapplied'
         # File containing all patches to be used
-        self.patch_cfg_file = self.patch_dir+'/.patches.cfg'
+        self._patch_cfg_file = self._patch_dir+'/.patches.cfg'
 
         # Git branches
-        self.git_local_ref_branch = '__ref'
-        self.git_local_dev_branch = '__temp'
+        self._git_local_ref_branch = '__ref'
+        self._git_local_dev_branch = '__temp'
 
     #
     # ToDo: Most likely this function can be removed
@@ -162,15 +162,15 @@ class Builder:
         already exists.
         """
 
-        if(not os.path.isdir(self.source_repo_dir)):
+        if(not os.path.isdir(self._source_repo_dir)):
             pretty_print.print_build('-> Fetching repo...')
             try:
-                os.makedirs(self.output_dir, exist_ok=True)
-                os.makedirs(self.repo_dir, exist_ok=True)
+                os.makedirs(self._output_dir, exist_ok=True)
+                os.makedirs(self._repo_dir, exist_ok=True)
 
-                Builder._run_sh_command(['git', 'clone', '--recursive', '--branch', self.source_repo_branch, self.source_repo_url, self.source_repo_dir])
-                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'switch', '-c', self.git_local_ref_branch])
-                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'switch', '-c', self.git_local_dev_branch])
+                Builder._run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo_branch, self._source_repo_url, self._source_repo_dir])
+                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'switch', '-c', self._git_local_ref_branch])
+                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'switch', '-c', self._git_local_dev_branch])
             except Exception as e:
                 pretty_print.print_error('An error occurred while initializing the repository: '+str(e))
                 sys.exit(1)
@@ -180,30 +180,30 @@ class Builder:
 
     def apply_patches(self):
         """
-        This function iterates over all patches listed in self.patch_cfg_file and
+        This function iterates over all patches listed in self._patch_cfg_file and
         applies them to the repo. All operations are skipped, if the patches have
         already been applied.
 
-        The git branch self.git_local_ref_branch is used as a reference with all
+        The git branch self._git_local_ref_branch is used as a reference with all
         existing patches applied.
-        The git branch self.git_local_dev_branch is used as the local development
+        The git branch self._git_local_dev_branch is used as the local development
         branch. New patches can be created from this branch.
         """
-        if(not os.path.isfile(self.patches_applied_flag)):
+        if(not os.path.isfile(self._patches_applied_flag)):
             pretty_print.print_build('-> Applying patches...')
             try:
-                if os.path.isfile(self.patch_cfg_file):
-                    with open(self.patch_cfg_file) as patches:
+                if os.path.isfile(self._patch_cfg_file):
+                    with open(self._patch_cfg_file) as patches:
                         for patch in patches:
                             if patch:
-                                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'am', self.patch_dir+'/'+patch])
+                                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'am', self._patch_dir+'/'+patch])
                 
-                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'checkout', self.git_local_ref_branch])
-                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'merge', self.git_local_dev_branch])
-                Builder._run_sh_command(['git', '-C', self.source_repo_dir, 'checkout', self.git_local_dev_branch])
+                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'checkout', self._git_local_ref_branch])
+                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'merge', self._git_local_dev_branch])
+                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'checkout', self._git_local_dev_branch])
                 # Create the flasg if it doesn't exist and update the timestamps
-                with open(self.patches_applied_flag, 'w'):
-                    os.utime(self.patches_applied_flag, None)
+                with open(self._patches_applied_flag, 'w'):
+                    os.utime(self._patches_applied_flag, None)
             except Exception as e:
                 pretty_print.print_error('An error occurred while applying patches: '+str(e))
                 sys.exit(1)
