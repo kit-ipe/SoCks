@@ -18,6 +18,9 @@ class ATFBuilder(builder.Builder):
         container_image_tag = source_repo_branch
         container_image = container_image_name+':'+container_image_tag
 
+        vivado_dir = '/media/marvin/T9MF/Tools/Xilinx/Vivado/' # Should be read from YAML
+        vitis_dir = '/media/marvin/T9MF/Tools/Xilinx/Vitis/' # Should be read from YAML
+
         super().__init__(socks_dir=socks_dir,
                         block_name=block_name,
                         project_dir=project_dir,
@@ -25,4 +28,6 @@ class ATFBuilder(builder.Builder):
                         source_repo_url=source_repo_url,
                         source_repo_branch=source_repo_branch,
                         container_tool=container_tool,
-                        container_image=container_image)
+                        container_image=container_image,
+                        vivado_dir=vivado_dir,
+                        vitis_dir=vitis_dir)

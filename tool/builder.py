@@ -13,7 +13,7 @@ class Builder:
     Base class for all builder classes
     """
 
-    def __init__(self, socks_dir, block_name, project_dir, source_repo_name, source_repo_url, source_repo_branch, container_tool, container_image):
+    def __init__(self, socks_dir, block_name, project_dir, source_repo_name, source_repo_url, source_repo_branch, container_tool, container_image, vivado_dir, vitis_dir):
         self._block_name = block_name
 
         # Host user
@@ -35,12 +35,16 @@ class Builder:
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = socks_dir
         self._container_dir = self._socks_dir+'/container/'
+        self._vivado_dir = vivado_dir
+        self._vitis_dir = vitis_dir
         
         # Project directories
         self._project_dir = project_dir
         self._patch_dir = self._project_dir+'/'+self._block_name+'/patches/'
         self._repo_dir = self._project_dir+'/temp/'+self._block_name+'/repo/'
         self._source_repo_dir = self._repo_dir+source_repo_name+'-'+self._source_repo_branch+'/'
+        self._xsa_dir = self._project_dir+'/temp/'+self._block_name+'/source_xsa/'
+        self._work_dir = self._project_dir+'/temp/'+self._block_name+'/work/'
         self._output_dir = self._project_dir+'/temp/'+self._block_name+'/output/'
 
         # Project files
@@ -182,13 +186,39 @@ class Builder:
 
 
     @staticmethod
-    def _err_unsop_container_tool():
+    def _err_unsup_container_tool():
+        """
+        Display an error message that the requested container tool is not supported.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
         pretty_print.print_error('Containerization tool '+self._container_tool+' is not supported. Options are \'docker\', \'podman\' and \'none\'.')
         sys.exit(1)
     
 
     @staticmethod
     def _err_container_feature(feature):
+        """
+        Display an error message that the requested feature is only available if a container tool is used.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
         pretty_print.print_error(feature+' is only available if a containerization tool is used.')
         sys.exit(1)
 
@@ -198,6 +228,15 @@ class Builder:
         Builds the container image for the selected container tool.
 
         The container management tool (podman/docker) will restore everything that has not changed in the containerfile from the cache.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
         """
 
         # Check if the required container file exists
@@ -242,12 +281,21 @@ class Builder:
         elif self._container_tool == 'none':
             pretty_print.print_warning('Container image is not built in native mode.')
         else:
-            Builder._err_unsop_container_tool()
+            Builder._err_unsup_container_tool()
 
 
     def clean_container_image(self):
         """
         Cleans the container image of the selected container tool.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
         """
 
         if self._container_tool in ('docker', 'podman'):
@@ -266,12 +314,57 @@ class Builder:
         elif self._container_tool == 'none':
             Builder._err_container_feature(inspect.getframeinfo(inspect.currentframe()).function+'()')
         else:
-            Builder._err_unsop_container_tool()
+            Builder._err_unsup_container_tool()
+
+
+    def start_container(self):
+        """
+        Start an interactive container with which the block can be built.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if self._container_tool in ('docker', 'podman'):
+            pretty_print.print_build('Starting container...')
+            # A complete list of all container mounts supported by SoCks
+            potential_mounts = [self._xsa_dir+':Z', self._vivado_dir+':ro', self._vitis_dir+':ro', self._repo_dir+':Z', self._work_dir+':Z', self._output_dir+':Z']
+            available_mounts = []
+            # Check which mounts (resp. directories) are available on the host system
+            for mount in potential_mounts:
+                segments = mount.split(':')
+                if len(segments) != 2:
+                    pretty_print.print_error('The following path contains a forbidden colon: '+mount.rpartition(':')[0])
+                    sys.exit(1)
+                if os.path.isdir(segments[0]):
+                    available_mounts.append(segments[0]+':'+segments[0]+':'+segments[1])
+            # Start the container
+            Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
+
+        elif self._container_tool == 'none':
+            Builder._err_container_feature(inspect.getframeinfo(inspect.currentframe()).function+'()')
+        else:
+            Builder._err_unsup_container_tool()
 
 
     def init_repo(self):
         """
         Clones and initializes the git repo.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
         """
 
         # Skip all operations if the repo already exists
@@ -298,6 +391,15 @@ class Builder:
         """
         This function iterates over all patches listed in self._patch_cfg_file and
         applies them to the repo.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
         """
 
         # Skip all operations if the patches have already been applied
