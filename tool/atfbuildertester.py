@@ -3,7 +3,8 @@
 import atfbuilder
 import subprocess
 
-atfbuilder = atfbuilder.ATFBuilder(project_dir='../project/')
+atfbuilder = atfbuilder.ATFBuilder(socks_dir='.', project_dir='./../project/')
 
-atfbuilder.init_repo()
-atfbuilder.apply_patches()
+#atfbuilder.init_repo()
+#atfbuilder.apply_patches()
+atfbuilder.clean_container_image()

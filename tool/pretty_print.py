@@ -10,20 +10,20 @@ _underline = "\033[4m"
 
 
 def print_warning(message: str, end: str = '\n', flush: bool = False):
-    print(_orange + message + _end, end=end, flush=flush)
+    print(_orange + 'WARNING: ' + message + _end, end=end, flush=flush)
 
 
 def print_error(message: str, end: str = '\n', flush: bool = False):
-    print(_red + message + _end, end=end, flush=flush)
+    print(_red + 'ERROR: ' + message + _end, end=end, flush=flush)
 
 
 def print_build_stage(message: str, end: str = '\n', flush: bool = False):
-    print(_green + message + _end, end=end, flush=flush)
+    print(_green + '\n>>> ' + message + _end, end=end, flush=flush)
 
 
 def print_build(message: str, end: str = '\n', flush: bool = False):
-    print(_cyan + message + _end, end=end, flush=flush)
+    print(_cyan + '-> ' + message + _end, end=end, flush=flush)
 
 
 def print_clean(message: str, end: str = '\n', flush: bool = False):
-    print(_magenta + message + _end, end=end, flush=flush)
+    print(_magenta + '-> ' + message + _end, end=end, flush=flush)
