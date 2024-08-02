@@ -244,44 +244,48 @@ class Builder:
             pretty_print.print_error('File '+self._container_dir+'/'+self._container_image+'.containerfile not found.')
             sys.exit(1)
 
-        if self._container_tool == 'docker':
-            # Get last tag time from docker
-            results = Builder._get_sh_results(['docker', 'image', 'inspect', '-f \'{{ .Metadata.LastTagTime }}\'', self._container_image])
-            # Do not extract tag time if the image does not yet exist
-            if 'No such image: '+self._container_image in results.stderr:
-                last_tag_time_timestamp = 0
-            else:
-                last_tag_time_timestamp = parser.parse(results.stdout.rpartition(' ')[0]).timestamp()
-            # Get last modification time of the container file
-            last_file_mod_time_timestamp = os.path.getmtime(self._container_dir+'/'+self._container_image+'.containerfile')
-            # Build image, if necessary
-            if last_tag_time_timestamp < last_file_mod_time_timestamp:
-                pretty_print.print_build('Building docker image '+self._container_image+'...')
-                Builder._run_sh_command(['docker', 'build', '-t', self._container_image, '-f', self._container_dir+'/'+self._container_image+'.containerfile', '--build-arg', 'user_name='+self._host_user, '--build-arg', 'user_id='+str(self._host_user_id), '.'])
-            else:
-                pretty_print.print_build('No need to build the docker image '+self._container_image+'...')
+        try:
+            if self._container_tool == 'docker':
+                # Get last tag time from docker
+                results = Builder._get_sh_results(['docker', 'image', 'inspect', '-f \'{{ .Metadata.LastTagTime }}\'', self._container_image])
+                # Do not extract tag time if the image does not yet exist
+                if 'No such image: '+self._container_image in results.stderr:
+                    last_tag_time_timestamp = 0
+                else:
+                    last_tag_time_timestamp = parser.parse(results.stdout.rpartition(' ')[0]).timestamp()
+                # Get last modification time of the container file
+                last_file_mod_time_timestamp = os.path.getmtime(self._container_dir+'/'+self._container_image+'.containerfile')
+                # Build image, if necessary
+                if last_tag_time_timestamp < last_file_mod_time_timestamp:
+                    pretty_print.print_build('Building docker image '+self._container_image+'...')
+                    Builder._run_sh_command(['docker', 'build', '-t', self._container_image, '-f', self._container_dir+'/'+self._container_image+'.containerfile', '--build-arg', 'user_name='+self._host_user, '--build-arg', 'user_id='+str(self._host_user_id), '.'])
+                else:
+                    pretty_print.print_build('No need to build the docker image '+self._container_image+'...')
 
-        elif self._container_tool == 'podman':
-            # Get last build event time from podman
-            results = Builder._get_sh_results(['podman', 'image', 'inspect', '-f', '\'{{ .Id }}\'', self._container_image, '|', 'xargs', '-I', '{}', 'podman', 'events', '--filter', 'image={}', '--filter', 'event=build', '--format', '\'{{.Time}}\'', '--until', '0m'])
-            # Do not extract last build event time if the image does not yet exist
-            if self._container_image+': image not known' in results.stderr:
-                last_build_time_timestamp = 0
-            else:
-                last_build_time_timestamp = parser.parse(results.stdout.splitlines()[-2].rpartition(' ')[0]).timestamp()
-            # Get last modification time of the container file
-            last_file_mod_time_timestamp = os.path.getmtime(self._container_dir+'/'+self._container_image+'.containerfile')
-            # Build image, if necessary
-            if last_build_time_timestamp < last_file_mod_time_timestamp:
-                pretty_print.print_build('Building podman image '+self._container_image+'...')
-                Builder._run_sh_command(['podman', 'build', '-t', self._container_image, '-f', self._container_dir+'/'+self._container_image+'.containerfile', '.'])
-            else:
-                pretty_print.print_build('No need to build the podman image '+self._container_image+'...')
+            elif self._container_tool == 'podman':
+                # Get last build event time from podman
+                results = Builder._get_sh_results(['podman', 'image', 'inspect', '-f', '\'{{ .Id }}\'', self._container_image, '|', 'xargs', '-I', '{}', 'podman', 'events', '--filter', 'image={}', '--filter', 'event=build', '--format', '\'{{.Time}}\'', '--until', '0m'])
+                # Do not extract last build event time if the image does not yet exist
+                if self._container_image+': image not known' in results.stderr:
+                    last_build_time_timestamp = 0
+                else:
+                    last_build_time_timestamp = parser.parse(results.stdout.splitlines()[-2].rpartition(' ')[0]).timestamp()
+                # Get last modification time of the container file
+                last_file_mod_time_timestamp = os.path.getmtime(self._container_dir+'/'+self._container_image+'.containerfile')
+                # Build image, if necessary
+                if last_build_time_timestamp < last_file_mod_time_timestamp:
+                    pretty_print.print_build('Building podman image '+self._container_image+'...')
+                    Builder._run_sh_command(['podman', 'build', '-t', self._container_image, '-f', self._container_dir+'/'+self._container_image+'.containerfile', '.'])
+                else:
+                    pretty_print.print_build('No need to build the podman image '+self._container_image+'...')
 
-        elif self._container_tool == 'none':
-            pretty_print.print_warning('Container image is not built in native mode.')
-        else:
-            Builder._err_unsup_container_tool()
+            elif self._container_tool == 'none':
+                pretty_print.print_warning('Container image is not built in native mode.')
+            else:
+                Builder._err_unsup_container_tool()
+        except Exception as e:
+                pretty_print.print_error('An error occurred while building the container image: '+str(e))
+                sys.exit(1)
 
 
     def clean_container_image(self):
@@ -299,17 +303,17 @@ class Builder:
         """
 
         if self._container_tool in ('docker', 'podman'):
-                try:
-                    # Clean image only if it exists
-                    results = Builder._get_sh_results([self._container_tool, 'images', '-q', self._container_image])
-                    if results.stdout.splitlines():
-                        pretty_print.print_build('Cleaning container image '+self._container_image+'...')
-                        Builder._run_sh_command([self._container_tool, 'image', 'rm', self._container_image])
-                    else:
-                        pretty_print.print_build('No need to clean container image '+self._container_image+', the image doesn\'t exist...')
-                except Exception as e:
-                    pretty_print.print_error('An error occurred while cleaning the container image: '+str(e))
-                    sys.exit(1)
+            try:
+                # Clean image only if it exists
+                results = Builder._get_sh_results([self._container_tool, 'images', '-q', self._container_image])
+                if results.stdout.splitlines():
+                    pretty_print.print_build('Cleaning container image '+self._container_image+'...')
+                    Builder._run_sh_command([self._container_tool, 'image', 'rm', self._container_image])
+                else:
+                    pretty_print.print_build('No need to clean container image '+self._container_image+', the image doesn\'t exist...')
+            except Exception as e:
+                pretty_print.print_error('An error occurred while cleaning the container image: '+str(e))
+                sys.exit(1)
 
         elif self._container_tool == 'none':
             Builder._err_container_feature(inspect.getframeinfo(inspect.currentframe()).function+'()')
@@ -332,20 +336,24 @@ class Builder:
         """
 
         if self._container_tool in ('docker', 'podman'):
-            pretty_print.print_build('Starting container...')
-            # A complete list of all container mounts supported by SoCks
-            potential_mounts = [self._xsa_dir+':Z', self._vivado_dir+':ro', self._vitis_dir+':ro', self._repo_dir+':Z', self._work_dir+':Z', self._output_dir+':Z']
-            available_mounts = []
-            # Check which mounts (resp. directories) are available on the host system
-            for mount in potential_mounts:
-                segments = mount.split(':')
-                if len(segments) != 2:
-                    pretty_print.print_error('The following path contains a forbidden colon: '+mount.rpartition(':')[0])
-                    sys.exit(1)
-                if os.path.isdir(segments[0]):
-                    available_mounts.append(segments[0]+':'+segments[0]+':'+segments[1])
-            # Start the container
-            Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
+            try:
+                pretty_print.print_build('Starting container...')
+                # A complete list of all container mounts supported by SoCks
+                potential_mounts = [self._xsa_dir+':Z', self._vivado_dir+':ro', self._vitis_dir+':ro', self._repo_dir+':Z', self._work_dir+':Z', self._output_dir+':Z']
+                available_mounts = []
+                # Check which mounts (resp. directories) are available on the host system
+                for mount in potential_mounts:
+                    segments = mount.split(':')
+                    if len(segments) != 2:
+                        pretty_print.print_error('The following path contains a forbidden colon: '+mount.rpartition(':')[0])
+                        sys.exit(1)
+                    if os.path.isdir(segments[0]):
+                        available_mounts.append(segments[0]+':'+segments[0]+':'+segments[1])
+                # Start the container
+                Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
+            except Exception as e:
+                pretty_print.print_error('An error occurred while starting the container: '+str(e))
+                sys.exit(1)
 
         elif self._container_tool == 'none':
             Builder._err_container_feature(inspect.getframeinfo(inspect.currentframe()).function+'()')
