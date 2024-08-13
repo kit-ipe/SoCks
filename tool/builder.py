@@ -1,4 +1,5 @@
 import os
+import pathlib
 import sys
 import subprocess
 import select
@@ -33,25 +34,27 @@ class Builder:
         self._source_repo_branch = source_repo_branch
 
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
-        self._socks_dir = socks_dir
-        self._container_dir = self._socks_dir+'/container/'
-        self._vivado_dir = vivado_dir
-        self._vitis_dir = vitis_dir
+        self._socks_dir = pathlib.Path(socks_dir)
+        self._container_dir = self._socks_dir / 'container'
+        self._vivado_dir = pathlib.Path(vivado_dir)
+        self._vitis_dir = pathlib.Path(vitis_dir)
         
         # Project directories
-        self._project_dir = project_dir
-        self._patch_dir = self._project_dir+'/'+self._block_name+'/patches/'
-        self._repo_dir = self._project_dir+'/temp/'+self._block_name+'/repo/'
-        self._source_repo_dir = self._repo_dir+source_repo_name+'-'+self._source_repo_branch+'/'
-        self._xsa_dir = self._project_dir+'/temp/'+self._block_name+'/source_xsa/'
-        self._work_dir = self._project_dir+'/temp/'+self._block_name+'/work/'
-        self._output_dir = self._project_dir+'/temp/'+self._block_name+'/output/'
+        self._project_dir = pathlib.Path(project_dir)
+        self._patch_dir = self._project_dir / self._block_name / 'patches'
+        self._repo_dir = self._project_dir / 'temp' / self._block_name / 'repo'
+        self._source_repo_dir = self._repo_dir / (source_repo_name+'-'+self._source_repo_branch)
+        self._xsa_dir = self._project_dir / 'temp' / self._block_name / 'source_xsa'
+        self._work_dir = self._project_dir / 'temp' / self._block_name / 'work'
+        self._output_dir = self._project_dir / 'temp' / self._block_name / 'output'
 
         # Project files
+        # Container file for creating the container to be used for building this block
+        self._container_file = self._container_dir / (self._container_image+'.containerfile')
         # Flag to remember if patches have already been applied
-        self._patches_applied_flag = self._project_dir+'/temp/'+self._block_name+'/.patchesapplied'
+        self._patches_applied_flag = self._project_dir / 'temp' / self._block_name / '.patchesapplied'
         # File containing all patches to be used
-        self._patch_cfg_file = self._patch_dir+'/.patches.cfg'
+        self._patch_cfg_file = self._patch_dir / '.patches.cfg'
 
 
     @staticmethod
@@ -240,8 +243,8 @@ class Builder:
         """
 
         # Check if the required container file exists
-        if not os.path.isfile(self._container_dir+'/'+self._container_image+'.containerfile'):
-            pretty_print.print_error('File '+self._container_dir+'/'+self._container_image+'.containerfile not found.')
+        if not self._container_file.is_file():
+            pretty_print.print_error('File '+str(self._container_file)+' not found.')
             sys.exit(1)
 
         try:
@@ -254,11 +257,11 @@ class Builder:
                 else:
                     last_tag_time_timestamp = parser.parse(results.stdout.rpartition(' ')[0]).timestamp()
                 # Get last modification time of the container file
-                last_file_mod_time_timestamp = os.path.getmtime(self._container_dir+'/'+self._container_image+'.containerfile')
+                last_file_mod_time_timestamp = self._container_file.stat().st_mtime
                 # Build image, if necessary
                 if last_tag_time_timestamp < last_file_mod_time_timestamp:
                     pretty_print.print_build('Building docker image '+self._container_image+'...')
-                    Builder._run_sh_command(['docker', 'build', '-t', self._container_image, '-f', self._container_dir+'/'+self._container_image+'.containerfile', '--build-arg', 'user_name='+self._host_user, '--build-arg', 'user_id='+str(self._host_user_id), '.'])
+                    Builder._run_sh_command(['docker', 'build', '-t', self._container_image, '-f', str(self._container_file), '--build-arg', 'user_name='+self._host_user, '--build-arg', 'user_id='+str(self._host_user_id), '.'])
                 else:
                     pretty_print.print_build('No need to build the docker image '+self._container_image+'...')
 
@@ -271,11 +274,11 @@ class Builder:
                 else:
                     last_build_time_timestamp = parser.parse(results.stdout.splitlines()[-2].rpartition(' ')[0]).timestamp()
                 # Get last modification time of the container file
-                last_file_mod_time_timestamp = os.path.getmtime(self._container_dir+'/'+self._container_image+'.containerfile')
+                last_file_mod_time_timestamp = self._container_file.stat().st_mtime
                 # Build image, if necessary
                 if last_build_time_timestamp < last_file_mod_time_timestamp:
                     pretty_print.print_build('Building podman image '+self._container_image+'...')
-                    Builder._run_sh_command(['podman', 'build', '-t', self._container_image, '-f', self._container_dir+'/'+self._container_image+'.containerfile', '.'])
+                    Builder._run_sh_command(['podman', 'build', '-t', self._container_image, '-f', str(self._container_file), '.'])
                 else:
                     pretty_print.print_build('No need to build the podman image '+self._container_image+'...')
 
@@ -339,7 +342,7 @@ class Builder:
             try:
                 pretty_print.print_build('Starting container...')
                 # A complete list of all container mounts supported by SoCks
-                potential_mounts = [self._xsa_dir+':Z', self._vivado_dir+':ro', self._vitis_dir+':ro', self._repo_dir+':Z', self._work_dir+':Z', self._output_dir+':Z']
+                potential_mounts = [str(self._xsa_dir)+':Z', str(self._vivado_dir)+':ro', str(self._vitis_dir)+':ro', str(self._repo_dir)+':Z', str(self._work_dir)+':Z', str(self._output_dir)+':Z']
                 available_mounts = []
                 # Check which mounts (resp. directories) are available on the host system
                 for mount in potential_mounts:
@@ -347,7 +350,7 @@ class Builder:
                     if len(segments) != 2:
                         pretty_print.print_error('The following path contains a forbidden colon: '+mount.rpartition(':')[0])
                         sys.exit(1)
-                    if os.path.isdir(segments[0]):
+                    if pathlib.Path(segments[0]).is_dir():
                         available_mounts.append(segments[0]+':'+segments[0]+':'+segments[1])
                 # Start the container
                 Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
@@ -376,18 +379,18 @@ class Builder:
         """
 
         # Skip all operations if the repo already exists
-        if not os.path.isdir(self._source_repo_dir):
+        if not self._source_repo_dir.exists():
             pretty_print.print_build('Fetching repo...')
             try:
-                os.makedirs(self._output_dir, exist_ok=True)
-                os.makedirs(self._repo_dir, exist_ok=True)
+                self._output_dir.mkdir(parents=True, exist_ok=True)
+                self._repo_dir.mkdir(parents=True, exist_ok=True)
 
                 # Clone the repo
-                Builder._run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo_branch, self._source_repo_url, self._source_repo_dir])
+                Builder._run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo_branch, self._source_repo_url, str(self._source_repo_dir)])
                 # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'switch', '-c', self._git_local_ref_branch])
+                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
                 # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'switch', '-c', self._git_local_dev_branch])
+                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
             except Exception as e:
                 pretty_print.print_error('An error occurred while initializing the repository: '+str(e))
                 sys.exit(1)
@@ -411,23 +414,22 @@ class Builder:
         """
 
         # Skip all operations if the patches have already been applied
-        if not os.path.isfile(self._patches_applied_flag):
+        if not self._patches_applied_flag.exists():
             pretty_print.print_build('Applying patches...')
             try:
-                if os.path.isfile(self._patch_cfg_file):
-                    with open(self._patch_cfg_file, 'r') as patches:
+                if self._patch_cfg_file.is_file():
+                    with self._patch_cfg_file.open('r') as patches:
                         for patch in patches:
                             if patch:
                                 # Apply patch
-                                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'am', self._patch_dir+'/'+patch])
+                                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'am', str(self._patch_dir)+'/'+patch])
                 
                 # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'checkout', self._git_local_ref_branch])
-                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'merge', self._git_local_dev_branch])
-                Builder._run_sh_command(['git', '-C', self._source_repo_dir, 'checkout', self._git_local_dev_branch])
+                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch])
+                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch])
+                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch])
                 # Create the flag if it doesn't exist and update the timestamps
-                with open(self._patches_applied_flag, 'w'):
-                    os.utime(self._patches_applied_flag, None)
+                self._patches_applied_flag.touch()
             except Exception as e:
                 pretty_print.print_error('An error occurred while applying patches: '+str(e))
                 sys.exit(1)
@@ -449,11 +451,11 @@ class Builder:
             None
         """
 
-        if os.path.isdir(self._repo_dir):
+        if self._repo_dir.exists():
             # Check if there are uncommited changes in the git repo
-            results = Builder._get_sh_results(['git', '-C', self._source_repo_dir, 'status', '--porcelain'])
+            results = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'status', '--porcelain'])
             if results.stdout:
-                pretty_print.print_warning('There are uncommited changes in '+self._source_repo_dir+'. Do you really want to clean this repo? (y/n) ', end='')
+                pretty_print.print_warning('There are uncommited changes in '+str(self._source_repo_dir)+'. Do you really want to clean this repo? (y/n) ', end='')
                 answer = input('')
                 if answer.lower() not in ['y', 'Y', 'yes', 'Yes']:
                     pretty_print.print_clean('Cleaning abborted...')
@@ -463,23 +465,22 @@ class Builder:
             if self._container_tool in ('docker', 'podman'):
                 try:
                     # Clean up the repo from the container
-                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', self._repo_dir+':/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', str(self._repo_dir)+':/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error('An error occurred while cleaning the repo directory: '+str(e))
                     sys.exit(1)
 
             elif self._container_tool == 'none':
                 # Clean up the repo without using a container
-                Builder._run_sh_command(['sh', '-c', '\"rm -rf '+self._repo_dir+'/* '+self._repo_dir+'/.* 2> /dev/null || true\"'])
+                Builder._run_sh_command(['sh', '-c', '\"rm -rf '+str(self._repo_dir)+'/* '+str(self._repo_dir)+'/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
 
             # Remove flag
-            if os.path.isfile(self._patches_applied_flag):
-                os.remove(self._patches_applied_flag)
+            self._patches_applied_flag.unlink(missing_ok=True)
 
             # Remove empty repo directory
-            os.rmdir(self._repo_dir)
+            self._repo_dir.rmdir()
 
         else:
             pretty_print.print_clean('No need to clean the repo directory...')
@@ -499,24 +500,24 @@ class Builder:
             None
         """
 
-        if os.path.isdir(self._output_dir):
+        if self._output_dir.exists():
             pretty_print.print_clean('Cleaning output directory...')
             if self._container_tool in ('docker', 'podman'):
                 try:
                     # Clean up the repo from the container
-                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', self._output_dir+':/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', str(self._output_dir)+':/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error('An error occurred while cleaning the output directory: '+str(e))
                     sys.exit(1)
 
             elif self._container_tool == 'none':
                 # Clean up the repo without using a container
-                Builder._run_sh_command(['sh', '-c', '\"rm -rf '+self._output_dir+'/* '+self._output_dir+'/.* 2> /dev/null || true\"'])
+                Builder._run_sh_command(['sh', '-c', '\"rm -rf '+str(self._output_dir)+'/* '+str(self._output_dir)+'/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
 
             # Remove empty output directory
-            os.rmdir(self._output_dir)
+            self._output_dir.rmdir()
 
         else:
             pretty_print.print_clean('No need to clean the output directory...')

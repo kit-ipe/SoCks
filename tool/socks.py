@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-import os
+import pathlib
 import json
 import jsonschema
 import yaml
@@ -16,12 +16,11 @@ def find_file(file_name, search_paths):
     :return: Path of the file
     """
     for path in search_paths:
-        # Get a list of all items in the path
-        content = os.listdir(path)
-        for item in content:
-            if os.path.isfile(path+'/'+item) and item == file_name:
+        # Iterate over all items in the path
+        for item in pathlib.Path(path).iterdir():
+            if item.isfile() and item.name == file_name:
                 # Return the path of the file
-                return path+'/'+item
+                return item
     # Raise an exception if the file could not be found
     raise FileNotFoundError('Unable to find '+file_name)
 
@@ -53,11 +52,11 @@ def compose_project_configuration(config_file):
     :return: Fully assembled project configuration
     """
     try:
-        config_file_path = find_file(file_name=config_file, search_paths=['.', '../project'])
+        config_file = find_file(file_name=config_file, search_paths=['.', '../project'])
     except FileNotFoundError as e:
         print(repr(e))
         sys.exit(1)
-    with open(config_file_path, 'r') as f:
+    with config_file.open('r') as f:
         cfg_layer = yaml.safe_load(f)
     # Directly return the cfg layer if it doesn't contain an 'import' key
     ret = cfg_layer
