@@ -7,4 +7,5 @@ atfbuilder = atfbuilder.ATFBuilder(socks_dir='/home/marvin/Projects/Build_System
 
 #atfbuilder.init_repo()
 #atfbuilder.apply_patches()
-atfbuilder.start_container()
+#atfbuilder.start_container()
+atfbuilder.clean_output()

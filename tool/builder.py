@@ -74,7 +74,7 @@ class Builder:
                 always displayed.
             visible_lines:
                 Maximum number of sh output lines to be printed if scolling_output
-                is True. Is set to 0, no output is visible.
+                is True. If set to 0, no output is visible.
 
         Returns:
             None
@@ -433,3 +433,90 @@ class Builder:
                 sys.exit(1)
         else:
             pretty_print.print_build('No need to apply patches...')
+
+
+    def clean_repo(self):
+        """
+        This function cleans the git repo directory.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if os.path.isdir(self._repo_dir):
+            # Check if there are uncommited changes in the git repo
+            results = Builder._get_sh_results(['git', '-C', self._source_repo_dir, 'status', '--porcelain'])
+            if results.stdout:
+                pretty_print.print_warning('There are uncommited changes in '+self._source_repo_dir+'. Do you really want to clean this repo? (y/n) ', end='')
+                answer = input('')
+                if answer.lower() not in ['y', 'Y', 'yes', 'Yes']:
+                    pretty_print.print_clean('Cleaning abborted...')
+                    sys.exit(1)
+
+            pretty_print.print_clean('Cleaning repo directory...')
+            if self._container_tool in ('docker', 'podman'):
+                try:
+                    # Clean up the repo from the container
+                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', self._repo_dir+':/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
+                except Exception as e:
+                    pretty_print.print_error('An error occurred while cleaning the repo directory: '+str(e))
+                    sys.exit(1)
+
+            elif self._container_tool == 'none':
+                # Clean up the repo without using a container
+                Builder._run_sh_command(['sh', '-c', '\"rm -rf '+self._repo_dir+'/* '+self._repo_dir+'/.* 2> /dev/null || true\"'])
+            else:
+                Builder._err_unsup_container_tool()
+
+            # Remove flag
+            if os.path.isfile(self._patches_applied_flag):
+                os.remove(self._patches_applied_flag)
+
+            # Remove empty repo directory
+            os.rmdir(self._repo_dir)
+
+        else:
+            pretty_print.print_clean('No need to clean the repo directory...')
+
+
+    def clean_output(self):
+        """
+        This function cleans the git repo directory.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if os.path.isdir(self._output_dir):
+            pretty_print.print_clean('Cleaning output directory...')
+            if self._container_tool in ('docker', 'podman'):
+                try:
+                    # Clean up the repo from the container
+                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', self._output_dir+':/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
+                except Exception as e:
+                    pretty_print.print_error('An error occurred while cleaning the output directory: '+str(e))
+                    sys.exit(1)
+
+            elif self._container_tool == 'none':
+                # Clean up the repo without using a container
+                Builder._run_sh_command(['sh', '-c', '\"rm -rf '+self._output_dir+'/* '+self._output_dir+'/.* 2> /dev/null || true\"'])
+            else:
+                Builder._err_unsup_container_tool()
+
+            # Remove empty output directory
+            os.rmdir(self._output_dir)
+
+        else:
+            pretty_print.print_clean('No need to clean the output directory...')
