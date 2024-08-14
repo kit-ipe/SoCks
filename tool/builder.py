@@ -1,3 +1,4 @@
+import typing
 import os
 import pathlib
 import sys
@@ -177,7 +178,7 @@ class Builder:
                 here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
 
         Returns:
-            An object that contains stdout (str), stderr (str) and returncode (int)
+            An object that contains stdout (str), stderr (str) and returncode (int).
 
         Raises:
             None
@@ -186,6 +187,116 @@ class Builder:
         result = subprocess.run(' '.join(command), shell=True, capture_output=True, text=True, check=False)
 
         return result
+
+
+    @staticmethod
+    def _find_last_modified_file(search_list: typing.List[pathlib.Path], ignore_list: typing.List[pathlib.Path] = None) -> typing.Optional[pathlib.Path]:
+        """
+        Find the last modified file in a list of directories, whereby files and directories can be ignored.
+
+        Args:
+            search_list:
+                List of directories and files to be searched for the most
+                recently modified file.
+            ignore_list:
+                List of directories and files to be ignored when searching
+                for the most recently modified file.
+
+        Returns:
+            The most recently modified file.
+
+        Raises:
+            None
+        """
+
+        # Initialize variables to keep track of the most recently modified file
+        latest_file = None
+        latest_mtime = 0
+
+        for search_path in search_list:
+            # Skip if the file or directory is in the ignore list
+            if ignore_list:
+                if any(search_path.samefile(ignore_path) for ignore_path in ignore_list):
+                    continue
+
+            if search_path.is_dir():
+                subdir_search_list = list(search_path.iterdir())
+                if subdir_search_list:
+                    latest_file_subdir = Builder._find_last_modified_file(search_list=subdir_search_list, ignore_list=ignore_list)
+                    if latest_file_subdir:
+                        # Get the modification time of the file
+                        file_mtime = latest_file_subdir.stat().st_mtime
+                        # Update if this file is more recently modified
+                        if file_mtime > latest_mtime:
+                            latest_mtime = file_mtime
+                            latest_file = latest_file_subdir
+                        continue
+
+            else:
+                # Get the modification time of the file
+                file_mtime = search_path.stat().st_mtime
+                # Update if this file is more recently modified
+                if file_mtime > latest_mtime:
+                    latest_mtime = file_mtime
+                    latest_file = search_path
+
+        return latest_file
+
+
+    @staticmethod
+    def _check_rebuilt_required(src_search_list: typing.List[pathlib.Path], src_ignore_list: typing.List[pathlib.Path] = None, out_search_list: typing.List[pathlib.Path] = None, out_ignore_list: typing.List[pathlib.Path] = None) -> bool:
+        """
+        Check whether some file(s) needs to be rebuilt.
+
+        Args:
+            src_search_list:
+                List of directories and files to be searched for the most
+                recently modified source file.
+            src_ignore_list:
+                List of directories and files to be ignored when searching
+                for the most recently modified source file.
+            out_search_list:
+                List of directories and files to be searched for the most
+                recently modified output file.
+            out_ignore_list:
+                List of directories and files to be ignored when searching
+                for the most recently modified output file.
+
+        Returns:
+            True if a rebuild is required, i.e. if the source files are newer
+            than the output files. False if a rebuild is not required, i.e.
+            if the output files are newer than the source files.
+
+        Raises:
+            None
+        """
+
+        # Remove non-existing files and directories
+        if src_search_list:
+            src_search_list = [path for path in src_search_list if path.exists()]
+        if src_ignore_list:
+            src_ignore_list = [path for path in src_ignore_list if path.exists()]
+        if out_search_list:
+            out_search_list = [path for path in out_search_list if path.exists()]
+        if out_ignore_list:
+            out_ignore_list = [path for path in out_ignore_list if path.exists()]
+
+        # Find last modified source file
+        latest_src_file = Builder._find_last_modified_file(search_list=src_search_list, ignore_list=src_ignore_list)
+
+        # Find last modified output file
+        if(out_search_list):
+            latest_out_file = Builder._find_last_modified_file(search_list=out_search_list, ignore_list=out_ignore_list)
+        else:
+            latest_out_file = None
+
+        # If there are source and output files, check whether a rebuild is required
+        if latest_src_file and latest_out_file:
+            return latest_src_file.stat().st_mtime > latest_out_file.stat().st_mtime
+
+        # A rebuild is required if source or output files are missing
+        else:
+            return True
 
 
     @staticmethod
