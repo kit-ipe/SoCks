@@ -1,4 +1,5 @@
 import sys
+import pathlib
 
 import pretty_print
 import builder
@@ -8,12 +9,12 @@ class ZynqMP_AMD_ATF_Builder_Alma9(builder.Builder):
     ATF builder class
     """
 
-    def __init__(self, project_cfg, socks_dir, project_dir):
+    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
         block_name = 'atf'
 
-        super().__init__(socks_dir=socks_dir,
+        super().__init__(project_cfg=project_cfg,
+                        socks_dir=socks_dir,
                         project_dir=project_dir,
-                        project_cfg=project_cfg,
                         block_name=block_name)
 
 

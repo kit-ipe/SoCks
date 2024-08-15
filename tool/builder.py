@@ -17,7 +17,7 @@ class Builder:
     Base class for all builder classes
     """
 
-    def __init__(self, socks_dir, project_dir, project_cfg, block_name):
+    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_name: str):
         self._block_name = block_name
 
         # Host user
@@ -51,13 +51,13 @@ class Builder:
                 sys.exit(1)
 
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
-        self._socks_dir = pathlib.Path(socks_dir)
+        self._socks_dir = socks_dir
         self._container_dir = self._socks_dir / 'container'
         self._vivado_dir = pathlib.Path(project_cfg['externalTools']['vivado']['path']) # ToDo: I think something SoC specific like Vivado should not be in the universal builder class
         self._vitis_dir = pathlib.Path(project_cfg['externalTools']['vitis']['path']) # ToDo: I think something SoC specific like Vitis should not be in the universal builder class
         
         # Project directories
-        self._project_dir = pathlib.Path(project_dir)
+        self._project_dir = project_dir
         self._patch_dir = self._project_dir / self._block_name / 'patches'
         self._repo_dir = self._project_dir / 'temp' / self._block_name / 'repo'
         self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
@@ -67,7 +67,7 @@ class Builder:
 
         # Project files
         # Container file for creating the container to be used for building this block
-        self._container_file = self._container_dir / (self._container_image+'.containerfile')
+        self._container_file = self._container_dir / f'{self._container_image}.containerfile'
         # Flag to remember if patches have already been applied
         self._patches_applied_flag = self._project_dir / 'temp' / self._block_name / '.patchesapplied'
         # File containing all patches to be used
@@ -75,7 +75,7 @@ class Builder:
 
 
     @staticmethod
-    def _run_sh_command(command, logfile=None, scrolling_output=False, visible_lines=20):
+    def _run_sh_command(command: typing.List[str], logfile: pathlib.Path = None, scrolling_output: bool = False, visible_lines: int = 20):
         """ (Google documentation style: https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
         Runs a sh command. If the srolling view is enabled or the output is to be logged,
         this function loses some output of commands that display a progress bar or
@@ -83,11 +83,11 @@ class Builder:
 
         Args:
             command:
-                The command to execute. Example: '/usr/bin/ping www.google.com'.
+                The command to execute as a list of strings. Example: ['/usr/bin/ping', 'www.google.com'].
                 The executable should be given with the full path, as mentioned
                 here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
             logfile:
-                Path of the logfile. None if no log file is to be used.
+                Logfile as pathlib.Path object. None if no log file is to be used.
             scrolling_output:
                 If True, the output of the sh command is printed in a scrolling view.
                 The printed output is updated at runtime and the latest lines are
@@ -147,10 +147,11 @@ class Builder:
 
             # If provided, write to log file
             if logfile:
-                if stdout_line:
-                    print(stdout_line, file=open(logfile, 'a'), end='')
-                if stderr_line:
-                    print(stderr_line, file=open(logfile, 'a'), end='')
+                with logfile.open('a') as f:
+                    if stdout_line:
+                        print(stdout_line, file=f, end='')
+                    if stderr_line:
+                        print(stderr_line, file=f, end='')
 
             # If enabled, show output of the command
             if visible:
@@ -183,13 +184,13 @@ class Builder:
 
 
     @staticmethod
-    def _get_sh_results(command):
+    def _get_sh_results(command: typing.List[str]) -> subprocess.CompletedProcess:
         """ (Google documentation style: https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
         Runs a sh command and get all output.
 
         Args:
             command:
-                The command to execute. Example: '/usr/bin/ping www.google.com'.
+                The command to execute as a list of strings. Example: ['/usr/bin/ping', 'www.google.com'].
                 The executable should be given with the full path, as mentioned
                 here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
 
@@ -335,7 +336,7 @@ class Builder:
     
 
     @staticmethod
-    def _err_container_feature(feature):
+    def _err_container_feature(feature: str):
         """
         Display an error message that the requested feature is only available if a container tool is used.
 
@@ -349,7 +350,7 @@ class Builder:
             None
         """
 
-        pretty_print.print_error(feature+' is only available if a containerization tool is used.')
+        pretty_print.print_error(f'{feature} is only available if a containerization tool is used.')
         sys.exit(1)
 
 
@@ -396,7 +397,7 @@ class Builder:
                 # Get last build event time from podman
                 results = Builder._get_sh_results(['podman', 'image', 'inspect', '-f', '\'{{ .Id }}\'', self._container_image, '|', 'xargs', '-I', '{}', 'podman', 'events', '--filter', 'image={}', '--filter', 'event=build', '--format', '\'{{.Time}}\'', '--until', '0m'])
                 # Do not extract last build event time if the image does not yet exist
-                if self._container_image+': image not known' in results.stderr:
+                if f'{self._container_image}: image not known' in results.stderr:
                     last_build_time_timestamp = 0
                 else:
                     last_build_time_timestamp = parser.parse(results.stdout.splitlines()[-2].rpartition(' ')[0]).timestamp()
@@ -446,7 +447,8 @@ class Builder:
                 sys.exit(1)
 
         elif self._container_tool == 'none':
-            Builder._err_container_feature(inspect.getframeinfo(inspect.currentframe()).function+'()')
+            # This function is only supported if a container tool is used
+            Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
         else:
             Builder._err_unsup_container_tool()
 
@@ -469,7 +471,7 @@ class Builder:
             try:
                 pretty_print.print_build('Starting container...')
                 # A complete list of all container mounts supported by SoCks
-                potential_mounts = [str(self._xsa_dir)+':Z', str(self._vivado_dir)+':ro', str(self._vitis_dir)+':ro', str(self._repo_dir)+':Z', str(self._work_dir)+':Z', str(self._output_dir)+':Z']
+                potential_mounts = [f'{str(self._xsa_dir)}:Z', f'{str(self._vivado_dir)}:ro', f'{str(self._vitis_dir)}:ro', f'{str(self._repo_dir)}:Z', f'{str(self._work_dir)}:Z', f'{str(self._output_dir)}:Z']
                 available_mounts = []
                 # Check which mounts (resp. directories) are available on the host system
                 for mount in potential_mounts:
@@ -486,7 +488,8 @@ class Builder:
                 sys.exit(1)
 
         elif self._container_tool == 'none':
-            Builder._err_container_feature(inspect.getframeinfo(inspect.currentframe()).function+'()')
+            # This function is only supported if a container tool is used
+            Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
         else:
             Builder._err_unsup_container_tool()
 
@@ -592,7 +595,7 @@ class Builder:
             if self._container_tool in ('docker', 'podman'):
                 try:
                     # Clean up the repo from the container
-                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', str(self._repo_dir)+':/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the repo directory: {str(e)}')
                     sys.exit(1)
@@ -632,7 +635,7 @@ class Builder:
             if self._container_tool in ('docker', 'podman'):
                 try:
                     # Clean up the repo from the container
-                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', str(self._output_dir)+':/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._output_dir)}:/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the output directory: {str(e)}')
                     sys.exit(1)
