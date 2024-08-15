@@ -1,6 +1,6 @@
 ---
 import:
-  - project-def.yml
+  - project-default.yml
 projectType: "zynqmp"
 externalTools:
   vivado:
@@ -12,7 +12,7 @@ externalTools:
 blocks:
   atf:
     source: "local_build"
-    builder: "zynqmp-amd-atf-builder-alma9"
+    builder: "ZynqMP_AMD_ATF_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/arm-trusted-firmware.git"
       # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used

@@ -1,6 +1,6 @@
 ---
 import:
-  - project-zynqmp-def.yml
+  - project-zynqmp-default.yml
 externalTools:
   vivado:
     path: "/media/marvin/T9MF/Tools/Xilinx/Vivado"

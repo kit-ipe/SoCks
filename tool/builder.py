@@ -7,6 +7,8 @@ import select
 import datetime
 from dateutil import parser
 import inspect
+import urllib
+import validators
 
 import pretty_print
 
@@ -15,7 +17,7 @@ class Builder:
     Base class for all builder classes
     """
 
-    def __init__(self, socks_dir, block_name, project_dir, source_repo_name, source_repo_url, source_repo_branch, container_tool, container_image, vivado_dir, vitis_dir):
+    def __init__(self, socks_dir, project_dir, project_cfg, block_name):
         self._block_name = block_name
 
         # Host user
@@ -23,28 +25,42 @@ class Builder:
         self._host_user_id = os.getuid()
 
         # Container
-        self._container_tool = container_tool
-        self._container_image = container_image
+        self._container_tool = project_cfg['externalTools']['containerTool']
+        self._container_image = f'{project_cfg["blocks"][self._block_name]["container"]["image"]}:xilinx-v{project_cfg["externalTools"]["vivado"]["version"]}'
 
         # Local git branches
         self._git_local_ref_branch = '__ref'
         self._git_local_dev_branch = '__temp'
         
         # Repo
-        self._source_repo_url = source_repo_url
-        self._source_repo_branch = source_repo_branch
+        sources_str = project_cfg['blocks'][self._block_name]['project']['sources']
+        if validators.url(sources_str):
+            self._source_repo_url = sources_str
+            if 'branch' in project_cfg['blocks'][self._block_name]['project']:
+                self._source_repo_branch = project_cfg['blocks'][self._block_name]['project']['branch']
+            else:
+                self._source_repo_branch = f'xilinx-v{project_cfg["externalTools"]["vivado"]["version"]}'
+            source_repo_name = pathlib.Path(urllib.parse.urlparse(self._source_repo_url).path).stem
+        else:
+            try:
+                pathlib.Path(sources_str)
+                pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {sources_str}')
+                sys.exit(1)
+            except ValueError:
+                pretty_print.print_error(f'{sources_str} is not a valid URL and not a valid path')
+                sys.exit(1)
 
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = pathlib.Path(socks_dir)
         self._container_dir = self._socks_dir / 'container'
-        self._vivado_dir = pathlib.Path(vivado_dir)
-        self._vitis_dir = pathlib.Path(vitis_dir)
+        self._vivado_dir = pathlib.Path(project_cfg['externalTools']['vivado']['path']) # ToDo: I think something SoC specific like Vivado should not be in the universal builder class
+        self._vitis_dir = pathlib.Path(project_cfg['externalTools']['vitis']['path']) # ToDo: I think something SoC specific like Vitis should not be in the universal builder class
         
         # Project directories
         self._project_dir = pathlib.Path(project_dir)
         self._patch_dir = self._project_dir / self._block_name / 'patches'
         self._repo_dir = self._project_dir / 'temp' / self._block_name / 'repo'
-        self._source_repo_dir = self._repo_dir / (source_repo_name+'-'+self._source_repo_branch)
+        self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
         self._xsa_dir = self._project_dir / 'temp' / self._block_name / 'source_xsa'
         self._work_dir = self._project_dir / 'temp' / self._block_name / 'work'
         self._output_dir = self._project_dir / 'temp' / self._block_name / 'output'
@@ -314,7 +330,7 @@ class Builder:
             None
         """
 
-        pretty_print.print_error('Containerization tool '+self._container_tool+' is not supported. Options are \'docker\', \'podman\' and \'none\'.')
+        pretty_print.print_error(f'Containerization tool {self._container_tool} is not supported. Options are \'docker\', \'podman\' and \'none\'.')
         sys.exit(1)
     
 
@@ -355,7 +371,7 @@ class Builder:
 
         # Check if the required container file exists
         if not self._container_file.is_file():
-            pretty_print.print_error('File '+str(self._container_file)+' not found.')
+            pretty_print.print_error(f'File {str(self._container_file)} not found.')
             sys.exit(1)
 
         try:
@@ -363,7 +379,7 @@ class Builder:
                 # Get last tag time from docker
                 results = Builder._get_sh_results(['docker', 'image', 'inspect', '-f \'{{ .Metadata.LastTagTime }}\'', self._container_image])
                 # Do not extract tag time if the image does not yet exist
-                if 'No such image: '+self._container_image in results.stderr:
+                if f'No such image: {self._container_image}' in results.stderr:
                     last_tag_time_timestamp = 0
                 else:
                     last_tag_time_timestamp = parser.parse(results.stdout.rpartition(' ')[0]).timestamp()
@@ -371,10 +387,10 @@ class Builder:
                 last_file_mod_time_timestamp = self._container_file.stat().st_mtime
                 # Build image, if necessary
                 if last_tag_time_timestamp < last_file_mod_time_timestamp:
-                    pretty_print.print_build('Building docker image '+self._container_image+'...')
-                    Builder._run_sh_command(['docker', 'build', '-t', self._container_image, '-f', str(self._container_file), '--build-arg', 'user_name='+self._host_user, '--build-arg', 'user_id='+str(self._host_user_id), '.'])
+                    pretty_print.print_build(f'Building docker image {self._container_image}...')
+                    Builder._run_sh_command(['docker', 'build', '-t', self._container_image, '-f', str(self._container_file), '--build-arg', f'user_name={self._host_user}', '--build-arg', f'user_id={str(self._host_user_id)}', '.'])
                 else:
-                    pretty_print.print_build('No need to build the docker image '+self._container_image+'...')
+                    pretty_print.print_build(f'No need to build the docker image {self._container_image}...')
 
             elif self._container_tool == 'podman':
                 # Get last build event time from podman
@@ -388,17 +404,17 @@ class Builder:
                 last_file_mod_time_timestamp = self._container_file.stat().st_mtime
                 # Build image, if necessary
                 if last_build_time_timestamp < last_file_mod_time_timestamp:
-                    pretty_print.print_build('Building podman image '+self._container_image+'...')
+                    pretty_print.print_build(f'Building podman image {self._container_image}...')
                     Builder._run_sh_command(['podman', 'build', '-t', self._container_image, '-f', str(self._container_file), '.'])
                 else:
-                    pretty_print.print_build('No need to build the podman image '+self._container_image+'...')
+                    pretty_print.print_build(f'No need to build the podman image {self._container_image}...')
 
             elif self._container_tool == 'none':
                 pretty_print.print_warning('Container image is not built in native mode.')
             else:
                 Builder._err_unsup_container_tool()
         except Exception as e:
-                pretty_print.print_error('An error occurred while building the container image: '+str(e))
+                pretty_print.print_error(f'An error occurred while building the container image: {str(e)}')
                 sys.exit(1)
 
 
@@ -421,12 +437,12 @@ class Builder:
                 # Clean image only if it exists
                 results = Builder._get_sh_results([self._container_tool, 'images', '-q', self._container_image])
                 if results.stdout.splitlines():
-                    pretty_print.print_build('Cleaning container image '+self._container_image+'...')
+                    pretty_print.print_build(f'Cleaning container image {self._container_image}...')
                     Builder._run_sh_command([self._container_tool, 'image', 'rm', self._container_image])
                 else:
-                    pretty_print.print_build('No need to clean container image '+self._container_image+', the image doesn\'t exist...')
+                    pretty_print.print_build(f'No need to clean container image {self._container_image}, the image doesn\'t exist...')
             except Exception as e:
-                pretty_print.print_error('An error occurred while cleaning the container image: '+str(e))
+                pretty_print.print_error(f'An error occurred while cleaning the container image: {str(e)}')
                 sys.exit(1)
 
         elif self._container_tool == 'none':
@@ -459,14 +475,14 @@ class Builder:
                 for mount in potential_mounts:
                     segments = mount.split(':')
                     if len(segments) != 2:
-                        pretty_print.print_error('The following path contains a forbidden colon: '+mount.rpartition(':')[0])
+                        pretty_print.print_error(f'The following path contains a forbidden colon: {mount.rpartition(":")[0]}')
                         sys.exit(1)
                     if pathlib.Path(segments[0]).is_dir():
-                        available_mounts.append(segments[0]+':'+segments[0]+':'+segments[1])
+                        available_mounts.append(f'{segments[0]}:{segments[0]}:{segments[1]}')
                 # Start the container
                 Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
             except Exception as e:
-                pretty_print.print_error('An error occurred while starting the container: '+str(e))
+                pretty_print.print_error(f'An error occurred while starting the container: {str(e)}')
                 sys.exit(1)
 
         elif self._container_tool == 'none':
@@ -503,7 +519,7 @@ class Builder:
                 # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
                 Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
             except Exception as e:
-                pretty_print.print_error('An error occurred while initializing the repository: '+str(e))
+                pretty_print.print_error(f'An error occurred while initializing the repository: {str(e)}')
                 sys.exit(1)
         else:
             pretty_print.print_build('No need to fetch the repo...')
@@ -533,7 +549,7 @@ class Builder:
                         for patch in patches:
                             if patch:
                                 # Apply patch
-                                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'am', str(self._patch_dir)+'/'+patch])
+                                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'am', str(self._patch_dir / patch)])
                 
                 # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
                 Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch])
@@ -542,7 +558,7 @@ class Builder:
                 # Create the flag if it doesn't exist and update the timestamps
                 self._patches_applied_flag.touch()
             except Exception as e:
-                pretty_print.print_error('An error occurred while applying patches: '+str(e))
+                pretty_print.print_error(f'An error occurred while applying patches: {str(e)}')
                 sys.exit(1)
         else:
             pretty_print.print_build('No need to apply patches...')
@@ -566,7 +582,7 @@ class Builder:
             # Check if there are uncommited changes in the git repo
             results = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'status', '--porcelain'])
             if results.stdout:
-                pretty_print.print_warning('There are uncommited changes in '+str(self._source_repo_dir)+'. Do you really want to clean this repo? (y/n) ', end='')
+                pretty_print.print_warning(f'There are uncommited changes in {str(self._source_repo_dir)}. Do you really want to clean this repo? (y/n) ', end='')
                 answer = input('')
                 if answer.lower() not in ['y', 'Y', 'yes', 'Yes']:
                     pretty_print.print_clean('Cleaning abborted...')
@@ -578,12 +594,12 @@ class Builder:
                     # Clean up the repo from the container
                     Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', str(self._repo_dir)+':/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
                 except Exception as e:
-                    pretty_print.print_error('An error occurred while cleaning the repo directory: '+str(e))
+                    pretty_print.print_error(f'An error occurred while cleaning the repo directory: {str(e)}')
                     sys.exit(1)
 
             elif self._container_tool == 'none':
                 # Clean up the repo without using a container
-                Builder._run_sh_command(['sh', '-c', '\"rm -rf '+str(self._repo_dir)+'/* '+str(self._repo_dir)+'/.* 2> /dev/null || true\"'])
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._repo_dir)}/* {str(self._repo_dir)}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
 
@@ -618,12 +634,12 @@ class Builder:
                     # Clean up the repo from the container
                     Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', str(self._output_dir)+':/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
                 except Exception as e:
-                    pretty_print.print_error('An error occurred while cleaning the output directory: '+str(e))
+                    pretty_print.print_error(f'An error occurred while cleaning the output directory: {str(e)}')
                     sys.exit(1)
 
             elif self._container_tool == 'none':
                 # Clean up the repo without using a container
-                Builder._run_sh_command(['sh', '-c', '\"rm -rf '+str(self._output_dir)+'/* '+str(self._output_dir)+'/.* 2> /dev/null || true\"'])
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._output_dir)}/* {str(self._output_dir)}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
 
