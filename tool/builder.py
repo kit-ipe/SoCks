@@ -8,7 +8,10 @@ import datetime
 from dateutil import parser
 import inspect
 import urllib
+import requests
 import validators
+import tqdm
+import tarfile
 
 import pretty_print
 
@@ -62,6 +65,7 @@ class Builder:
         self._repo_dir = self._project_dir / 'temp' / self._block_name / 'repo'
         self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
         self._xsa_dir = self._project_dir / 'temp' / self._block_name / 'source_xsa'
+        self._download_dir = self._project_dir / 'temp' / self._block_name / 'download'
         self._work_dir = self._project_dir / 'temp' / self._block_name / 'work'
         self._output_dir = self._project_dir / 'temp' / self._block_name / 'output'
 
@@ -381,13 +385,13 @@ class Builder:
                 results = Builder._get_sh_results(['docker', 'image', 'inspect', '-f \'{{ .Metadata.LastTagTime }}\'', self._container_image])
                 # Do not extract tag time if the image does not yet exist
                 if f'No such image: {self._container_image}' in results.stderr:
-                    last_tag_time_timestamp = 0
+                    last_tag_timestamp = 0
                 else:
-                    last_tag_time_timestamp = parser.parse(results.stdout.rpartition(' ')[0]).timestamp()
+                    last_tag_timestamp = parser.parse(results.stdout.rpartition(' ')[0]).timestamp()
                 # Get last modification time of the container file
-                last_file_mod_time_timestamp = self._container_file.stat().st_mtime
+                last_file_mod_timestamp = self._container_file.stat().st_mtime
                 # Build image, if necessary
-                if last_tag_time_timestamp < last_file_mod_time_timestamp:
+                if last_tag_timestamp < last_file_mod_timestamp:
                     pretty_print.print_build(f'Building docker image {self._container_image}...')
                     Builder._run_sh_command(['docker', 'build', '-t', self._container_image, '-f', str(self._container_file), '--build-arg', f'user_name={self._host_user}', '--build-arg', f'user_id={str(self._host_user_id)}', '.'])
                 else:
@@ -402,9 +406,9 @@ class Builder:
                 else:
                     last_build_time_timestamp = parser.parse(results.stdout.splitlines()[-2].rpartition(' ')[0]).timestamp()
                 # Get last modification time of the container file
-                last_file_mod_time_timestamp = self._container_file.stat().st_mtime
+                last_file_mod_timestamp = self._container_file.stat().st_mtime
                 # Build image, if necessary
-                if last_build_time_timestamp < last_file_mod_time_timestamp:
+                if last_build_time_timestamp < last_file_mod_timestamp:
                     pretty_print.print_build(f'Building podman image {self._container_image}...')
                     Builder._run_sh_command(['podman', 'build', '-t', self._container_image, '-f', str(self._container_file), '.'])
                 else:
@@ -565,6 +569,90 @@ class Builder:
                 sys.exit(1)
         else:
             pretty_print.print_build('No need to apply patches...')
+    
+
+    def download_pre_built(self, url: str):
+        """
+        Download pre-built files instead of building them locally.
+
+        Args:
+            url:
+                URL of the file to download.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Progress callback function to show a status bar
+        def download_progress(block_num, block_size, total_size):
+            if download_progress.t is None:
+                download_progress.t = tqdm.tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024)
+            downloaded = block_num * block_size
+            download_progress.t.update(downloaded - download_progress.t.n)
+
+        # Send a HEAD request to get the HTTP headers
+        response = requests.head(url, allow_redirects=True)
+
+        if response.status_code == 404:
+            # File not found
+            pretty_print.print_error(f'The following file could not be downloaded: {url}\nStatus code {response.status_code} (File not found)')
+            sys.exit(1)
+        elif response.status_code != 200:
+            # Unexpected status code
+            pretty_print.print_error(f'The following file could not be downloaded: {url}\nUnexpected status code {response.status_code}')
+            sys.exit(1)
+
+        #Check if the file needs to be downloaded
+        last_modified = response.headers.get('Last-Modified')
+        if last_modified:
+            last_modified_timestamp = parser.parse(last_modified).timestamp()
+        else:
+            pretty_print.print_error(f'No \'Last-Modified\' header found for {url}')
+            sys.exit(1)
+
+        last_file_mod_timestamp = 0
+        if self._download_dir.is_dir():
+            items = list(self._download_dir.iterdir())
+            if len(items) == 1:
+                last_file_mod_timestamp = items[0].stat().st_mtime
+            else:
+                pretty_print.print_error(f'There is more than one item in {str(self._download_dir)}\nPlease empty the directory')
+                sys.exit(1)
+
+        if last_file_mod_timestamp < last_modified_timestamp:
+            pretty_print.print_build('Downloading archive with pre-built files...')
+
+            Builder.clean_download(self=self)
+            self._download_dir.mkdir(parents=True, exist_ok=True)
+
+            # Download the file
+            download_progress.t = None
+            filename = url.rpartition('/')[2]
+            urllib.request.urlretrieve(url, self._download_dir / filename, reporthook=download_progress)
+            if download_progress.t:
+                download_progress.t.close()
+
+            Builder.clean_output(self=self)
+            self._output_dir.mkdir(parents=True, exist_ok=True)
+
+            #Extract pre-built files
+            file_extension = filename.partition('.')[2]
+            if file_extension in ['tar.gz', 'tgz', 'tar.xz', 'txz']:
+                # tarfile doesn't support parallelised decompression. One would have to use shell
+                # tools for that. For file system archives it might be worth it to save time.
+                # This should also be done in a container.
+                with tarfile.open(self._download_dir / filename, "r:*") as archive:
+                    # Extract all contents to the output directory
+                    archive.extractall(path=self._output_dir)
+            else:
+                pretty_print.print_error(f'The following archive type is not supported: {file_extension}')
+                sys.exit(1)
+
+        else:
+            pretty_print.print_build('No need to download pre-built files...')
 
 
     def clean_repo(self):
@@ -651,3 +739,40 @@ class Builder:
 
         else:
             pretty_print.print_clean('No need to clean the output directory...')
+
+
+    def clean_download(self):
+        """
+        This function cleans the download directory.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if self._download_dir.exists():
+            pretty_print.print_clean('Cleaning download directory...')
+            if self._container_tool in ('docker', 'podman'):
+                try:
+                    # Clean up the repo from the container
+                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._download_dir)}:/app/download:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/download/* /app/download/.* 2> /dev/null || true\"'])
+                except Exception as e:
+                    pretty_print.print_error(f'An error occurred while cleaning the download directory: {str(e)}')
+                    sys.exit(1)
+
+            elif self._container_tool == 'none':
+                # Clean up the repo without using a container
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._download_dir)}/* {str(self._download_dir)}/.* 2> /dev/null || true\"'])
+            else:
+                Builder._err_unsup_container_tool()
+
+            # Remove empty download directory
+            self._download_dir.rmdir()
+
+        else:
+            pretty_print.print_clean('No need to clean the download directory...')

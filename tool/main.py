@@ -163,8 +163,13 @@ for key0, value0 in project_cfg['blocks'].items():
 # From here onwards it is just for testing
 #
 
-builders['ZynqMP_AMD_ATF_Builder_Alma9'].build_container_image()
-builders['ZynqMP_AMD_ATF_Builder_Alma9'].init_repo()
-builders['ZynqMP_AMD_ATF_Builder_Alma9'].apply_patches()
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].build_container_image()
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].init_repo()
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].apply_patches()
 
-builders['ZynqMP_AMD_ATF_Builder_Alma9'].build_atf()
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].build_atf()
+
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].download_pre_built('https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/pre-built_alma8_rev1_xck26.tar.xz')
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].download_pre_built('https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/serenity-s1-kria-atf.tar.gz')
+builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_download()
+builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_output()
