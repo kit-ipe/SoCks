@@ -132,11 +132,11 @@ with project_cfg_schema_file.open('r') as f:
 jsonschema.validate(project_cfg, project_cfg_schema)
 
 # Create builder objects
-builder_modules = ['zynqmp_amd_atf_builder_alma9']
+builder_modules = ['zynqmp_amd_atf_builder_alma9', 'zynqmp_amd_uboot_builder_alma9']
 builders = {}
 
 for key0, value0 in project_cfg['blocks'].items():
-    if key0 == 'atf':    # ToDo: Remove. Just temporary here for testing.
+    if key0 in ['atf', 'u-boot']:    # ToDo: Remove. Just temporary here for testing.
         builder_found = False
         for module_name in builder_modules:
             try:
@@ -163,6 +163,8 @@ for key0, value0 in project_cfg['blocks'].items():
 # From here onwards it is just for testing
 #
 
+# ATF
+
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].build_container_image()
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].init_repo()
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].apply_patches()
@@ -172,6 +174,19 @@ for key0, value0 in project_cfg['blocks'].items():
 
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].download_pre_built('https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/pre-built_alma8_rev1_xck26.tar.xz')
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].download_pre_built('https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/serenity-s1-kria-atf.tar.gz')
-builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_download()
-builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_repo()
-builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_output()
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_download()
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_repo()
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_output()
+
+# U-Boot
+
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].init_repo()
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].apply_patches()
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].copy_atf(bl31_bin_path=pathlib.Path('/home/marvin/Projects/Build_System_Tests/SoCks/project/temp/atf/output/bl31.bin'))
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].build_uboot()
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].run_menuconfig()
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].prep_clean_srcs()
+
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_download()
+builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_repo()
+builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_output()

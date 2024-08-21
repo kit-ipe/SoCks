@@ -23,26 +23,29 @@ class Builder:
     def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_name: str):
         self._block_name = block_name
 
+        # Project configuration
+        self._project_cfg = project_cfg
+
         # Host user
         self._host_user = os.getlogin()
         self._host_user_id = os.getuid()
 
         # Container
-        self._container_tool = project_cfg['externalTools']['containerTool']
-        self._container_image = f'{project_cfg["blocks"][self._block_name]["container"]["image"]}:xilinx-v{project_cfg["externalTools"]["vivado"]["version"]}'
+        self._container_tool = self._project_cfg['externalTools']['containerTool']
+        self._container_image = f'{self._project_cfg["blocks"][self._block_name]["container"]["image"]}:xilinx-v{self._project_cfg["externalTools"]["vivado"]["version"]}'
 
         # Local git branches
         self._git_local_ref_branch = '__ref'
         self._git_local_dev_branch = '__temp'
         
         # Repo
-        sources_str = project_cfg['blocks'][self._block_name]['project']['sources']
+        sources_str = self._project_cfg['blocks'][self._block_name]['project']['sources']
         if validators.url(sources_str):
             self._source_repo_url = sources_str
-            if 'branch' in project_cfg['blocks'][self._block_name]['project']:
-                self._source_repo_branch = project_cfg['blocks'][self._block_name]['project']['branch']
+            if 'branch' in self._project_cfg['blocks'][self._block_name]['project']:
+                self._source_repo_branch = self._project_cfg['blocks'][self._block_name]['project']['branch']
             else:
-                self._source_repo_branch = f'xilinx-v{project_cfg["externalTools"]["vivado"]["version"]}'
+                self._source_repo_branch = f'xilinx-v{self._project_cfg["externalTools"]["vivado"]["version"]}'
             source_repo_name = pathlib.Path(urllib.parse.urlparse(self._source_repo_url).path).stem
         else:
             try:
@@ -56,8 +59,8 @@ class Builder:
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = socks_dir
         self._container_dir = self._socks_dir / 'container'
-        self._vivado_dir = pathlib.Path(project_cfg['externalTools']['vivado']['path']) # ToDo: I think something SoC specific like Vivado should not be in the universal builder class
-        self._vitis_dir = pathlib.Path(project_cfg['externalTools']['vitis']['path']) # ToDo: I think something SoC specific like Vitis should not be in the universal builder class
+        self._vivado_dir = pathlib.Path(self._project_cfg['externalTools']['vivado']['path']) # ToDo: I think something SoC specific like Vivado should not be in the universal builder class
+        self._vitis_dir = pathlib.Path(self._project_cfg['externalTools']['vitis']['path']) # ToDo: I think something SoC specific like Vitis should not be in the universal builder class
         
         # Project directories
         self._project_dir = project_dir
@@ -515,7 +518,7 @@ class Builder:
 
         # Skip all operations if the repo already exists
         if not self._source_repo_dir.exists():
-            pretty_print.print_build('Fetching repo...')
+            pretty_print.print_build('Initializing local repo...')
             try:
                 self._output_dir.mkdir(parents=True, exist_ok=True)
                 self._repo_dir.mkdir(parents=True, exist_ok=True)
@@ -530,7 +533,7 @@ class Builder:
                 pretty_print.print_error(f'An error occurred while initializing the repository: {str(e)}')
                 sys.exit(1)
         else:
-            pretty_print.print_build('No need to fetch the repo...')
+            pretty_print.print_build('No need to initialize the local repo...')
 
 
     def create_patches(self):
@@ -692,6 +695,78 @@ class Builder:
 
         else:
             pretty_print.print_build('No need to download pre-built files...')
+
+
+    def _run_menuconfig(self, menuconfig_commands: str):
+        """
+        Opens the menuconfig tool to enable interactive configuration of the project.
+
+        Args:
+            menuconfig_commands:
+                The commands to be executed in a container to configure U-Boot interactively.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if not self._source_repo_dir.is_dir():
+            pretty_print.print_error(f'No local sources found in {self._source_repo_dir}')
+            sys.exit(1)
+
+        if self._container_tool in ('docker', 'podman'):
+            try:
+                # Open the menuconfig tool in the container
+                Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', menuconfig_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while running the menuconfig tool: {str(e)}')
+                sys.exit(1)
+
+        elif self._container_tool == 'none':
+            # Open the menuconfig tool without using a container
+            Builder._run_sh_command(['sh', '-c', menuconfig_commands])
+        else:
+            Builder._err_unsup_container_tool()
+
+
+    def _prep_clean_srcs(self, prep_srcs_commands: str):
+        """
+        This function is intended to create a new, clean Linux kernel or U-Boot project. After the creation of the project you should create a patch that includes .gitignore and .config.
+
+        Args:
+            menuconfig_commands:
+                The commands to be executed in a container to prepare a clean project.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if not self._source_repo_dir.is_dir():
+            pretty_print.print_error(f'No local sources found in {self._source_repo_dir}')
+            sys.exit(1)
+
+        if (self._source_repo_dir / '.config').is_file():
+            pretty_print.print_error(f'Configuration file already exists in {self._source_repo_dir / ".config"}')
+            sys.exit(1)
+
+        if self._container_tool in ('docker', 'podman'):
+            try:
+                # Prepare clean sources in the container
+                Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', prep_srcs_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while preparing clean sources: {str(e)}')
+                sys.exit(1)
+
+        elif self._container_tool == 'none':
+            # Prepare clean sources without using a container
+            Builder._run_sh_command(['sh', '-c', prep_srcs_commands])
+        else:
+            Builder._err_unsup_container_tool()
 
 
     def clean_repo(self):

@@ -1,0 +1,145 @@
+From fa1829e6efbd8badcee9a5841280ec79d5f60225 Mon Sep 17 00:00:00 2001
+From: "marvin.fuchs" <marvin.fuchs@kit.edu>
+Date: Tue, 25 Jul 2023 10:24:43 +0200
+Subject: [PATCH] Add file2env command
+
+---
+ cmd/Kconfig    |  6 ++++
+ cmd/Makefile   |  1 +
+ cmd/file2env.c | 97 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 104 insertions(+)
+ create mode 100644 cmd/file2env.c
+
+diff --git a/cmd/Kconfig b/cmd/Kconfig
+index 3d5a22dcad..48c5b833c5 100644
+--- a/cmd/Kconfig
++++ b/cmd/Kconfig
+@@ -1964,6 +1964,12 @@ config CMD_UUID
+ 	  The two commands are very similar except for the endianness of the
+ 	  output.
+
++config CMD_FILE2ENV
++	bool "file2env"
++	default y
++	help
++	  Creates environmental variables listed in a configuration file located in memory.
++
+ endmenu
+
+ source "cmd/ti/Kconfig"
+diff --git a/cmd/Makefile b/cmd/Makefile
+index ea88b80d88..eae6dbcbad 100644
+--- a/cmd/Makefile
++++ b/cmd/Makefile
+@@ -171,6 +171,7 @@ obj-$(CONFIG_CMD_UFS) += ufs.o
+ obj-$(CONFIG_CMD_USB) += usb.o disk.o
+ obj-$(CONFIG_CMD_FASTBOOT) += fastboot.o
+ obj-$(CONFIG_CMD_FS_UUID) += fs_uuid.o
++obj-$(CONFIG_CMD_FILE2ENV) += file2env.o
+
+ obj-$(CONFIG_CMD_USB_MASS_STORAGE) += usb_mass_storage.o
+ obj-$(CONFIG_CMD_USB_SDP) += usb_gadget_sdp.o
+diff --git a/cmd/file2env.c b/cmd/file2env.c
+new file mode 100644
+index 0000000000..3f4a16766a
+--- /dev/null
++++ b/cmd/file2env.c
+@@ -0,0 +1,97 @@
++#include <common.h>
++#include <command.h>
++
++#include <asm/io.h>
++
++#define BUF_LEN 1024
++
++/*
++ * This command expects a configuration file with following structure:
++ *
++ * KEY1=VALUE1
++ * KEY2=VALUE2
++ * ...
++ *
++ * Example:
++ *
++ * ipaddr=192.168.0.10
++ * serverip=192.168.0.5
++ */
++
++static int do_file2env(struct cmd_tbl *cmdtp, int flag, int argc, char * const argv[]) {
++    if (argc != 3) {
++        printf ("Wrong numer of arguments!\n");
++        printf ("file2env [address of ASCII config file] [size of ASCII config file in bytes]\n");
++        return 0;
++    }
++
++    const u32 fileStartAddress = simple_strtoul(argv[1], NULL, 16);
++    const u32 fileEndAddress = fileStartAddress + simple_strtoul(argv[2], NULL, 16) - 1;
++
++    u32 symbolAddr = fileStartAddress + 0;
++    char symbol = 0;
++
++    char key[BUF_LEN/3] = {0};
++    char value[BUF_LEN/3] = {0};
++    u32 keyPos = 0;
++    u32 valuePos = 0;
++    bool inKey = true;
++
++    char buf[BUF_LEN] = {0};
++
++    while (symbolAddr <= fileEndAddress) {
++        symbol = readb(symbolAddr++);
++
++        if (symbol == 0x3D) {       // 0x3D == '='
++            inKey = false;
++            continue;
++        }
++        else if (symbol == 0x0A) {  // 0x3D == new line
++            sprintf(buf, "setenv %s %s", key, value);
++            run_command_list(buf, -1, 0);
++
++            printf ("Environmental variable '%s' created\n", key);
++
++            keyPos = 0;
++            for(int i = 0; i < sizeof(key); i++)
++                key[i] = 0;
++
++            valuePos = 0;
++            for(int i = 0; i < sizeof(value); i++)
++                value[i] = 0;
++
++            inKey = true;
++
++            continue;
++        }
++        else if (symbol >= 0x20 && symbol <= 0x7E) {
++            if(inKey) {
++                if (keyPos >= BUF_LEN/3) {
++                    printf ("ERROR: A key in the config file exceeds the maximum length\n");
++                    return 1;
++                }
++                key[keyPos++] = symbol;
++            }
++            else {
++                if (valuePos >= BUF_LEN/3) {
++                    printf ("ERROR: A value in the config file exceeds the maximum length\n");
++                    return 1;
++                }
++                value[valuePos++] = symbol;
++            }
++        }
++    }
++
++    if (keyPos != 0) {
++        sprintf(buf, "setenv %s %s", key, value);
++        run_command_list(buf, -1, 0);
++
++        printf ("Environmental variable '%s' created\n", key);
++    }
++
++    return 0;
++}
++
++U_BOOT_CMD(file2env, CONFIG_SYS_MAXARGS, 0, do_file2env,
++        "Create environmental variables listed in a configuration file located in memory",
++        "[address of ASCII config file] [size of ASCII config file in bytes]\n");
+\ No newline at end of file

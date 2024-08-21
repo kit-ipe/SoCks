@@ -113,13 +113,6 @@
                 "tag": {
                   "description": "Container image tag",
                   "type": "string"
-                },
-                "baseImages": {
-                  "description": "List of base images that must be built before the image for this block is build. Earlier images in the list can serve as the basis for later images.",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
                 }
               }
             }
@@ -169,13 +162,6 @@
                 "tag": {
                   "description": "Container image tag",
                   "type": "string"
-                },
-                "baseImages": {
-                  "description": "List of base images that must be built before the image for this block is build. Earlier images in the list can serve as the basis for later images.",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
                 }
               }
             }
@@ -215,13 +201,6 @@
                 "tag": {
                   "description": "Container image tag",
                   "type": "string"
-                },
-                "baseImages": {
-                  "description": "List of base images that must be built before the image for this block is build. Earlier images in the list can serve as the basis for later images.",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
                 }
               }
             }
@@ -271,13 +250,6 @@
                 "tag": {
                   "description": "Container image tag",
                   "type": "string"
-                },
-                "baseImages": {
-                  "description": "List of base images that must be built before the image for this block is build. Earlier images in the list can serve as the basis for later images.",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
                 }
               }
             }
@@ -317,13 +289,6 @@
                 "tag": {
                   "description": "Container image tag",
                   "type": "string"
-                },
-                "baseImages": {
-                  "description": "List of base images that must be built before the image for this block is build. Earlier images in the list can serve as the basis for later images.",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
                 }
               }
             }
@@ -363,13 +328,6 @@
                 "tag": {
                   "description": "Container image tag",
                   "type": "string"
-                },
-                "baseImages": {
-                  "description": "List of base images that must be built before the image for this block is build. Earlier images in the list can serve as the basis for later images.",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
                 }
               }
             }
@@ -419,13 +377,6 @@
                 "tag": {
                   "description": "Container image tag",
                   "type": "string"
-                },
-                "baseImages": {
-                  "description": "List of base images that must be built before the image for this block is build. Earlier images in the list can serve as the basis for later images.",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
                 }
               }
             }
@@ -475,13 +426,6 @@
                 "tag": {
                   "description": "Container image tag",
                   "type": "string"
-                },
-                "baseImages": {
-                  "description": "List of base images that must be built before the image for this block is build. Earlier images in the list can serve as the basis for later images.",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
                 }
               }
             }

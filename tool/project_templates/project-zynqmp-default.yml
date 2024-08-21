@@ -20,7 +20,6 @@ blocks:
     container:
       image: "amd-atf-builder-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
-      # If no base images need to be built locally, the property 'baseImages' can be omitted
   devicetree:
     source: "local_build"
     builder: "zynqmp-amd-devicetree-builder-alma9"
@@ -31,7 +30,6 @@ blocks:
     container:
       image: "amd-xilinx-tools-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
-      # If no base images need to be built locally, the property 'baseImages' can be omitted
   fsbl:
     source: "local_build"
     builder: "zynqmp-amd-fsbl-builder-alma9"
@@ -40,7 +38,6 @@ blocks:
     container:
       image: "amd-xilinx-tools-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
-      # If no base images need to be built locally, the property 'baseImages' can be omitted
   kernel:
     source: "local_build"
     builder: "zynqmp-amd-kernel-builder-alma9"
@@ -51,7 +48,6 @@ blocks:
     container:
       image: "kernel-builder-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
-      # If no base images need to be built locally, the property 'baseImages' can be omitted
   pmu-fw:
     source: "local_build"
     builder: "zynqmp-amd-pmu-fw-builder-alma9"
@@ -60,7 +56,6 @@ blocks:
     container:
       image: "amd-xilinx-tools-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
-      # If no base images need to be built locally, the property 'baseImages' can be omitted
   rootfs:
     source: "local_build"
     builder: "zynqmp-alma8-rootfs-builder-alma9"
@@ -69,10 +64,9 @@ blocks:
     container:
       image: "alma8-rootfs-builder-alma8"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
-      # If no base images need to be built locally, the property 'baseImages' can be omitted
   u-boot:
     source: "local_build"
-    builder: "zynqmp-amd-u-boot-builder-alma9"
+    builder: "ZynqMP_AMD_UBoot_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/u-boot-xlnx.git"
       # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
@@ -80,8 +74,6 @@ blocks:
     container:
       image: "u-boot-builder-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
-      baseImages:
-        - "kernel-builder-alma9"
   vivado:
     source: "local_build"
     builder: "hog-vivado-builder-alma9"
@@ -92,4 +84,3 @@ blocks:
     container:
       image: "amd-xilinx-tools-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
-      # If no base images need to be built locally, the property 'baseImages' can be omitted

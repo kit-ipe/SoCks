@@ -1,0 +1,27 @@
+From 5331df8e1e64e12af04a3c3e05796df043a7f5da Mon Sep 17 00:00:00 2001
+From: "marvin.fuchs" <marvin.fuchs@kit.edu>
+Date: Mon, 10 Jun 2024 16:11:20 +0200
+Subject: [PATCH] Restrict SD card bus with as fix for Serenity-S 1.1
+
+---
+ drivers/mmc/mmc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 4d9871d69f..a41834897e 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -1776,7 +1776,9 @@ static int sd_select_mode_and_width(struct mmc *mmc, uint card_caps)
+ 				err = sd_select_bus_width(mmc, bus_width(*w));
+ 				if (err)
+ 					goto error;
+-				mmc_set_bus_width(mmc, bus_width(*w));
++				/* Restrict bus width to 1 */
++				//mmc_set_bus_width(mmc, bus_width(*w));
++				mmc_set_bus_width(mmc, 1);
+ 
+ 				/* configure the bus mode (card) */
+ 				err = sd_set_card_speed(mmc, mwt->mode);
+-- 
+2.25.1
+
