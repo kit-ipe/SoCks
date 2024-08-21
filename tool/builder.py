@@ -61,21 +61,22 @@ class Builder:
         
         # Project directories
         self._project_dir = project_dir
+        self._project_temp_dir = self._project_dir / 'temp'
         self._patch_dir = self._project_dir / self._block_name / 'patches'
-        self._repo_dir = self._project_dir / 'temp' / self._block_name / 'repo'
+        self._repo_dir = self._project_temp_dir / self._block_name / 'repo'
         self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
-        self._xsa_dir = self._project_dir / 'temp' / self._block_name / 'source_xsa'
-        self._download_dir = self._project_dir / 'temp' / self._block_name / 'download'
-        self._work_dir = self._project_dir / 'temp' / self._block_name / 'work'
-        self._output_dir = self._project_dir / 'temp' / self._block_name / 'output'
+        self._xsa_dir = self._project_temp_dir / self._block_name / 'source_xsa'
+        self._download_dir = self._project_temp_dir / self._block_name / 'download'
+        self._work_dir = self._project_temp_dir / self._block_name / 'work'
+        self._output_dir = self._project_temp_dir / self._block_name / 'output'
 
         # Project files
         # Container file for creating the container to be used for building this block
         self._container_file = self._container_dir / f'{self._container_image}.containerfile'
+        # ASCII file with all patches in the order in which they are to be applied
+        self._patch_list_file = self._patch_dir / 'patches.cfg'
         # Flag to remember if patches have already been applied
-        self._patches_applied_flag = self._project_dir / 'temp' / self._block_name / '.patchesapplied'
-        # File containing all patches to be used
-        self._patch_cfg_file = self._patch_dir / '.patches.cfg'
+        self._patches_applied_flag = self._project_temp_dir / self._block_name / '.patchesapplied'
 
 
     @staticmethod
@@ -532,9 +533,47 @@ class Builder:
             pretty_print.print_build('No need to fetch the repo...')
 
 
+    def create_patches(self):
+        """
+        Created patches from from commits on self._git_local_dev_branch.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Only create patches if there are commits on branch self._git_local_dev_branch that are not on branch self._git_local_dev_branch.
+        result_new_commits = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'log', '--cherry-pick', '--oneline', self._git_local_dev_branch, f'^{self._git_local_ref_branch}'])
+        if result_new_commits.stdout:
+            pretty_print.print_build('Creating patches...')
+            try:
+                # Create patches
+                result_new_patches = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
+                # Add newly created patched to self._patch_list_file
+                for line in result_new_patches.stdout.splitlines():
+                    new_patch = line.rpartition('/')[2]
+                    print(f'Patch {new_patch} was created')
+                    with self._patch_list_file.open('a') as f:
+                        print(new_patch, file=f, end='\n')
+                # Synchronize the branches ref and dev to be able to detect new commits in the future
+                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch])
+                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch])
+                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while creating new patches: {str(e)}')
+                sys.exit(1)
+        else:
+            pretty_print.print_warning('No commits found that can be used as sources for patches.')
+
+
     def apply_patches(self):
         """
-        This function iterates over all patches listed in self._patch_cfg_file and
+        This function iterates over all patches listed in self._patch_list_file and
         applies them to the repo.
 
         Args:
@@ -551,9 +590,9 @@ class Builder:
         if not self._patches_applied_flag.exists():
             pretty_print.print_build('Applying patches...')
             try:
-                if self._patch_cfg_file.is_file():
-                    with self._patch_cfg_file.open('r') as patches:
-                        for patch in patches:
+                if self._patch_list_file.is_file():
+                    with self._patch_list_file.open('r') as f:
+                        for patch in f:
                             if patch:
                                 # Apply patch
                                 Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'am', str(self._patch_dir / patch)])
