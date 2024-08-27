@@ -6,7 +6,7 @@ import builder
 
 class ZynqMP_AMD_ATF_Builder_Alma9(builder.Builder):
     """
-    ATF builder class
+    AMD ATF builder class
     """
 
     def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
@@ -16,25 +16,6 @@ class ZynqMP_AMD_ATF_Builder_Alma9(builder.Builder):
                         socks_dir=socks_dir,
                         project_dir=project_dir,
                         block_name=block_name)
-
-
-    def start_container(self):
-        """
-        Start an interactive container with which the block can be built.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        potential_mounts=[f'{str(self._repo_dir)}:Z', f'{str(self._output_dir)}:Z']
-
-        ZynqMP_AMD_ATF_Builder_Alma9._start_container(self, potential_mounts=potential_mounts)
 
 
     def build_atf(self):

@@ -193,6 +193,7 @@ for key0, value0 in project_cfg['blocks'].items():
 
 # Vivado
 
-builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].init_repo()
-builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].vivado_project()
-builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].build_vivado_project()
+#builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].init_repo()
+#builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].vivado_project()
+#builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].build_vivado_project()
+builders['ZynqMP_AMD_ATF_Builder_Alma9'].start_container()

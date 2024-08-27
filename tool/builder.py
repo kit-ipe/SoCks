@@ -66,7 +66,6 @@ class Builder:
         self._patch_dir = self._project_dir / self._block_name / 'patches'
         self._repo_dir = self._project_temp_dir / self._block_name / 'repo'
         self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
-        self._xsa_dir = self._project_temp_dir / self._block_name / 'source_xsa'
         self._download_dir = self._project_temp_dir / self._block_name / 'download'
         self._work_dir = self._project_temp_dir / self._block_name / 'work'
         self._output_dir = self._project_temp_dir / self._block_name / 'output'
@@ -425,40 +424,6 @@ class Builder:
                 sys.exit(1)
 
 
-    def clean_container_image(self):
-        """
-        Cleans the container image of the selected container tool.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        if self._container_tool in ('docker', 'podman'):
-            try:
-                # Clean image only if it exists
-                results = Builder._get_sh_results([self._container_tool, 'images', '-q', self._container_image])
-                if results.stdout.splitlines():
-                    pretty_print.print_build(f'Cleaning container image {self._container_image}...')
-                    Builder._run_sh_command([self._container_tool, 'image', 'rm', self._container_image])
-                else:
-                    pretty_print.print_build(f'No need to clean container image {self._container_image}, the image doesn\'t exist...')
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while cleaning the container image: {str(e)}')
-                sys.exit(1)
-
-        elif self._container_tool == 'none':
-            # This function is only supported if a container tool is used
-            Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
-        else:
-            Builder._err_unsup_container_tool()
-
-
     def init_repo(self):
         """
         Clones and initializes the git repo.
@@ -654,9 +619,28 @@ class Builder:
             pretty_print.print_build('No need to download pre-built files...')
 
 
+    def start_container(self):
+        """
+        Starts an interactive container with which the block can be built.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        potential_mounts = [f'{str(self._repo_dir)}:Z', f'{str(self._work_dir)}:Z', f'{str(self._output_dir)}:Z']
+
+        Builder._start_container(self, potential_mounts=potential_mounts)
+
+
     def _start_container(self, potential_mounts: typing.List[str]):
         """
-        Start an interactive container with which the block can be built.
+        Starts an interactive container with which the block can be built.
 
         Args:
             potential_mounts:
@@ -685,7 +669,7 @@ class Builder:
                 # Start the container
                 Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while starting the container: {str(e)}')
+                pretty_print.print_error(f'An error occurred while executing the container: {str(e)}')
                 sys.exit(1)
 
         elif self._container_tool == 'none':
@@ -767,6 +751,40 @@ class Builder:
             Builder._err_unsup_container_tool()
 
 
+    def clean_container_image(self):
+        """
+        Cleans the container image of the selected container tool.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if self._container_tool in ('docker', 'podman'):
+            try:
+                # Clean image only if it exists
+                results = Builder._get_sh_results([self._container_tool, 'images', '-q', self._container_image])
+                if results.stdout.splitlines():
+                    pretty_print.print_build(f'Cleaning container image {self._container_image}...')
+                    Builder._run_sh_command([self._container_tool, 'image', 'rm', self._container_image])
+                else:
+                    pretty_print.print_build(f'No need to clean container image {self._container_image}, the image doesn\'t exist...')
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while cleaning the container image: {str(e)}')
+                sys.exit(1)
+
+        elif self._container_tool == 'none':
+            # This function is only supported if a container tool is used
+            Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
+        else:
+            Builder._err_unsup_container_tool()
+
+
     def clean_repo(self):
         """
         This function cleans the git repo directory.
@@ -794,14 +812,14 @@ class Builder:
             pretty_print.print_clean('Cleaning repo directory...')
             if self._container_tool in ('docker', 'podman'):
                 try:
-                    # Clean up the repo from the container
+                    # Clean up the repo directory from the container
                     Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the repo directory: {str(e)}')
                     sys.exit(1)
 
             elif self._container_tool == 'none':
-                # Clean up the repo without using a container
+                # Clean up the repo directory without using a container
                 Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._repo_dir)}/* {str(self._repo_dir)}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
@@ -834,14 +852,14 @@ class Builder:
             pretty_print.print_clean('Cleaning output directory...')
             if self._container_tool in ('docker', 'podman'):
                 try:
-                    # Clean up the repo from the container
+                    # Clean up the output directory from the container
                     Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._output_dir)}:/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the output directory: {str(e)}')
                     sys.exit(1)
 
             elif self._container_tool == 'none':
-                # Clean up the repo without using a container
+                # Clean up the output directory without using a container
                 Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._output_dir)}/* {str(self._output_dir)}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
@@ -871,14 +889,14 @@ class Builder:
             pretty_print.print_clean('Cleaning download directory...')
             if self._container_tool in ('docker', 'podman'):
                 try:
-                    # Clean up the repo from the container
+                    # Clean up the download directory from the container
                     Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._download_dir)}:/app/download:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/download/* /app/download/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the download directory: {str(e)}')
                     sys.exit(1)
 
             elif self._container_tool == 'none':
-                # Clean up the repo without using a container
+                # Clean up the download directory without using a container
                 Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._download_dir)}/* {str(self._download_dir)}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
