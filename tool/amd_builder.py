@@ -1,4 +1,5 @@
 import pathlib
+import shutil
 
 import pretty_print
 import builder
@@ -41,7 +42,7 @@ class AMD_Builder(builder.Builder):
         AMD_Builder._start_container(self, potential_mounts=potential_mounts)
 
 
-    def import_xsa(self):
+    def import_xsa(self, xsa: str):
         """
         Imports an XSA archive.
 
@@ -55,9 +56,7 @@ class AMD_Builder(builder.Builder):
             None
         """
 
-        pretty_print.print_build('Importing the *.xsa source file...')
-
-        xsa_path=pathlib.Path(ToDo)
+        xsa_path=pathlib.Path(xsa)
         if not xsa_path.is_file():
             pretty_print.print_error(f'File {xsa_path} not found')
             sys.exit(1)
@@ -69,6 +68,11 @@ class AMD_Builder(builder.Builder):
         # Clean source xsa directory
         AMD_Builder.clean_source_xsa(self=self)
         self._xsa_dir.mkdir(parents=True, exist_ok=True)
+
+        pretty_print.print_build('Importing the *.xsa source file...')
+
+        # Copy XSA archive
+        shutil.copy(xsa_path, self._xsa_dir / xsa_path.name)
 
 
     def clean_source_xsa(self):
@@ -90,18 +94,18 @@ class AMD_Builder(builder.Builder):
             if self._container_tool in ('docker', 'podman'):
                 try:
                     # Clean up the source_xsa directory from the container
-                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._output_dir)}:/app/source_xsa:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/source_xsa/* /app/source_xsa/.* 2> /dev/null || true\"'])
+                    AMD_Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._xsa_dir)}:/app/source_xsa:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/source_xsa/* /app/source_xsa/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the source_xsa directory: {str(e)}')
                     sys.exit(1)
 
             elif self._container_tool == 'none':
                 # Clean up the source_xsa directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._xsa_dir)}/* {str(self._xsa_dir)}/.* 2> /dev/null || true\"'])
+                AMD_Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._xsa_dir)}/* {str(self._xsa_dir)}/.* 2> /dev/null || true\"'])
             else:
-                Builder._err_unsup_container_tool()
+                AMD_Builder._err_unsup_container_tool()
 
-            # Remove empty output directory
+            # Remove empty source_xsa directory
             self._xsa_dir.rmdir()
 
         else:

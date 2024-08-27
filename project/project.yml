@@ -7,6 +7,9 @@ externalTools:
     version: 2022.2
     license: "50000@ipeflex1.ipe.kit.edu"
 blocks:
+  atf:
+    project:
+      pre-built: "https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/serenity-s1-kria-atf.tar.gz"
   vivado:
     builder: "ZynqMP_AMD_Vivado_Hog_Builder_Alma9"
     project:

@@ -108,7 +108,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
             md5_existsing_file = hashlib.md5((self._source_repo_dir / 'bl31.bin').read_bytes()).hexdigest()
         # Copy the specified file if it is not identical to the existing file
         if md5_existsing_file != md5_new_file:
-            shutil.copy(bl31_bin_path, self._source_repo_dir / 'bl31.bin')
+            shutil.copy(bl31_bin_path, self._source_repo_dir / bl31_bin_path.name)
         else:
             pretty_print.print_warning('No new \'bl31.bin\' recognized. The file that already exists in the target directory will be used.')
 

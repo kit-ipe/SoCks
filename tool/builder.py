@@ -38,23 +38,31 @@ class Builder:
         self._git_local_ref_branch = '__ref'
         self._git_local_dev_branch = '__temp'
         
-        # Repo
-        sources_str = self._project_cfg['blocks'][self._block_name]['project']['sources']
-        if validators.url(sources_str):
-            self._source_repo_url = sources_str
-            if 'branch' in self._project_cfg['blocks'][self._block_name]['project']:
-                self._source_repo_branch = self._project_cfg['blocks'][self._block_name]['project']['branch']
-            else:
-                self._source_repo_branch = f'xilinx-v{self._project_cfg["externalTools"]["xilinx"]["version"]}'
-            source_repo_name = pathlib.Path(urllib.parse.urlparse(self._source_repo_url).path).stem
+        # Sources for this block
+        if self._project_cfg['blocks'][self._block_name]['project'] is None or 'sources' not in self._project_cfg['blocks'][self._block_name]['project']:
+            # The sources for this block are generated at runtime
+            self._source_repo_url = None
+            self._source_repo_branch = 'temp'
+            source_repo_name = 'generated'
         else:
-            try:
-                pathlib.Path(sources_str)
-                pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {sources_str}')
-                sys.exit(1)
-            except ValueError:
-                pretty_print.print_error(f'{sources_str} is not a valid URL and not a valid path')
-                sys.exit(1)
+            sources_str = self._project_cfg['blocks'][self._block_name]['project']['sources']
+            if validators.url(sources_str):
+                # The sources for this block are downloaded from git
+                self._source_repo_url = sources_str
+                if 'branch' in self._project_cfg['blocks'][self._block_name]['project']:
+                    self._source_repo_branch = self._project_cfg['blocks'][self._block_name]['project']['branch']
+                else:
+                    self._source_repo_branch = f'xilinx-v{self._project_cfg["externalTools"]["xilinx"]["version"]}'
+                source_repo_name = pathlib.Path(urllib.parse.urlparse(self._source_repo_url).path).stem
+            else:
+                try:
+                    # The sources for this block are provided locally
+                    pathlib.Path(sources_str)
+                    pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {sources_str}')
+                    sys.exit(1)
+                except ValueError:
+                    pretty_print.print_error(f'{sources_str} is not a valid URL and not a valid path')
+                    sys.exit(1)
 
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = socks_dir
@@ -535,13 +543,12 @@ class Builder:
             pretty_print.print_build('No need to apply patches...')
     
 
-    def download_pre_built(self, url: str):
+    def download_pre_built(self):
         """
         Download pre-built files instead of building them locally.
 
         Args:
-            url:
-                URL of the file to download.
+            None
 
         Returns:
             None
@@ -557,16 +564,27 @@ class Builder:
             downloaded = block_num * block_size
             download_progress.t.update(downloaded - download_progress.t.n)
 
+        # Get URL
+        if 'pre-built' not in self._project_cfg['blocks'][self._block_name]['project']:
+            pretty_print.print_error(f'The property blocks/{self._block_name}/project/pre-built is not provided')
+            sys.exit(1)
+
+        download_url = self._project_cfg['blocks'][self._block_name]['project']['pre-built']
+
+        if not validators.url(download_url):
+            pretty_print.print_error(f'The value of blocks/{self._block_name}/project/pre-built is not a valid URL: {download_url}')
+            sys.exit(1)
+
         # Send a HEAD request to get the HTTP headers
-        response = requests.head(url, allow_redirects=True)
+        response = requests.head(download_url, allow_redirects=True)
 
         if response.status_code == 404:
             # File not found
-            pretty_print.print_error(f'The following file could not be downloaded: {url}\nStatus code {response.status_code} (File not found)')
+            pretty_print.print_error(f'The following file could not be downloaded: {download_url}\nStatus code {response.status_code} (File not found)')
             sys.exit(1)
         elif response.status_code != 200:
             # Unexpected status code
-            pretty_print.print_error(f'The following file could not be downloaded: {url}\nUnexpected status code {response.status_code}')
+            pretty_print.print_error(f'The following file could not be downloaded: {download_url}\nUnexpected status code {response.status_code}')
             sys.exit(1)
 
         #Check if the file needs to be downloaded
@@ -574,7 +592,7 @@ class Builder:
         if last_modified:
             last_modified_timestamp = parser.parse(last_modified).timestamp()
         else:
-            pretty_print.print_error(f'No \'Last-Modified\' header found for {url}')
+            pretty_print.print_error(f'No \'Last-Modified\' header found for {download_url}')
             sys.exit(1)
 
         last_file_mod_timestamp = 0
@@ -594,8 +612,8 @@ class Builder:
 
             # Download the file
             download_progress.t = None
-            filename = url.rpartition('/')[2]
-            urllib.request.urlretrieve(url, self._download_dir / filename, reporthook=download_progress)
+            filename = download_url.rpartition('/')[2]
+            urllib.request.urlretrieve(download_url, self._download_dir / filename, reporthook=download_progress)
             if download_progress.t:
                 download_progress.t.close()
 
