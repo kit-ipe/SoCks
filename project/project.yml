@@ -2,14 +2,14 @@
 import:
   - project-zynqmp-default.yml
 externalTools:
-  vivado:
-    path: "/media/marvin/T9MF/Tools/Xilinx/Vivado"
+  xilinx:
+    path: "/media/marvin/T9MF/Tools/Xilinx"
     version: 2022.2
     license: "50000@ipeflex1.ipe.kit.edu"
-  vitis:
-    path: "/media/marvin/T9MF/Tools/Xilinx/Vitis"
 blocks:
   vivado:
+    builder: "ZynqMP_AMD_Hog_Vivado_Builder_Alma9"
     project:
       sources: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
       branch: "main"
+      name: "serenity-s1-kria"

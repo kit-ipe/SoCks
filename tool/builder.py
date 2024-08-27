@@ -32,7 +32,7 @@ class Builder:
 
         # Container
         self._container_tool = self._project_cfg['externalTools']['containerTool']
-        self._container_image = f'{self._project_cfg["blocks"][self._block_name]["container"]["image"]}:xilinx-v{self._project_cfg["externalTools"]["vivado"]["version"]}'
+        self._container_image = f'{self._project_cfg["blocks"][self._block_name]["container"]["image"]}:xilinx-v{self._project_cfg["externalTools"]["xilinx"]["version"]}'
 
         # Local git branches
         self._git_local_ref_branch = '__ref'
@@ -45,7 +45,7 @@ class Builder:
             if 'branch' in self._project_cfg['blocks'][self._block_name]['project']:
                 self._source_repo_branch = self._project_cfg['blocks'][self._block_name]['project']['branch']
             else:
-                self._source_repo_branch = f'xilinx-v{self._project_cfg["externalTools"]["vivado"]["version"]}'
+                self._source_repo_branch = f'xilinx-v{self._project_cfg["externalTools"]["xilinx"]["version"]}'
             source_repo_name = pathlib.Path(urllib.parse.urlparse(self._source_repo_url).path).stem
         else:
             try:
@@ -59,8 +59,6 @@ class Builder:
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = socks_dir
         self._container_dir = self._socks_dir / 'container'
-        self._vivado_dir = pathlib.Path(self._project_cfg['externalTools']['vivado']['path']) # ToDo: I think something SoC specific like Vivado should not be in the universal builder class
-        self._vitis_dir = pathlib.Path(self._project_cfg['externalTools']['vitis']['path']) # ToDo: I think something SoC specific like Vitis should not be in the universal builder class
         
         # Project directories
         self._project_dir = project_dir
@@ -461,47 +459,6 @@ class Builder:
             Builder._err_unsup_container_tool()
 
 
-    def start_container(self):
-        """
-        Start an interactive container with which the block can be built.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        if self._container_tool in ('docker', 'podman'):
-            try:
-                pretty_print.print_build('Starting container...')
-                # A complete list of all container mounts supported by SoCks
-                potential_mounts = [f'{str(self._xsa_dir)}:Z', f'{str(self._vivado_dir)}:ro', f'{str(self._vitis_dir)}:ro', f'{str(self._repo_dir)}:Z', f'{str(self._work_dir)}:Z', f'{str(self._output_dir)}:Z']
-                available_mounts = []
-                # Check which mounts (resp. directories) are available on the host system
-                for mount in potential_mounts:
-                    segments = mount.split(':')
-                    if len(segments) != 2:
-                        pretty_print.print_error(f'The following path contains a forbidden colon: {mount.rpartition(":")[0]}')
-                        sys.exit(1)
-                    if pathlib.Path(segments[0]).is_dir():
-                        available_mounts.append(f'{segments[0]}:{segments[0]}:{segments[1]}')
-                # Start the container
-                Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while starting the container: {str(e)}')
-                sys.exit(1)
-
-        elif self._container_tool == 'none':
-            # This function is only supported if a container tool is used
-            Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
-        else:
-            Builder._err_unsup_container_tool()
-
-
     def init_repo(self):
         """
         Clones and initializes the git repo.
@@ -695,6 +652,47 @@ class Builder:
 
         else:
             pretty_print.print_build('No need to download pre-built files...')
+
+
+    def _start_container(self, potential_mounts: typing.List[str]):
+        """
+        Start an interactive container with which the block can be built.
+
+        Args:
+            potential_mounts:
+                List of all directories that could be mounted in the container.
+                Existing directories are mounted, non-existing directories are ignored.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if self._container_tool in ('docker', 'podman'):
+            try:
+                pretty_print.print_build('Starting container...')
+                # Check which mounts (resp. directories) are available on the host system
+                available_mounts = []
+                for mount in potential_mounts:
+                    segments = mount.split(':')
+                    if len(segments) != 2:
+                        pretty_print.print_error(f'The following path contains a forbidden colon: {mount.rpartition(":")[0]}')
+                        sys.exit(1)
+                    if pathlib.Path(segments[0]).is_dir():
+                        available_mounts.append(f'{segments[0]}:{segments[0]}:{segments[1]}')
+                # Start the container
+                Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while starting the container: {str(e)}')
+                sys.exit(1)
+
+        elif self._container_tool == 'none':
+            # This function is only supported if a container tool is used
+            Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
+        else:
+            Builder._err_unsup_container_tool()
 
 
     def _run_menuconfig(self, menuconfig_commands: str):

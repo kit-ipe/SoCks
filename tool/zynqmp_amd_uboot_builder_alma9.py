@@ -20,6 +20,25 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
                         block_name=block_name)
 
 
+    def start_container(self):
+        """
+        Start an interactive container with which the block can be built.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        potential_mounts=[f'{str(self._repo_dir)}:Z', f'{str(self._output_dir)}:Z']
+
+        ZynqMP_AMD_UBoot_Builder_Alma9._start_container(self, potential_mounts=potential_mounts)
+
+
     def run_menuconfig(self):
         """
         Opens the menuconfig tool to enable interactive configuration of the project.
@@ -133,24 +152,25 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
                                 'make olddefconfig && ' \
                                 f'make -j{self._project_cfg["externalTools"]["make"]["maxBuildThreads"]}\''
 
-        if ZynqMP_AMD_UBoot_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd'], out_search_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd']):
-            pretty_print.print_build('Building U-Boot...')
-
-            if self._container_tool in ('docker', 'podman'):
-                try:
-                    # Run build commands in container
-                    ZynqMP_AMD_UBoot_Builder_Alma9._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', uboot_build_commands])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while building das U-Boot: {str(e)}')
-                    sys.exit(1)
-            elif self._container_tool == 'none':
-                # Run build commands without using a container
-                ZynqMP_AMD_UBoot_Builder_Alma9._run_sh_command(['sh', '-c', uboot_build_commands])
-            else:
-                Builder._err_unsup_container_tool()
-
-            # Create symlinks to the output files
-            (self._output_dir / 'u-boot.elf').unlink(missing_ok=True)
-            (self._output_dir / 'u-boot.elf').symlink_to(self._source_repo_dir / 'u-boot.elf')
-        else:
+        if not ZynqMP_AMD_UBoot_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd'], out_search_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd']):
             pretty_print.print_build('No need to rebuild U-Boot. No altered source files detected...')
+            return
+
+        pretty_print.print_build('Building U-Boot...')
+
+        if self._container_tool in ('docker', 'podman'):
+            try:
+                # Run build commands in container
+                ZynqMP_AMD_UBoot_Builder_Alma9._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', uboot_build_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while building das U-Boot: {str(e)}')
+                sys.exit(1)
+        elif self._container_tool == 'none':
+            # Run build commands without using a container
+            ZynqMP_AMD_UBoot_Builder_Alma9._run_sh_command(['sh', '-c', uboot_build_commands])
+        else:
+            Builder._err_unsup_container_tool()
+
+        # Create symlinks to the output files
+        (self._output_dir / 'u-boot.elf').unlink(missing_ok=True)
+        (self._output_dir / 'u-boot.elf').symlink_to(self._source_repo_dir / 'u-boot.elf')

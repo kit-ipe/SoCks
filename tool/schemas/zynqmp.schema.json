@@ -14,7 +14,7 @@
     },
     "externalTools": {
       "type": "object",
-      "required": ["vivado", "vitis", "make", "containerTool"],
+      "required": ["xilinx", "make", "containerTool"],
       "additionalProperties": false,
       "properties": {
         "containerTool": {
@@ -32,28 +32,17 @@
             }
           }
         },
-        "vitis": {
-          "type": "object",
-          "required": ["path"],
-          "additionalProperties": false,
-          "properties": {
-            "path": {
-              "description": "Path to the AMD Vitis tool",
-              "type": "string"
-            }
-          }
-        },
-        "vivado": {
+        "xilinx": {
           "type": "object",
           "required": ["path", "version", "license"],
           "additionalProperties": false,
           "properties": {
             "path": {
-              "description": "Path to the AMD Vivado tool",
+              "description": "Path to the AMD Xilinx tool (Vivado, Vitis, ...)",
               "type": "string"
             },
             "version": {
-              "description": "Version of the tool to use",
+              "description": "Version of the toolset to use",
               "type": "number"
             },
             "license": {
@@ -406,6 +395,10 @@
                 },
                 "branch": {
                   "description": "Git repository branch",
+                  "type": "string"
+                },
+                "name": {
+                  "description": "Name of the project, required by Hog",
                   "type": "string"
                 },
                 "pre-built": {
