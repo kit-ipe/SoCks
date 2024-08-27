@@ -132,7 +132,7 @@ with project_cfg_schema_file.open('r') as f:
 jsonschema.validate(project_cfg, project_cfg_schema)
 
 # Create builder objects
-builder_modules = ['zynqmp_amd_atf_builder_alma9', 'zynqmp_amd_uboot_builder_alma9', 'zynqmp_amd_hog_vivado_builder_alma9']
+builder_modules = ['zynqmp_amd_atf_builder_alma9', 'zynqmp_amd_uboot_builder_alma9', 'zynqmp_amd_vivado_hog_builder_alma9']
 builders = {}
 
 for key0, value0 in project_cfg['blocks'].items():
@@ -193,6 +193,6 @@ for key0, value0 in project_cfg['blocks'].items():
 
 # Vivado
 
-builders['ZynqMP_AMD_Hog_Vivado_Builder_Alma9'].init_repo()
-builders['ZynqMP_AMD_Hog_Vivado_Builder_Alma9'].vivado_project()
-builders['ZynqMP_AMD_Hog_Vivado_Builder_Alma9'].build_vivado_project()
+builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].init_repo()
+builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].vivado_project()
+builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].build_vivado_project()

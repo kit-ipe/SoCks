@@ -4,7 +4,7 @@ import pathlib
 import pretty_print
 import builder
 
-class ZynqMP_AMD_Hog_Vivado_Builder_Alma9(builder.Builder):
+class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(builder.Builder):
     """
     Builder class for Vivado projects utilizing the Hog framework
     """
@@ -36,7 +36,7 @@ class ZynqMP_AMD_Hog_Vivado_Builder_Alma9(builder.Builder):
  
         potential_mounts=[f'{str(self._xilinx_tools_path)}:ro', f'{str(self._repo_dir)}:Z', f'{str(self._output_dir)}:Z']
  
-        ZynqMP_AMD_Hog_Vivado_Builder_Alma9._start_container(self, potential_mounts=potential_mounts)
+        ZynqMP_AMD_Vivado_Hog_Builder_Alma9._start_container(self, potential_mounts=potential_mounts)
 
 
     def vivado_project(self):
@@ -73,13 +73,13 @@ class ZynqMP_AMD_Hog_Vivado_Builder_Alma9(builder.Builder):
         if self._container_tool in ('docker', 'podman'):
             try:
                 # Run build commands in container
-                ZynqMP_AMD_Hog_Vivado_Builder_Alma9._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._xilinx_tools_path)}:{str(self._xilinx_tools_path)}:ro', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', create_vivado_project_commands])
+                ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._xilinx_tools_path)}:{str(self._xilinx_tools_path)}:ro', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', create_vivado_project_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while creating the vivado project: {str(e)}')
                 sys.exit(1)
         elif self._container_tool == 'none':
             # Run build commands without using a container
-            ZynqMP_AMD_Hog_Vivado_Builder_Alma9._run_sh_command(['sh', '-c', create_vivado_project_commands])
+            ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command(['sh', '-c', create_vivado_project_commands])
         else:
             Builder._err_unsup_container_tool()
 
@@ -106,7 +106,7 @@ class ZynqMP_AMD_Hog_Vivado_Builder_Alma9(builder.Builder):
                                 f'LD_PRELOAD=/lib64/libudev.so.1 {str(self._source_repo_dir)}/Hog/Do WORKFLOW {self._project_cfg["blocks"]["vivado"]["project"]["name"]}\''
 
         # Check if the project needs to be build
-        if not ZynqMP_AMD_Hog_Vivado_Builder_Alma9._check_rebuilt_required(src_search_list=[self._source_repo_dir / 'Top', self._source_repo_dir / 'Hog', self._source_repo_dir / f'lib_{self._project_cfg["blocks"]["vivado"]["project"]["name"]}'], out_search_list=[self._source_repo_dir / 'bin']):
+        if not ZynqMP_AMD_Vivado_Hog_Builder_Alma9._check_rebuilt_required(src_search_list=[self._source_repo_dir / 'Top', self._source_repo_dir / 'Hog', self._source_repo_dir / f'lib_{self._project_cfg["blocks"]["vivado"]["project"]["name"]}'], out_search_list=[self._source_repo_dir / 'bin']):
             pretty_print.print_build('No need to rebuild the Vivado Project. No altered source files detected...')
             return
 
@@ -115,7 +115,7 @@ class ZynqMP_AMD_Hog_Vivado_Builder_Alma9(builder.Builder):
             sys.exit(1)
 
         # Clean output
-        ZynqMP_AMD_Hog_Vivado_Builder_Alma9.clean_output(self)
+        ZynqMP_AMD_Vivado_Hog_Builder_Alma9.clean_output(self)
         self._output_dir.mkdir(parents=True, exist_ok=True)
         
         pretty_print.print_build('Building the Vivado Project...')
@@ -123,13 +123,13 @@ class ZynqMP_AMD_Hog_Vivado_Builder_Alma9(builder.Builder):
         if self._container_tool in ('docker', 'podman'):
             try:
                 # Run build commands in container
-                ZynqMP_AMD_Hog_Vivado_Builder_Alma9._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._xilinx_tools_path)}:{str(self._xilinx_tools_path)}:ro', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', vivado_build_commands])
+                ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._xilinx_tools_path)}:{str(self._xilinx_tools_path)}:ro', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', vivado_build_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while creating the vivado project: {str(e)}')
                 sys.exit(1)
         elif self._container_tool == 'none':
             # Run build commands without using a container
-            ZynqMP_AMD_Hog_Vivado_Builder_Alma9._run_sh_command(['sh', '-c', vivado_build_commands])
+            ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command(['sh', '-c', vivado_build_commands])
         else:
             Builder._err_unsup_container_tool()
 
