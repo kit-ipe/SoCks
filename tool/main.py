@@ -196,13 +196,15 @@ for key0, value0 in project_cfg['blocks'].items():
 # Vivado
 
 #builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].init_repo()
-#builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].vivado_project()
+#builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].create_vivado_project()
 #builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].build_vivado_project()
 #builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].export_block_package()
 
 # FSBL
 builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_dependencies()
 builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_xsa()
+builders['ZynqMP_AMD_FSBL_Builder_Alma9'].create_fsbl_project()
+builders['ZynqMP_AMD_FSBL_Builder_Alma9'].build_fsbl()
 
 # ToDos:
 #- boot-image should be a block. It should contain a depends property.

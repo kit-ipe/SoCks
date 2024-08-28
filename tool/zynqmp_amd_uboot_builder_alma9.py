@@ -121,6 +121,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
                                 'make olddefconfig && ' \
                                 f'make -j{self._pc_make_threads}\''
 
+        # Check whether das U-Boot needs to be built
         if not ZynqMP_AMD_UBoot_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd'], out_search_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd']):
             pretty_print.print_build('No need to rebuild U-Boot. No altered source files detected...')
             return
@@ -140,6 +141,6 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
         else:
             Builder._err_unsup_container_tool()
 
-        # Create symlinks to the output files
+        # Create symlink to the output file
         (self._output_dir / 'u-boot.elf').unlink(missing_ok=True)
         (self._output_dir / 'u-boot.elf').symlink_to(self._source_repo_dir / 'u-boot.elf')

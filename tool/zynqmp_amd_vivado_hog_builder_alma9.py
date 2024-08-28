@@ -21,9 +21,9 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
         self._pc_project_name = project_cfg['blocks'][self._block_name]['project']['name']
 
 
-    def vivado_project(self):
+    def create_vivado_project(self):
         """
-        Create the Vivado project utilizing the Hog framework
+        Create the Vivado project utilizing the Hog framework.
 
         Args:
             None
@@ -36,7 +36,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
         """
 
         create_vivado_project_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
-                                            f'source {str(self._xilinx_tools_dir)}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \
+                                            f'source {self._pc_xilinx_path}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \
                                             f'git config --global --add safe.directory {str(self._source_repo_dir)} && ' \
                                             f'git config --global --add safe.directory {str(self._source_repo_dir)}/Hog && ' \
                                             f'LD_PRELOAD=/lib64/libudev.so.1 {str(self._source_repo_dir)}/Hog/Do CREATE {self._pc_project_name}\''
@@ -46,16 +46,17 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
             pretty_print.print_build('The Vivado Project already exists. It will not be recreated...')
             return
 
-        if not self._xilinx_tools_dir.is_dir():
-            pretty_print.print_error(f'Directory {str(self._xilinx_tools_dir)} not found.')
-            sys.exit(1)
-
         pretty_print.print_build('Creating the Vivado Project...')
+
+        # Check if Xilinx tools are available
+        if not pathlib.Path(self._pc_xilinx_path).is_dir():
+            pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
+            sys.exit(1)
         
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run build commands in container
-                ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._xilinx_tools_dir)}:{str(self._xilinx_tools_dir)}:ro', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', create_vivado_project_commands])
+                ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', create_vivado_project_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while creating the vivado project: {str(e)}')
                 sys.exit(1)
@@ -82,7 +83,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
 
         vivado_build_commands = f'\'rm -rf {str(self._source_repo_dir)}/bin' \
                                 f'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
-                                f'source {str(self._xilinx_tools_dir)}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \
+                                f'source {self._pc_xilinx_path}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \
                                 f'git config --global --add safe.directory {str(self._source_repo_dir)} && ' \
                                 f'git config --global --add safe.directory {str(self._source_repo_dir)}/Hog && ' \
                                 f'LD_PRELOAD=/lib64/libudev.so.1 {str(self._source_repo_dir)}/Hog/Do WORKFLOW {self._pc_project_name}\''
@@ -92,22 +93,23 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
             pretty_print.print_build('No need to rebuild the Vivado Project. No altered source files detected...')
             return
 
-        if not self._xilinx_tools_dir.is_dir():
-            pretty_print.print_error(f'Directory {str(self._xilinx_tools_dir)} not found.')
+        pretty_print.print_build('Building the Vivado Project...')
+
+        # Check if Xilinx tools are available
+        if not pathlib.Path(self._pc_xilinx_path).is_dir():
+            pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
             sys.exit(1)
 
         # Clean output directory
         ZynqMP_AMD_Vivado_Hog_Builder_Alma9.clean_output(self=self)
-        self._output_dir.mkdir(parents=True, exist_ok=True)
-        
-        pretty_print.print_build('Building the Vivado Project...')
+        self._output_dir.mkdir(parents=True)
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run build commands in container
-                ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._xilinx_tools_dir)}:{str(self._xilinx_tools_dir)}:ro', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', vivado_build_commands])
+                ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', vivado_build_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while creating the vivado project: {str(e)}')
+                pretty_print.print_error(f'An error occurred while building the vivado project: {str(e)}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run build commands without using a container
@@ -125,7 +127,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
 
         bit_files = list(self._source_repo_dir.glob(f'bin/{self._pc_project_name}-*/{self._pc_project_name}-*.bit'))
         if len(bit_files) != 1:
-            pretty_print.print_error(f'Unexpected number of {len(bit_files)} *.xsa files in output direct. Expected was 1.')
+            pretty_print.print_error(f'Unexpected number of {len(bit_files)} *.bit files in output direct. Expected was 1.')
             sys.exit(1)
         (self._output_dir / bit_files[0].name).symlink_to(bit_files[0])
         (self._output_dir / 'system.bit').symlink_to(self._output_dir / bit_files[0].name)

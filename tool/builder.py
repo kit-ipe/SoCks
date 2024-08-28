@@ -509,7 +509,7 @@ class Builder:
             try:
                 # Create patches
                 result_new_patches = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
-                # Add newly created patched to self._patch_list_file
+                # Add newly created patches to self._patch_list_file
                 for line in result_new_patches.stdout.splitlines():
                     new_patch = line.rpartition('/')[2]
                     print(f'Patch {new_patch} was created')
@@ -628,7 +628,7 @@ class Builder:
             pretty_print.print_build('Downloading archive with pre-built files...')
 
             Builder.clean_download(self=self)
-            self._download_dir.mkdir(parents=True, exist_ok=True)
+            self._download_dir.mkdir(parents=True)
 
             # Download the file
             download_progress.t = None
@@ -638,7 +638,7 @@ class Builder:
                 download_progress.t.close()
 
             Builder.clean_output(self=self)
-            self._output_dir.mkdir(parents=True, exist_ok=True)
+            self._output_dir.mkdir(parents=True)
 
             #Extract pre-built files
             file_extension = filename.partition('.')[2]
@@ -708,6 +708,8 @@ class Builder:
             None
         """
 
+        pretty_print.print_build('Importing block packages...')
+
         for block_name, block_pkg_src_path_str in self._pc_project_dependencies.items():
             block_pkg_src_path = self._project_dir / block_pkg_src_path_str
             import_path = self._dependencies_dir / block_name
@@ -728,8 +730,6 @@ class Builder:
                 return
 
             # Import block package
-            pretty_print.print_build('Importing block package...')
-
             import_path.mkdir(parents=True, exist_ok=True)
             shutil.copy(block_pkg_src_path, import_path / block_pkg_src_path.name)
             with tarfile.open(import_path / block_pkg_src_path.name, "r:*") as archive:
@@ -954,7 +954,7 @@ class Builder:
 
     def clean_output(self):
         """
-        This function cleans the git repo directory.
+        This function cleans the output directory.
 
         Args:
             None
@@ -987,6 +987,43 @@ class Builder:
 
         else:
             pretty_print.print_clean('No need to clean the output directory...')
+
+
+    def clean_work(self):
+        """
+        This function cleans the work directory.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if self._work_dir.exists():
+            pretty_print.print_clean('Cleaning work directory...')
+            if self._pc_container_tool  in ('docker', 'podman'):
+                try:
+                    # Clean up the work directory from the container
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._work_dir)}:/app/work:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/work/* /app/work/.* 2> /dev/null || true\"'])
+                except Exception as e:
+                    pretty_print.print_error(f'An error occurred while cleaning the work directory: {str(e)}')
+                    sys.exit(1)
+
+            elif self._pc_container_tool  == 'none':
+                # Clean up the work directory without using a container
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._work_dir)}/* {str(self._work_dir)}/.* 2> /dev/null || true\"'])
+            else:
+                Builder._err_unsup_container_tool()
+
+            # Remove empty work directory
+            self._work_dir.rmdir()
+
+        else:
+            pretty_print.print_clean('No need to clean the work directory...')
 
 
     def clean_download(self):

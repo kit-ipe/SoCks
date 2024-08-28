@@ -24,6 +24,10 @@ class AMD_Builder(builder.Builder):
         # Project directories
         self._xsa_dir = self._project_temp_dir / self._block_name / 'source_xsa'
 
+        # Project files
+        # File for saving the checksum of the XSA-file on which the project is based
+        self._source_xsa_md5_file = self._work_dir / 'source_xsa.md5'
+
 
     def start_container(self):
         """
@@ -70,16 +74,16 @@ class AMD_Builder(builder.Builder):
             pretty_print.print_error(f'The extension of the file {xsa_path} is not \'xsa\'')
             sys.exit(1)
 
-        # Check whether the xsa file needs to be imported
+        # Check whether the xsa archive needs to be imported
         if not AMD_Builder._check_rebuilt_required(src_search_list=[xsa_path], out_search_list=[self._xsa_dir]):
-            pretty_print.print_build('No need to import XSA file. No altered source files detected...')
+            pretty_print.print_build('No need to import XSA archive. No altered source files detected...')
             return
         
         # Clean source xsa directory
         AMD_Builder.clean_source_xsa(self=self)
-        self._xsa_dir.mkdir(parents=True, exist_ok=True)
+        self._xsa_dir.mkdir(parents=True)
 
-        pretty_print.print_build('Importing XSA file...')
+        pretty_print.print_build('Importing XSA archive...')
 
         # Copy XSA archive
         shutil.copy(xsa_path, self._xsa_dir / xsa_path.name)
