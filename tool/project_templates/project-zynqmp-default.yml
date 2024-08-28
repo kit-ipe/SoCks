@@ -30,8 +30,10 @@ blocks:
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
   fsbl:
     source: "local_build"
-    builder: "zynqmp-amd-fsbl-builder-alma9"
+    builder: "ZynqMP_AMD_FSBL_Builder_Alma9"
     project:
+      dependencies:
+        xsa: "temp/vivado/output/system.xsa"
       # If no 'pre-built' property is specified, the block must be built locally
     container:
       image: "amd-xilinx-tools-alma9"

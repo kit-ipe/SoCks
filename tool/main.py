@@ -132,11 +132,11 @@ with project_cfg_schema_file.open('r') as f:
 jsonschema.validate(project_cfg, project_cfg_schema)
 
 # Create builder objects
-builder_modules = ['zynqmp_amd_atf_builder_alma9', 'zynqmp_amd_uboot_builder_alma9', 'zynqmp_amd_vivado_hog_builder_alma9']
+builder_modules = ['zynqmp_amd_atf_builder_alma9', 'zynqmp_amd_uboot_builder_alma9', 'zynqmp_amd_vivado_hog_builder_alma9', 'zynqmp_amd_fsbl_builder_alma9']
 builders = {}
 
 for key0, value0 in project_cfg['blocks'].items():
-    if key0 in ['atf', 'u-boot', 'vivado']:    # ToDo: Remove. Just temporary here for testing.
+    if key0 in ['atf', 'u-boot', 'vivado', 'fsbl']:    # ToDo: Remove. Just temporary here for testing.
         builder_found = False
         for module_name in builder_modules:
             try:
@@ -172,8 +172,7 @@ for key0, value0 in project_cfg['blocks'].items():
 
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].build_atf()
 
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].download_pre_built('https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/pre-built_alma8_rev1_xck26.tar.xz')
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].download_pre_built('https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/serenity-s1-kria-atf.tar.gz')
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].download_pre_built()
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_download()
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_repo()
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_output()
@@ -196,4 +195,9 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].init_repo()
 #builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].vivado_project()
 #builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].build_vivado_project()
-builders['ZynqMP_AMD_ATF_Builder_Alma9'].start_container()
+
+# FSBL
+builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_xsa()
+
+# ToDos:
+#boot-image should be a block. It should contain a depends property.

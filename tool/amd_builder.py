@@ -42,7 +42,7 @@ class AMD_Builder(builder.Builder):
         AMD_Builder._start_container(self, potential_mounts=potential_mounts)
 
 
-    def import_xsa(self, xsa: str):
+    def import_xsa(self):
         """
         Imports an XSA archive.
 
@@ -56,9 +56,11 @@ class AMD_Builder(builder.Builder):
             None
         """
 
-        xsa_path=pathlib.Path(xsa)
+        # Get path to XSA archive
+        xsa_path = pathlib.Path(self._project_dir / self._project_cfg['blocks'][self._block_name]['project']['dependencies']['xsa'])
+
         if not xsa_path.is_file():
-            pretty_print.print_error(f'File {xsa_path} not found')
+            pretty_print.print_error(f'XSA archive {xsa_path} not found')
             sys.exit(1)
         
         if xsa_path.suffix != '.xsa':

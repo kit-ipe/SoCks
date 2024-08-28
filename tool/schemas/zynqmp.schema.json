@@ -170,11 +170,24 @@
               "type": "string"
             },
             "project": {
+              "type": "object",
+              "required": ["dependencies"],
               "additionalProperties": false,
               "properties": {
                 "pre-built": {
                   "description": "URL or path to the pre-built files",
                   "type": "string"
+                },
+                "dependencies": {
+                  "type": "object",
+                  "required": ["xsa"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "xsa": {
+                      "description": "Path to the XSA file, relative to the project directory",
+                      "type": "string"
+                    }
+                  }
                 }
               }
             },
