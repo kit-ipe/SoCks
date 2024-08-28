@@ -1,6 +1,7 @@
 import typing
 import os
 import pathlib
+import shutil
 import sys
 import subprocess
 import select
@@ -77,6 +78,7 @@ class Builder:
         self._download_dir = self._project_temp_dir / self._block_name / 'download'
         self._work_dir = self._project_temp_dir / self._block_name / 'work'
         self._output_dir = self._project_temp_dir / self._block_name / 'output'
+        self._dependencies_dir = self._project_temp_dir / self._block_name / 'dependencies'
 
         # Project files
         # Container file for creating the container to be used for building this block
@@ -637,6 +639,86 @@ class Builder:
             pretty_print.print_build('No need to download pre-built files...')
 
 
+    def export_block_package(self):
+        """
+        Exports the block package that contains all output products of this block.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        block_pkg_path = self._output_dir / f'{self._block_name}.tar.gz'
+
+        # Check whether there is something to export
+        if not self._output_dir.is_dir() or not any(self._output_dir.iterdir()):
+            pretty_print.print_error(f'Unable to export block package. The following director does not exist or is empty: {self._output_dir}')
+            sys.exit(1)
+
+        # Check whether a package needs to be created
+        if not Builder._check_rebuilt_required(src_search_list=[self._output_dir], src_ignore_list=[block_pkg_path], out_search_list=[block_pkg_path]):
+            pretty_print.print_build('No need to export block package. No altered source files detected...')
+            return
+
+        # Export block package
+        pretty_print.print_build('Exporting block package...')
+
+        block_pkg_path.unlink(missing_ok=True)
+        with tarfile.open(block_pkg_path, "w:gz") as archive:
+            for file in self._output_dir.iterdir():
+                if not file.samefile(block_pkg_path):
+                    archive.add(file, arcname=file.name)
+
+
+    def import_dependencies(self):
+        """
+        Imports all dependencies needed to build this block.
+        Dependencies are plock backages exported from other blocks.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        for block_name, block_pkg_src_path_str in self._project_cfg['blocks'][self._block_name]['project']['dependencies'].items():
+            block_pkg_src_path = self._project_dir / block_pkg_src_path_str
+            import_path = self._dependencies_dir / block_name
+
+            # Check whether the file exists
+            if not block_pkg_src_path.is_file():
+                pretty_print.print_error(f'Unable to import block package. The following file does not exist: {block_pkg_src_path}')
+                sys.exit(1)
+
+            # Check whether the file is a tar.gz archive
+            if block_pkg_src_path.name.partition('.')[2] != 'tar.gz':
+                pretty_print.print_error(f'Unable to import block package. The following archive type is not supported: {block_pkg_src_path.name.partition(".")[2]}')
+                sys.exit(1)
+
+            # Check whether this dependencie needs to be imported
+            if not Builder._check_rebuilt_required(src_search_list=[block_pkg_src_path], out_search_list=[import_path]):
+                pretty_print.print_build('No need to import block package. No altered source files detected...')
+                return
+
+            # Import block package
+            pretty_print.print_build('Importing block package...')
+
+            import_path.mkdir(parents=True, exist_ok=True)
+            shutil.copy(block_pkg_src_path, import_path / block_pkg_src_path.name)
+            with tarfile.open(import_path / block_pkg_src_path.name, "r:*") as archive:
+                    # Extract all contents to the output directory
+                    archive.extractall(path=import_path)
+
+
     def start_container(self):
         """
         Starts an interactive container with which the block can be built.
@@ -924,3 +1006,40 @@ class Builder:
 
         else:
             pretty_print.print_clean('No need to clean the download directory...')
+
+
+    def clean_dependencies(self):
+        """
+        This function cleans the dependencies directory.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if self._dependencies_dir.exists():
+            pretty_print.print_clean('Cleaning dependencies directory...')
+            if self._container_tool in ('docker', 'podman'):
+                try:
+                    # Clean up the dependencies directory from the container
+                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._dependencies_dir)}:/app/dependencies:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/dependencies/* /app/dependencies/.* 2> /dev/null || true\"'])
+                except Exception as e:
+                    pretty_print.print_error(f'An error occurred while cleaning the dependencies directory: {str(e)}')
+                    sys.exit(1)
+
+            elif self._container_tool == 'none':
+                # Clean up the dependencies directory without using a container
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._dependencies_dir)}/* {str(self._dependencies_dir)}/.* 2> /dev/null || true\"'])
+            else:
+                Builder._err_unsup_container_tool()
+
+            # Remove empty download directory
+            self._dependencies_dir.rmdir()
+
+        else:
+            pretty_print.print_clean('No need to clean the dependencies directory...')

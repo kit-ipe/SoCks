@@ -1,5 +1,6 @@
 import pathlib
 import shutil
+import sys
 
 import pretty_print
 import builder
@@ -56,22 +57,28 @@ class AMD_Builder(builder.Builder):
             None
         """
 
-        # Get path to XSA archive
-        xsa_path = pathlib.Path(self._project_dir / self._project_cfg['blocks'][self._block_name]['project']['dependencies']['xsa'])
+        xsa_path = self._dependencies_dir / 'vivado' / 'system.xsa'
 
+        # Check whether the file exists
         if not xsa_path.is_file():
             pretty_print.print_error(f'XSA archive {xsa_path} not found')
             sys.exit(1)
         
+        # Check whether the file is a xsa archive
         if xsa_path.suffix != '.xsa':
             pretty_print.print_error(f'The extension of the file {xsa_path} is not \'xsa\'')
             sys.exit(1)
+
+        # Check whether the xsa file needs to be imported
+        if not AMD_Builder._check_rebuilt_required(src_search_list=[xsa_path], out_search_list=[self._xsa_dir]):
+            pretty_print.print_build('No need to import XSA file. No altered source files detected...')
+            return
         
         # Clean source xsa directory
         AMD_Builder.clean_source_xsa(self=self)
         self._xsa_dir.mkdir(parents=True, exist_ok=True)
 
-        pretty_print.print_build('Importing the *.xsa source file...')
+        pretty_print.print_build('Importing XSA file...')
 
         # Copy XSA archive
         shutil.copy(xsa_path, self._xsa_dir / xsa_path.name)

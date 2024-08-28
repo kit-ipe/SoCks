@@ -32,9 +32,9 @@ blocks:
     source: "local_build"
     builder: "ZynqMP_AMD_FSBL_Builder_Alma9"
     project:
-      dependencies:
-        xsa: "temp/vivado/output/system.xsa"
       # If no 'pre-built' property is specified, the block must be built locally
+      dependencies:
+        vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "amd-xilinx-tools-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
@@ -71,6 +71,8 @@ blocks:
       sources: "https://github.com/Xilinx/u-boot-xlnx.git"
       # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
       # If no 'pre-built' property is specified, the block must be built locally
+      dependencies:
+        atf: "temp/atf/output/atf.tar.gz"
     container:
       image: "u-boot-builder-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used

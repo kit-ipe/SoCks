@@ -171,6 +171,7 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].create_patches()
 
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].build_atf()
+#builders['ZynqMP_AMD_ATF_Builder_Alma9'].export_block_package()
 
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].download_pre_built()
 #builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_download()
@@ -179,13 +180,15 @@ for key0, value0 in project_cfg['blocks'].items():
 
 # U-Boot
 
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].import_dependencies()
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].init_repo()
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].apply_patches()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].copy_atf(bl31_bin_path=pathlib.Path('/home/marvin/Projects/Build_System_Tests/SoCks/project/temp/atf/output/bl31.bin'))
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].copy_atf()
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].build_uboot()
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].run_menuconfig()
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].prep_clean_srcs()
 
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_dependencies()
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_download()
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_repo()
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_output()
@@ -195,9 +198,12 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].init_repo()
 #builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].vivado_project()
 #builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].build_vivado_project()
+#builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].export_block_package()
 
 # FSBL
+builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_dependencies()
 builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_xsa()
 
 # ToDos:
-#boot-image should be a block. It should contain a depends property.
+#- boot-image should be a block. It should contain a depends property.
+#- Maybe it would be good to evaluate the _project_cfg dict only in the init function of the classes and to store everything in private member variables (e.g. _pc_...). Varibale could be set to None, if entry is not available

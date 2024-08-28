@@ -65,15 +65,14 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
         builder.Builder._prep_clean_srcs(self, prep_srcs_commands=prep_srcs_commands)
 
 
-    def copy_atf(self, bl31_bin_path: pathlib.Path = None):
+    def copy_atf(self):
         """
         Copy a ATF bl31.bin file into the U-Boot project. U-Boot will be built to run in exception
         level EL2 if bl31.bin is present in the root directory of the U-Boot project. Otherwise it
         will be built to run in exception level EL3.
 
         Args:
-            bl31_bin_path:
-                The ATF bl31.bin file to be copied into the U-Boot project.
+            None
 
         Returns:
             None
@@ -82,22 +81,11 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
             None
         """
 
-        # Check whether a path was specified
-        if not bl31_bin_path:
-            if (self._source_repo_dir / 'bl31.bin').is_file():
-                pretty_print.print_warning('bl31.bin was not specified. The file that already exists in the target directory will be used.')
-            else:
-                pretty_print.print_warning('bl31.bin was not provided. U-Boot will run in EL3.')
-            return
+        bl31_bin_path = self._dependencies_dir / 'atf' / 'bl31.bin'
 
         # Check whether the specified file exists
         if not bl31_bin_path.is_file():
             pretty_print.print_error(f'The following file was not found: {str(bl31_bin_path)}')
-            sys.exit(1)
-
-        # Check whether the specified file has the correct name
-        if bl31_bin_path.name != 'bl31.bin':
-            pretty_print.print_error(f'The name of the provided file is not \'bl31.bin\'.')
             sys.exit(1)
 
         # Calculate md5 of the provided file

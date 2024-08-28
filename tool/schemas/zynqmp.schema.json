@@ -180,11 +180,11 @@
                 },
                 "dependencies": {
                   "type": "object",
-                  "required": ["xsa"],
+                  "required": ["vivado"],
                   "additionalProperties": false,
                   "properties": {
-                    "xsa": {
-                      "description": "Path to the XSA file, relative to the project directory",
+                    "vivado": {
+                      "description": "Path to the block package, relative to the project directory",
                       "type": "string"
                     }
                   }
@@ -364,6 +364,17 @@
                 "pre-built": {
                   "description": "URL or path to the pre-built files",
                   "type": "string"
+                },
+                "dependencies": {
+                  "type": "object",
+                  "required": ["atf"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "atf": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    }
+                  }
                 }
               }
             },
