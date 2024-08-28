@@ -24,45 +24,65 @@ class Builder:
     def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_name: str):
         self._block_name = block_name
 
-        # Project configuration
-        self._project_cfg = project_cfg
+        # Import project configuration
+        self._pc_container_tool = project_cfg['externalTools']['containerTool']
+        self._pc_make_threads = project_cfg["externalTools"]["make"]["maxBuildThreads"]
+        self._pc_xilinx_version = project_cfg["externalTools"]["xilinx"]["version"]               # ToDo: Should be moved to amd_builder
+        self._pc_container_image = project_cfg["blocks"][self._block_name]["container"]["image"]
+
+        self._pc_project = None
+        self._pc_project_sources = None
+        self._pc_project_dependencies = None
+        self._pc_project_branch = None
+        self._pc_project_prebuilt = None
+
+        if 'project' in project_cfg['blocks'][self._block_name]:
+            self._pc_project = project_cfg['blocks'][self._block_name]['project']
+
+        if self._pc_project is not None:
+            if 'sources' in self._pc_project:
+                self._pc_project_sources = project_cfg['blocks'][self._block_name]['project']['sources']
+            if 'branch' in self._pc_project:
+                self._pc_project_branch = project_cfg['blocks'][self._block_name]['project']['branch']
+            if 'pre-built' in self._pc_project:
+                self._pc_project_prebuilt = project_cfg['blocks'][self._block_name]['project']['pre-built']
+            if 'dependencies' in self._pc_project:
+                self._pc_project_dependencies = project_cfg['blocks'][self._block_name]['project']['dependencies']
 
         # Host user
         self._host_user = os.getlogin()
         self._host_user_id = os.getuid()
 
         # Container
-        self._container_tool = self._project_cfg['externalTools']['containerTool']
-        self._container_image = f'{self._project_cfg["blocks"][self._block_name]["container"]["image"]}:xilinx-v{self._project_cfg["externalTools"]["xilinx"]["version"]}'
+        self._container_image = f'{self._pc_container_image}:xilinx-v{self._pc_xilinx_version}'
 
         # Local git branches
         self._git_local_ref_branch = '__ref'
         self._git_local_dev_branch = '__temp'
         
         # Sources for this block
-        if self._project_cfg['blocks'][self._block_name]['project'] is None or 'sources' not in self._project_cfg['blocks'][self._block_name]['project']:
+        if self._pc_project_sources is None:
             # The sources for this block are generated at runtime
             self._source_repo_url = None
             self._source_repo_branch = 'temp'
             source_repo_name = 'generated'
         else:
-            sources_str = self._project_cfg['blocks'][self._block_name]['project']['sources']
-            if validators.url(sources_str):
+            if validators.url(self._pc_project_sources):
                 # The sources for this block are downloaded from git
-                self._source_repo_url = sources_str
-                if 'branch' in self._project_cfg['blocks'][self._block_name]['project']:
-                    self._source_repo_branch = self._project_cfg['blocks'][self._block_name]['project']['branch']
+                self._source_repo_url = self._pc_project_sources
+                if self._pc_project_branch is not None:
+                    self._source_repo_branch = self._pc_project_branch
                 else:
-                    self._source_repo_branch = f'xilinx-v{self._project_cfg["externalTools"]["xilinx"]["version"]}'
+                    self._source_repo_branch = f'xilinx-v{self._pc_xilinx_version}'
                 source_repo_name = pathlib.Path(urllib.parse.urlparse(self._source_repo_url).path).stem
             else:
                 try:
                     # The sources for this block are provided locally
-                    pathlib.Path(sources_str)
-                    pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {sources_str}')
+                    pathlib.Path(self._pc_project_sources)
+                    pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {self._pc_project_sources}')
                     sys.exit(1)
                 except ValueError:
-                    pretty_print.print_error(f'{sources_str} is not a valid URL and not a valid path')
+                    pretty_print.print_error(f'{self._pc_project_sources} is not a valid URL and not a valid path')
                     sys.exit(1)
 
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
@@ -346,7 +366,7 @@ class Builder:
             None
         """
 
-        pretty_print.print_error(f'Containerization tool {self._container_tool} is not supported. Options are \'docker\', \'podman\' and \'none\'.')
+        pretty_print.print_error(f'Containerization tool {self._pc_container_tool } is not supported. Options are \'docker\', \'podman\' and \'none\'.')
         sys.exit(1)
     
 
@@ -391,7 +411,7 @@ class Builder:
             sys.exit(1)
 
         try:
-            if self._container_tool == 'docker':
+            if self._pc_container_tool  == 'docker':
                 # Get last tag time from docker
                 results = Builder._get_sh_results(['docker', 'image', 'inspect', '-f \'{{ .Metadata.LastTagTime }}\'', self._container_image])
                 # Do not extract tag time if the image does not yet exist
@@ -408,7 +428,7 @@ class Builder:
                 else:
                     pretty_print.print_build(f'No need to build the docker image {self._container_image}...')
 
-            elif self._container_tool == 'podman':
+            elif self._pc_container_tool  == 'podman':
                 # Get last build event time from podman
                 results = Builder._get_sh_results(['podman', 'image', 'inspect', '-f', '\'{{ .Id }}\'', self._container_image, '|', 'xargs', '-I', '{}', 'podman', 'events', '--filter', 'image={}', '--filter', 'event=build', '--format', '\'{{.Time}}\'', '--until', '0m'])
                 # Do not extract last build event time if the image does not yet exist
@@ -425,7 +445,7 @@ class Builder:
                 else:
                     pretty_print.print_build(f'No need to build the podman image {self._container_image}...')
 
-            elif self._container_tool == 'none':
+            elif self._pc_container_tool  == 'none':
                 pretty_print.print_warning('Container image is not built in native mode.')
             else:
                 Builder._err_unsup_container_tool()
@@ -567,26 +587,24 @@ class Builder:
             download_progress.t.update(downloaded - download_progress.t.n)
 
         # Get URL
-        if 'pre-built' not in self._project_cfg['blocks'][self._block_name]['project']:
+        if self._pc_project_prebuilt is None:
             pretty_print.print_error(f'The property blocks/{self._block_name}/project/pre-built is not provided')
             sys.exit(1)
 
-        download_url = self._project_cfg['blocks'][self._block_name]['project']['pre-built']
-
-        if not validators.url(download_url):
-            pretty_print.print_error(f'The value of blocks/{self._block_name}/project/pre-built is not a valid URL: {download_url}')
+        if not validators.url(self._pc_project_prebuilt):
+            pretty_print.print_error(f'The value of blocks/{self._block_name}/project/pre-built is not a valid URL: {self._pc_project_prebuilt}')
             sys.exit(1)
 
         # Send a HEAD request to get the HTTP headers
-        response = requests.head(download_url, allow_redirects=True)
+        response = requests.head(self._pc_project_prebuilt, allow_redirects=True)
 
         if response.status_code == 404:
             # File not found
-            pretty_print.print_error(f'The following file could not be downloaded: {download_url}\nStatus code {response.status_code} (File not found)')
+            pretty_print.print_error(f'The following file could not be downloaded: {self._pc_project_prebuilt}\nStatus code {response.status_code} (File not found)')
             sys.exit(1)
         elif response.status_code != 200:
             # Unexpected status code
-            pretty_print.print_error(f'The following file could not be downloaded: {download_url}\nUnexpected status code {response.status_code}')
+            pretty_print.print_error(f'The following file could not be downloaded: {self._pc_project_prebuilt}\nUnexpected status code {response.status_code}')
             sys.exit(1)
 
         #Check if the file needs to be downloaded
@@ -594,7 +612,7 @@ class Builder:
         if last_modified:
             last_modified_timestamp = parser.parse(last_modified).timestamp()
         else:
-            pretty_print.print_error(f'No \'Last-Modified\' header found for {download_url}')
+            pretty_print.print_error(f'No \'Last-Modified\' header found for {self._pc_project_prebuilt}')
             sys.exit(1)
 
         last_file_mod_timestamp = 0
@@ -614,8 +632,8 @@ class Builder:
 
             # Download the file
             download_progress.t = None
-            filename = download_url.rpartition('/')[2]
-            urllib.request.urlretrieve(download_url, self._download_dir / filename, reporthook=download_progress)
+            filename = self._pc_project_prebuilt.rpartition('/')[2]
+            urllib.request.urlretrieve(self._pc_project_prebuilt, self._download_dir / filename, reporthook=download_progress)
             if download_progress.t:
                 download_progress.t.close()
 
@@ -690,7 +708,7 @@ class Builder:
             None
         """
 
-        for block_name, block_pkg_src_path_str in self._project_cfg['blocks'][self._block_name]['project']['dependencies'].items():
+        for block_name, block_pkg_src_path_str in self._pc_project_dependencies.items():
             block_pkg_src_path = self._project_dir / block_pkg_src_path_str
             import_path = self._dependencies_dir / block_name
 
@@ -754,7 +772,7 @@ class Builder:
             None
         """
 
-        if self._container_tool in ('docker', 'podman'):
+        if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 pretty_print.print_build('Starting container...')
                 # Check which mounts (resp. directories) are available on the host system
@@ -767,12 +785,12 @@ class Builder:
                     if pathlib.Path(segments[0]).is_dir():
                         available_mounts.append(f'{segments[0]}:{segments[0]}:{segments[1]}')
                 # Start the container
-                Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while executing the container: {str(e)}')
                 sys.exit(1)
 
-        elif self._container_tool == 'none':
+        elif self._pc_container_tool  == 'none':
             # This function is only supported if a container tool is used
             Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
         else:
@@ -798,15 +816,15 @@ class Builder:
             pretty_print.print_error(f'No local sources found in {self._source_repo_dir}')
             sys.exit(1)
 
-        if self._container_tool in ('docker', 'podman'):
+        if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Open the menuconfig tool in the container
-                Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', menuconfig_commands])
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', menuconfig_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while running the menuconfig tool: {str(e)}')
                 sys.exit(1)
 
-        elif self._container_tool == 'none':
+        elif self._pc_container_tool  == 'none':
             # Open the menuconfig tool without using a container
             Builder._run_sh_command(['sh', '-c', menuconfig_commands])
         else:
@@ -836,15 +854,15 @@ class Builder:
             pretty_print.print_error(f'Configuration file already exists in {self._source_repo_dir / ".config"}')
             sys.exit(1)
 
-        if self._container_tool in ('docker', 'podman'):
+        if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Prepare clean sources in the container
-                Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', prep_srcs_commands])
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', prep_srcs_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while preparing clean sources: {str(e)}')
                 sys.exit(1)
 
-        elif self._container_tool == 'none':
+        elif self._pc_container_tool  == 'none':
             # Prepare clean sources without using a container
             Builder._run_sh_command(['sh', '-c', prep_srcs_commands])
         else:
@@ -865,20 +883,20 @@ class Builder:
             None
         """
 
-        if self._container_tool in ('docker', 'podman'):
+        if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Clean image only if it exists
-                results = Builder._get_sh_results([self._container_tool, 'images', '-q', self._container_image])
+                results = Builder._get_sh_results([self._pc_container_tool , 'images', '-q', self._container_image])
                 if results.stdout.splitlines():
                     pretty_print.print_build(f'Cleaning container image {self._container_image}...')
-                    Builder._run_sh_command([self._container_tool, 'image', 'rm', self._container_image])
+                    Builder._run_sh_command([self._pc_container_tool , 'image', 'rm', self._container_image])
                 else:
                     pretty_print.print_build(f'No need to clean container image {self._container_image}, the image doesn\'t exist...')
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while cleaning the container image: {str(e)}')
                 sys.exit(1)
 
-        elif self._container_tool == 'none':
+        elif self._pc_container_tool  == 'none':
             # This function is only supported if a container tool is used
             Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
         else:
@@ -910,15 +928,15 @@ class Builder:
                     sys.exit(1)
 
             pretty_print.print_clean('Cleaning repo directory...')
-            if self._container_tool in ('docker', 'podman'):
+            if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the repo directory from the container
-                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the repo directory: {str(e)}')
                     sys.exit(1)
 
-            elif self._container_tool == 'none':
+            elif self._pc_container_tool  == 'none':
                 # Clean up the repo directory without using a container
                 Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._repo_dir)}/* {str(self._repo_dir)}/.* 2> /dev/null || true\"'])
             else:
@@ -950,15 +968,15 @@ class Builder:
 
         if self._output_dir.exists():
             pretty_print.print_clean('Cleaning output directory...')
-            if self._container_tool in ('docker', 'podman'):
+            if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the output directory from the container
-                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._output_dir)}:/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._output_dir)}:/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the output directory: {str(e)}')
                     sys.exit(1)
 
-            elif self._container_tool == 'none':
+            elif self._pc_container_tool  == 'none':
                 # Clean up the output directory without using a container
                 Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._output_dir)}/* {str(self._output_dir)}/.* 2> /dev/null || true\"'])
             else:
@@ -987,15 +1005,15 @@ class Builder:
 
         if self._download_dir.exists():
             pretty_print.print_clean('Cleaning download directory...')
-            if self._container_tool in ('docker', 'podman'):
+            if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the download directory from the container
-                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._download_dir)}:/app/download:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/download/* /app/download/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._download_dir)}:/app/download:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/download/* /app/download/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the download directory: {str(e)}')
                     sys.exit(1)
 
-            elif self._container_tool == 'none':
+            elif self._pc_container_tool  == 'none':
                 # Clean up the download directory without using a container
                 Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._download_dir)}/* {str(self._download_dir)}/.* 2> /dev/null || true\"'])
             else:
@@ -1024,15 +1042,15 @@ class Builder:
 
         if self._dependencies_dir.exists():
             pretty_print.print_clean('Cleaning dependencies directory...')
-            if self._container_tool in ('docker', 'podman'):
+            if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the dependencies directory from the container
-                    Builder._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._dependencies_dir)}:/app/dependencies:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/dependencies/* /app/dependencies/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._dependencies_dir)}:/app/dependencies:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/dependencies/* /app/dependencies/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the dependencies directory: {str(e)}')
                     sys.exit(1)
 
-            elif self._container_tool == 'none':
+            elif self._pc_container_tool  == 'none':
                 # Clean up the dependencies directory without using a container
                 Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._dependencies_dir)}/* {str(self._dependencies_dir)}/.* 2> /dev/null || true\"'])
             else:

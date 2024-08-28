@@ -206,4 +206,3 @@ builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_xsa()
 
 # ToDos:
 #- boot-image should be a block. It should contain a depends property.
-#- Maybe it would be good to evaluate the _project_cfg dict only in the init function of the classes and to store everything in private member variables (e.g. _pc_...). Varibale could be set to None, if entry is not available

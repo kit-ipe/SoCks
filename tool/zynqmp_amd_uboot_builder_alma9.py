@@ -119,7 +119,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
                                 'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
                                 'export ARCH=aarch64 && ' \
                                 'make olddefconfig && ' \
-                                f'make -j{self._project_cfg["externalTools"]["make"]["maxBuildThreads"]}\''
+                                f'make -j{self._pc_make_threads}\''
 
         if not ZynqMP_AMD_UBoot_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd'], out_search_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd']):
             pretty_print.print_build('No need to rebuild U-Boot. No altered source files detected...')
@@ -127,14 +127,14 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
 
         pretty_print.print_build('Building U-Boot...')
 
-        if self._container_tool in ('docker', 'podman'):
+        if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run build commands in container
-                ZynqMP_AMD_UBoot_Builder_Alma9._run_sh_command([self._container_tool, 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', uboot_build_commands])
+                ZynqMP_AMD_UBoot_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', uboot_build_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while building das U-Boot: {str(e)}')
                 sys.exit(1)
-        elif self._container_tool == 'none':
+        elif self._pc_container_tool  == 'none':
             # Run build commands without using a container
             ZynqMP_AMD_UBoot_Builder_Alma9._run_sh_command(['sh', '-c', uboot_build_commands])
         else:
