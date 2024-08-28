@@ -132,11 +132,11 @@ with project_cfg_schema_file.open('r') as f:
 jsonschema.validate(project_cfg, project_cfg_schema)
 
 # Create builder objects
-builder_modules = ['zynqmp_amd_atf_builder_alma9', 'zynqmp_amd_uboot_builder_alma9', 'zynqmp_amd_vivado_hog_builder_alma9', 'zynqmp_amd_fsbl_builder_alma9']
+builder_modules = ['zynqmp_amd_atf_builder_alma9', 'zynqmp_amd_uboot_builder_alma9', 'zynqmp_amd_vivado_hog_builder_alma9', 'zynqmp_amd_fsbl_builder_alma9', 'zynqmp_amd_pmufw_builder_alma9']
 builders = {}
 
 for key0, value0 in project_cfg['blocks'].items():
-    if key0 in ['atf', 'u-boot', 'vivado', 'fsbl']:    # ToDo: Remove. Just temporary here for testing.
+    if key0 in ['atf', 'u-boot', 'vivado', 'fsbl', 'pmu-fw']:    # ToDo: Remove. Just temporary here for testing.
         builder_found = False
         for module_name in builder_modules:
             try:
@@ -201,10 +201,16 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].export_block_package()
 
 # FSBL
-builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_dependencies()
-builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_xsa()
-builders['ZynqMP_AMD_FSBL_Builder_Alma9'].create_fsbl_project()
-builders['ZynqMP_AMD_FSBL_Builder_Alma9'].build_fsbl()
+#builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_dependencies()
+#builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_xsa()
+#builders['ZynqMP_AMD_FSBL_Builder_Alma9'].create_fsbl_project()
+#builders['ZynqMP_AMD_FSBL_Builder_Alma9'].build_fsbl()
+
+# PMU Firmware
+builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].import_dependencies()
+builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].import_xsa()
+builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].create_pmufw_project()
+builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].build_pmufw()
 
 # ToDos:
 #- boot-image should be a block. It should contain a depends property.

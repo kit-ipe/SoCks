@@ -708,8 +708,6 @@ class Builder:
             None
         """
 
-        pretty_print.print_build('Importing block packages...')
-
         for block_name, block_pkg_src_path_str in self._pc_project_dependencies.items():
             block_pkg_src_path = self._project_dir / block_pkg_src_path_str
             import_path = self._dependencies_dir / block_name
@@ -730,6 +728,8 @@ class Builder:
                 return
 
             # Import block package
+            pretty_print.print_build('Importing block packages...')
+
             import_path.mkdir(parents=True, exist_ok=True)
             shutil.copy(block_pkg_src_path, import_path / block_pkg_src_path.name)
             with tarfile.open(import_path / block_pkg_src_path.name, "r:*") as archive:

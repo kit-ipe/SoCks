@@ -138,7 +138,6 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(amd_builder.AMD_Builder):
             try:
                 # Run build commands in container
                 ZynqMP_AMD_FSBL_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{str(self._xsa_dir)}:{str(self._xsa_dir)}:Z', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', fsbl_build_commands])
-
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while building the FSBL: {str(e)}')
                 sys.exit(1)
