@@ -91,8 +91,9 @@ class Builder:
         
         # Project directories
         self._project_dir = project_dir
+        self._project_src_dir = self._project_dir / 'src'
         self._project_temp_dir = self._project_dir / 'temp'
-        self._patch_dir = self._project_dir / self._block_name / 'patches'
+        self._patch_dir = self._project_src_dir / self._block_name / 'patches'
         self._repo_dir = self._project_temp_dir / self._block_name / 'repo'
         self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
         self._download_dir = self._project_temp_dir / self._block_name / 'download'
@@ -708,22 +709,22 @@ class Builder:
             None
         """
 
-        for block_name, block_pkg_src_path_str in self._pc_project_dependencies.items():
-            block_pkg_src_path = self._project_dir / block_pkg_src_path_str
+        for block_name, block_pkg_path_str in self._pc_project_dependencies.items():
+            block_pkg_path = self._project_dir / block_pkg_path_str
             import_path = self._dependencies_dir / block_name
 
             # Check whether the file exists
-            if not block_pkg_src_path.is_file():
-                pretty_print.print_error(f'Unable to import block package. The following file does not exist: {block_pkg_src_path}')
+            if not block_pkg_path.is_file():
+                pretty_print.print_error(f'Unable to import block package. The following file does not exist: {block_pkg_path}')
                 sys.exit(1)
 
             # Check whether the file is a tar.gz archive
-            if block_pkg_src_path.name.partition('.')[2] != 'tar.gz':
-                pretty_print.print_error(f'Unable to import block package. The following archive type is not supported: {block_pkg_src_path.name.partition(".")[2]}')
+            if block_pkg_path.name.partition('.')[2] != 'tar.gz':
+                pretty_print.print_error(f'Unable to import block package. The following archive type is not supported: {block_pkg_path.name.partition(".")[2]}')
                 sys.exit(1)
 
             # Check whether this dependencie needs to be imported
-            if not Builder._check_rebuilt_required(src_search_list=[block_pkg_src_path], out_search_list=[import_path]):
+            if not Builder._check_rebuilt_required(src_search_list=[block_pkg_path], out_search_list=[import_path]):
                 pretty_print.print_build('No need to import block package. No altered source files detected...')
                 return
 
@@ -731,8 +732,8 @@ class Builder:
             pretty_print.print_build('Importing block packages...')
 
             import_path.mkdir(parents=True, exist_ok=True)
-            shutil.copy(block_pkg_src_path, import_path / block_pkg_src_path.name)
-            with tarfile.open(import_path / block_pkg_src_path.name, "r:*") as archive:
+            shutil.copy(block_pkg_path, import_path / block_pkg_path.name)
+            with tarfile.open(import_path / block_pkg_path.name, "r:*") as archive:
                     # Extract all contents to the output directory
                     archive.extractall(path=import_path)
 
