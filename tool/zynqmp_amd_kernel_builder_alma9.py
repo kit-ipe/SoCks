@@ -1,7 +1,5 @@
 import sys
 import pathlib
-import shutil
-import hashlib
 
 import pretty_print
 import builder
