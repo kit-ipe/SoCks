@@ -817,6 +817,8 @@ class Builder:
             pretty_print.print_error(f'No local sources found in {self._source_repo_dir}')
             sys.exit(1)
 
+        pretty_print.print_build('Opening configuration menu...')
+
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Open the menuconfig tool in the container

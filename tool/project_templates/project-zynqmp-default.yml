@@ -40,7 +40,7 @@ blocks:
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
   kernel:
     source: "local_build"
-    builder: "zynqmp-amd-kernel-builder-alma9"
+    builder: "ZynqMP_AMD_Kernel_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/linux-xlnx.git"
       # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
