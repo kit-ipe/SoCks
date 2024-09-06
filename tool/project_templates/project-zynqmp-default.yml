@@ -13,23 +13,23 @@ blocks:
     builder: "ZynqMP_AMD_ATF_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/arm-trusted-firmware.git"
-      # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
+      branch: "xilinx-v{{externalTools/xilinx/version}}"
       # If no 'pre-built' property is specified, the block must be built locally
     container:
       image: "amd-atf-builder-alma9"
-      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      tag: "xilinx-v{{externalTools/xilinx/version}}"
   devicetree:
     source: "local_build"
     builder: "ZynqMP_AMD_Devicetree_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/device-tree-xlnx.git"
-      # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
+      branch: "xilinx_v{{externalTools/xilinx/version}}"
       # If no 'pre-built' property is specified, the block must be built locally
       dependencies:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "amd-xilinx-tools-alma9"
-      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      tag: "xilinx-v{{externalTools/xilinx/version}}"
   fsbl:
     source: "local_build"
     builder: "ZynqMP_AMD_FSBL_Builder_Alma9"
@@ -39,17 +39,17 @@ blocks:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "amd-xilinx-tools-alma9"
-      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      tag: "xilinx-v{{externalTools/xilinx/version}}"
   kernel:
     source: "local_build"
     builder: "ZynqMP_AMD_Kernel_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/linux-xlnx.git"
-      # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
+      branch: "xilinx-v{{externalTools/xilinx/version}}"
       # If no 'pre-built' property is specified, the block must be built locally
     container:
       image: "kernel-builder-alma9"
-      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      tag: "xilinx-v{{externalTools/xilinx/version}}"
   pmu-fw:
     source: "local_build"
     builder: "ZynqMP_AMD_PMUFW_Builder_Alma9"
@@ -59,7 +59,7 @@ blocks:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "amd-xilinx-tools-alma9"
-      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      tag: "xilinx-v{{externalTools/xilinx/version}}"
   rootfs:
     source: "local_build"
     builder: "zynqmp-alma8-rootfs-builder-alma9"
@@ -67,19 +67,19 @@ blocks:
       # If no 'pre-built' property is specified, the block must be built locally
     container:
       image: "alma8-rootfs-builder-alma8"
-      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      tag: "xilinx-v{{externalTools/xilinx/version}}"
   u-boot:
     source: "local_build"
     builder: "ZynqMP_AMD_UBoot_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/u-boot-xlnx.git"
-      # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
+      branch: "xilinx-v{{externalTools/xilinx/version}}"
       # If no 'pre-built' property is specified, the block must be built locally
       dependencies:
         atf: "temp/atf/output/atf.tar.gz"
     container:
       image: "u-boot-builder-alma9"
-      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      tag: "xilinx-v{{externalTools/xilinx/version}}"
   vivado:
     source: "local_build"
     # Property 'builder' must be specified outside this default project configuration file
@@ -89,4 +89,4 @@ blocks:
       # If no 'pre-built' property is specified, the block must be built locally
     container:
       image: "amd-xilinx-tools-alma9"
-      # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
+      tag: "xilinx-v{{externalTools/xilinx/version}}"

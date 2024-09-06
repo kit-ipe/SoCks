@@ -16,6 +16,3 @@ blocks:
       sources: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
       branch: "main"
       name: "serenity-s1-kria"
-  devicetree:
-    project:
-      branch: "xilinx_v2022.2"

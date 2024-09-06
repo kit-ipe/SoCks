@@ -19,6 +19,7 @@ class AMD_Builder(builder.Builder):
 
         # Import project configuration
         self._pc_xilinx_path = project_cfg['externalTools']['xilinx']['path']
+        self._pc_xilinx_version = project_cfg["externalTools"]["xilinx"]["version"]
         self._pc_xilinx_license = project_cfg["externalTools"]["xilinx"]["license"]
 
         # Project directories

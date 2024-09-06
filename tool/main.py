@@ -8,6 +8,7 @@ import json
 import jsonschema
 import yaml
 import copy
+import re
 
 import pretty_print
 
@@ -102,6 +103,57 @@ def compose_project_configuration(config_file_name: str, socks_dir: pathlib.Path
     return ret
 
 
+def resolve_placeholders(project_cfg: dict, search_object):
+    """
+    Recursively search the project configuration and replace all placeholders.
+
+    Args:
+        project_cfg:
+            The entire project configuration.
+        search_object:
+            The part of the project configuration to be searched. The initial seed is the entire project configuration.
+
+    Returns:
+        The part of the project configuration provided in search_object with all placeholders replaced.
+
+    Raises:
+        None
+    """
+
+    if isinstance(search_object, dict):
+        # Traverse dictionary
+        for key, value in search_object.items():
+            search_object[key] = resolve_placeholders(project_cfg, value)
+
+    elif isinstance(search_object, list):
+        # Traverse list
+        for i, item in enumerate(search_object):
+            search_object[i] = resolve_placeholders(project_cfg, item)
+
+    elif isinstance(search_object, str):
+        # Replace placeholders in string, if present
+        placeholder_pattern = r'\{\{([^\}]+)\}\}'
+        # Check if one or more placeholders are present
+        if re.search(placeholder_pattern, search_object):
+            str_buffer = search_object
+            # Iterate over all placeholders
+            for path in re.findall(placeholder_pattern, search_object):
+                keys = path.split('/')
+                # Get value from project configuration
+                value = project_cfg
+                for key in keys:
+                    if key not in value:
+                        pretty_print.print_error(f'The following setting contains a placeholder that does not point to a valid setting: {search_object}')
+                        sys.exit(1)
+                    value = value[key]
+                # Replace placeholder with value
+                str_buffer = str_buffer.replace(f'{{{{{path}}}}}',str(value))
+            return str_buffer
+
+    # If it's neither a dict, list, nor string, return the value as-is
+    return search_object
+
+
 # Set tool and project directory
 socks_dir = pathlib.Path('/home/marvin/Projects/Build_System_Tests/SoCks/tool') # ToDo: I think these path should not be hard coded here
 project_dir = pathlib.Path.cwd()
@@ -116,6 +168,7 @@ if not project_cfg_root_file.exists():
 
 # Get project configuration
 project_cfg = compose_project_configuration(config_file_name=project_cfg_root_file.name, socks_dir=socks_dir, project_dir=project_dir)
+project_cfg = resolve_placeholders(project_cfg, project_cfg)
 
 # Validate project configuration
 if 'projectType' in project_cfg:

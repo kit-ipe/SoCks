@@ -27,8 +27,8 @@ class Builder:
         # Import project configuration
         self._pc_container_tool = project_cfg['externalTools']['containerTool']
         self._pc_make_threads = project_cfg["externalTools"]["make"]["maxBuildThreads"]
-        self._pc_xilinx_version = project_cfg["externalTools"]["xilinx"]["version"]               # ToDo: Should be moved to amd_builder
         self._pc_container_image = project_cfg["blocks"][self._block_name]["container"]["image"]
+        self._pc_container_tag = project_cfg["blocks"][self._block_name]["container"]["tag"]
 
         self._pc_project = None
         self._pc_project_sources = None
@@ -54,7 +54,7 @@ class Builder:
         self._host_user_id = os.getuid()
 
         # Container
-        self._container_image = f'{self._pc_container_image}:xilinx-v{self._pc_xilinx_version}'
+        self._container_image = f'{self._pc_container_image}:{self._pc_container_tag}'
 
         # Local git branches
         self._git_local_ref_branch = '__ref'
@@ -70,10 +70,7 @@ class Builder:
             if validators.url(self._pc_project_sources):
                 # The sources for this block are downloaded from git
                 self._source_repo_url = self._pc_project_sources
-                if self._pc_project_branch is not None:
-                    self._source_repo_branch = self._pc_project_branch
-                else:
-                    self._source_repo_branch = f'xilinx-v{self._pc_xilinx_version}'
+                self._source_repo_branch = self._pc_project_branch
                 source_repo_name = pathlib.Path(urllib.parse.urlparse(self._source_repo_url).path).stem
             else:
                 try:

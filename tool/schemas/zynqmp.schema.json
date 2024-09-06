@@ -73,7 +73,7 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources"],
+              "required": ["sources", "branch"],
               "additionalProperties": false,
               "properties": {
                 "sources": {
@@ -92,7 +92,7 @@
             },
             "container": {
               "type": "object",
-              "required": ["image"],
+              "required": ["image", "tag"],
               "additionalProperties": false,
               "properties": {
                 "image": {
@@ -122,7 +122,7 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources", "dependencies"],
+              "required": ["sources", "branch", "dependencies"],
               "additionalProperties": false,
               "properties": {
                 "sources": {
@@ -152,7 +152,7 @@
             },
             "container": {
               "type": "object",
-              "required": ["image"],
+              "required": ["image", "tag"],
               "additionalProperties": false,
               "properties": {
                 "image": {
@@ -204,7 +204,7 @@
             },
             "container": {
               "type": "object",
-              "required": ["image"],
+              "required": ["image", "tag"],
               "additionalProperties": false,
               "properties": {
                 "image": {
@@ -234,7 +234,7 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources"],
+              "required": ["sources", "branch"],
               "additionalProperties": false,
               "properties": {
                 "sources": {
@@ -253,7 +253,7 @@
             },
             "container": {
               "type": "object",
-              "required": ["image"],
+              "required": ["image", "tag"],
               "additionalProperties": false,
               "properties": {
                 "image": {
@@ -305,7 +305,7 @@
             },
             "container": {
               "type": "object",
-              "required": ["image"],
+              "required": ["image", "tag"],
               "additionalProperties": false,
               "properties": {
                 "image": {
@@ -344,7 +344,7 @@
             },
             "container": {
               "type": "object",
-              "required": ["image"],
+              "required": ["image", "tag"],
               "additionalProperties": false,
               "properties": {
                 "image": {
@@ -374,7 +374,7 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources", "dependencies"],
+              "required": ["sources", "branch", "dependencies"],
               "additionalProperties": false,
               "properties": {
                 "sources": {
@@ -404,7 +404,7 @@
             },
             "container": {
               "type": "object",
-              "required": ["image"],
+              "required": ["image", "tag"],
               "additionalProperties": false,
               "properties": {
                 "image": {
@@ -434,7 +434,7 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources"],
+              "required": ["sources", "branch"],
               "additionalProperties": false,
               "properties": {
                 "sources": {
@@ -457,7 +457,7 @@
             },
             "container": {
               "type": "object",
-              "required": ["image"],
+              "required": ["image", "tag"],
               "additionalProperties": false,
               "properties": {
                 "image": {
