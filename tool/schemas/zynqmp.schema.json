@@ -122,7 +122,7 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources"],
+              "required": ["sources", "dependencies"],
               "additionalProperties": false,
               "properties": {
                 "sources": {
@@ -136,6 +136,17 @@
                 "pre-built": {
                   "description": "URL or path to the pre-built files",
                   "type": "string"
+                },
+                "dependencies": {
+                  "type": "object",
+                  "required": ["vivado"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "vivado": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    }
+                  }
                 }
               }
             },
@@ -363,7 +374,7 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources"],
+              "required": ["sources", "dependencies"],
               "additionalProperties": false,
               "properties": {
                 "sources": {

@@ -1,0 +1,233 @@
+import sys
+import pathlib
+import shutil
+import hashlib
+
+import pretty_print
+import amd_builder
+
+class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
+    """
+    AMD devicetree builder class
+    """
+
+    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
+        block_name = 'devicetree'
+
+        super().__init__(project_cfg=project_cfg,
+                        socks_dir=socks_dir,
+                        project_dir=project_dir,
+                        block_name=block_name)
+
+        # Project directories
+        self._dt_incl_dir = self._project_src_dir / self._block_name / 'dt_includes'
+        self._dt_overlay_dir = self._project_src_dir / self._block_name / 'dt_overlays'
+        self._base_work_dir = self._work_dir / 'base'
+        self._overlay_work_dir = self._work_dir / 'overlays'
+
+        # Project files
+        # ASCII file with all devicetree includes for the base devicetree
+        self._dt_incl_list_file = self._dt_incl_dir / 'includes.cfg'
+
+
+    def prepare_dt_sources(self):
+        """
+        Prepares the devicetree sources.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        prep_dt_srcs_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
+                                f'source {self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/settings64.sh && ' \
+                                f'SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa) && ' \
+                                'printf \"hsi open_hw_design ${SOURCE_XSA_PATH}' \
+                                f'    \r\nhsi set_repo_path {self._source_repo_dir} ' \
+                                '    \r\nhsi create_sw_design device-tree -os device_tree -proc psu_cortexa53_0 ' \
+                                f'    \r\nhsi generate_target -dir {self._base_work_dir} ' \
+                                f'    \r\nhsi close_hw_design [hsi current_hw_design]\" > {self._base_work_dir}/generate_dts_prj.tcl && ' \
+                                f'xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl\''
+
+
+        pretty_print.print_build('Preparing devicetree sources...')
+
+        xsa_files = list(self._xsa_dir.glob('*.xsa'))
+
+        # Check if there is more than one XSA file in the xsa directory
+        if len(xsa_files) != 1:
+            pretty_print.print_error(f'Not exactly one XSA archive in {self._xsa_dir}.')
+            sys.exit(1)
+
+        # Calculate md5 of the provided file
+        md5_new_file = hashlib.md5(xsa_files[0].read_bytes()).hexdigest()
+        # Read md5 of previously used XSA archive, if any
+        md5_existsing_file = 0
+        if self._source_xsa_md5_file.is_file():
+            with self._source_xsa_md5_file.open('r') as f:
+                md5_existsing_file = f.read()
+
+        # Check if the project needs to be created
+        if md5_existsing_file == md5_new_file:
+            pretty_print.print_warning('No new XSA archive recognized. Devicetree sources are not recreated.')
+            return
+
+        # Check if Xilinx tools are available
+        if not pathlib.Path(self._pc_xilinx_path).is_dir():
+            pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
+            sys.exit(1)
+
+        ZynqMP_AMD_Devicetree_Builder_Alma9.clean_work(self=self)
+        self._base_work_dir.mkdir(parents=True)
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Run commands in container
+                ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{self._xsa_dir}:{self._xsa_dir}:Z', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._base_work_dir}:{self._base_work_dir}:Z', self._container_image, 'sh', '-c', prep_dt_srcs_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while preparing devicetree sources: {str(e)}')
+                sys.exit(1)
+        elif self._pc_container_tool  == 'none':
+            # Run commands without using a container
+            ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command(['sh', '-c', prep_dt_srcs_commands])
+        else:
+            Builder._err_unsup_container_tool()
+
+        # Save checksum in file
+        with self._source_xsa_md5_file.open('w') as f:
+            print(md5_new_file, file=f, end='')
+
+
+    def build_base_devicetree(self):
+        """
+        Builds the base devicetree.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # The *.dts file created by gcc is for humans difficult to read. Therefore, in the last step, it is replaced by one created with the devicetree compiler.
+        dt_build_commands = f'\'cd {self._base_work_dir} && ' \
+                            'gcc -I dts_output -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -o system.dts system-top.dts && ' \
+                            'dtc -I dts -O dtb -@ -o system.dtb system.dts && ' \
+                            'dtc -I dtb -O dts -o system.dts system.dtb\''
+
+        # Check whether the devicetree needs to be built
+        if not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuilt_required(src_search_list=[self._dt_incl_dir, self._patch_dir, self._source_repo_dir], out_search_list=[self._base_work_dir / 'system.dtb']):
+            pretty_print.print_build('No need to rebuild the devicetree. No altered source files detected...')
+            return
+
+        pretty_print.print_build('Building the base devicetree...')
+
+        try:
+            if self._dt_incl_list_file.is_file():
+                with self._dt_incl_list_file.open('r') as incl_list_file:
+                    for incl in incl_list_file:
+                        incl = incl.strip()
+                        if incl:
+                            # Devicetree includes are copied before every build to make sure they are up to date
+                            shutil.copy(self._dt_incl_dir / incl, self._base_work_dir / incl)
+                            # Check if this file is already included, and if not, include it
+                            with (self._base_work_dir / 'system-top.dts').open('r+') as dts_top_file:
+                                contents = dts_top_file.read()
+                                incl_line = f'#include "{incl}"\n'
+                                if incl_line not in contents:
+                                    # If the line was not found, the file pointer is now at the end
+                                    # Write the include line
+                                    dts_top_file.write(incl_line)
+        except Exception as e:
+            pretty_print.print_error(f'An error occurred while adding devicetree includes: {str(e)}')
+            sys.exit(1)
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Run commands in container
+                ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._base_work_dir}:{self._base_work_dir}:Z', self._container_image, 'sh', '-c', dt_build_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while building the base devicetree: {str(e)}')
+                sys.exit(1)
+        elif self._pc_container_tool  == 'none':
+            # Run commands without using a container
+            ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command(['sh', '-c', dt_build_commands])
+        else:
+            Builder._err_unsup_container_tool()
+
+        self._output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create symlink to the output files
+        (self._output_dir / 'system.dtb').unlink(missing_ok=True)
+        (self._output_dir / 'system.dtb').symlink_to(self._base_work_dir / 'system.dtb')
+        (self._output_dir / 'system.dts').unlink(missing_ok=True)
+        (self._output_dir / 'system.dts').symlink_to(self._base_work_dir / 'system.dts')
+
+
+    def build_dt_overlays(self):
+        """
+        Builds devicetree overlays.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        dt_overlays_build_commands = f'\'cd {self._overlay_work_dir} && ' \
+                                    'for file in *.dtsi; do ' \
+                                    '   name=$(printf "${file}" | awk -F/ "{print \$(NF)}" | awk -F. "{print \$(NF-1)}"); ' \
+                                    '   dtc -O dtb -o ${name}.dtbo -@ ${name}.dtsi; ' \
+                                    'done\''
+
+        # Check whether the devicetree overlays need to be built
+        if not self._dt_overlay_dir.is_dir() or not any(self._dt_overlay_dir.iterdir()) or not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuilt_required(src_search_list=[self._dt_overlay_dir], out_search_list=list(self._overlay_work_dir.glob('*.dtbo'))):
+            pretty_print.print_build('No need to rebuild devicetree overlays. No altered source files detected...')
+            return
+
+        pretty_print.print_build('Building devicetree overlays...')
+
+        # Clean overlay work directory
+        try:
+            shutil.rmtree(self._overlay_work_dir)
+        except FileNotFoundError:
+            pass  # Ignore if the directory does not exist
+        self._overlay_work_dir.mkdir(parents=True)
+
+        # Copy all overlays to the work directory to make them accessable in the container
+        # The overlays are copied before every build to make sure they are up to date
+        for overlay in self._dt_overlay_dir.glob('*.dtsi'):
+            shutil.copy(overlay, self._overlay_work_dir / overlay.name)
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Run commands in container
+                ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._overlay_work_dir}:{self._overlay_work_dir}:Z', self._container_image, 'sh', '-c', dt_overlays_build_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while building devicetree overlays: {str(e)}')
+                sys.exit(1)
+        elif self._pc_container_tool  == 'none':
+            # Run commands without using a container
+            ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command(['sh', '-c', dt_overlays_build_commands])
+        else:
+            Builder._err_unsup_container_tool()
+
+        self._output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create symlink to the output files
+        for symlink in self._output_dir.glob('*.dtbo'):
+            (symlink).unlink()
+        for symlink in self._overlay_work_dir.glob('*.dtbo'):
+            (self._output_dir / symlink.name).symlink_to(symlink)

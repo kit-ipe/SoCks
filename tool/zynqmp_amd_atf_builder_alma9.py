@@ -45,13 +45,13 @@ class ZynqMP_AMD_ATF_Builder_Alma9(builder.Builder):
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
-                # Run build commands in container
+                # Run commands in container
                 ZynqMP_AMD_ATF_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', atf_build_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while building the ATF: {str(e)}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
-            # Run build commands without using a container
+            # Run commands without using a container
             ZynqMP_AMD_ATF_Builder_Alma9._run_sh_command(['sh', '-c', atf_build_commands])
         else:
             Builder._err_unsup_container_tool()

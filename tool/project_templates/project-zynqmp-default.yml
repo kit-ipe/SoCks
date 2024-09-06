@@ -20,11 +20,13 @@ blocks:
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used
   devicetree:
     source: "local_build"
-    builder: "zynqmp-amd-devicetree-builder-alma9"
+    builder: "ZynqMP_AMD_Devicetree_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/device-tree-xlnx.git"
       # If no 'branch' property is specified, the default branch xilinx-v[externalTools/vivado/version] is used
       # If no 'pre-built' property is specified, the block must be built locally
+      dependencies:
+        vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "amd-xilinx-tools-alma9"
       # If no 'tag' property is specified, the default tag xilinx-v[externalTools/vivado/version] is used

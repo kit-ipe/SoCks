@@ -55,13 +55,13 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
         
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
-                # Run build commands in container
+                # Run commands in container
                 ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', create_vivado_project_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while creating the vivado project: {str(e)}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
-            # Run build commands without using a container
+            # Run commands without using a container
             ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command(['sh', '-c', create_vivado_project_commands])
         else:
             Builder._err_unsup_container_tool()
@@ -106,13 +106,13 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
-                # Run build commands in container
+                # Run commands in container
                 ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', vivado_build_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while building the vivado project: {str(e)}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
-            # Run build commands without using a container
+            # Run commands without using a container
             ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command(['sh', '-c', vivado_build_commands])
         else:
             Builder._err_unsup_container_tool()

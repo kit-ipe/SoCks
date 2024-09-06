@@ -81,13 +81,13 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(amd_builder.AMD_Builder):
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
-                # Run build commands in container
+                # Run commands in container
                 ZynqMP_AMD_FSBL_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{str(self._xsa_dir)}:{str(self._xsa_dir)}:Z', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._work_dir)}:{str(self._work_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', create_fsbl_project_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while creating the FSBL project: {str(e)}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
-            # Run build commands without using a container
+            # Run commands without using a container
             ZynqMP_AMD_FSBL_Builder_Alma9._run_sh_command(['sh', '-c', create_fsbl_project_commands])
         else:
             Builder._err_unsup_container_tool()
@@ -136,13 +136,13 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(amd_builder.AMD_Builder):
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
-                # Run build commands in container
+                # Run commands in container
                 ZynqMP_AMD_FSBL_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{str(self._xsa_dir)}:{str(self._xsa_dir)}:Z', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', fsbl_build_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while building the FSBL: {str(e)}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
-            # Run build commands without using a container
+            # Run commands without using a container
             ZynqMP_AMD_FPGA_Builder_Alma9._run_sh_command(['sh', '-c', fsbl_build_commands])
         else:
             Builder._err_unsup_container_tool()

@@ -32,7 +32,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
             None
         """
 
-        menuconfig_commands = f'\'cd {str(self._source_repo_dir)} && ' \
+        menuconfig_commands = f'\'cd {self._source_repo_dir} && ' \
                                 'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
                                 'make ARCH=arm64 menuconfig\''
 
@@ -53,7 +53,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
             None
         """
 
-        prep_srcs_commands = f'\'cd {str(self._source_repo_dir)} && ' \
+        prep_srcs_commands = f'\'cd {self._source_repo_dir} && ' \
                                 'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
                                 'make ARCH=arm64 xilinx_zynqmp_defconfig && ' \
                                 'printf \"\n# Do not ignore the config file\n!.config\n\" >> .gitignore\''
@@ -75,7 +75,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
             None
         """
 
-        kernel_build_commands = f'\'cd {str(self._source_repo_dir)} && ' \
+        kernel_build_commands = f'\'cd {self._source_repo_dir} && ' \
                                 'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
                                 'make ARCH=arm64 olddefconfig && ' \
                                 f'make ARCH=arm64 -j{self._pc_make_threads}\''
@@ -89,18 +89,18 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
-                # Run build commands in container
+                # Run commands in container
                 ZynqMP_AMD_Kernel_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', kernel_build_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while building the Linux Kernel: {str(e)}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
-            # Run build commands without using a container
+            # Run commands without using a container
             ZynqMP_AMD_Kernel_Builder_Alma9._run_sh_command(['sh', '-c', kernel_build_commands])
         else:
             Builder._err_unsup_container_tool()
 
-        # Create symlink to the output file
+        # Create symlink to the output files
         (self._output_dir / 'Image').unlink(missing_ok=True)
         (self._output_dir / 'Image').symlink_to(self._source_repo_dir / 'arch/arm64/boot/Image')
         (self._output_dir / 'Image.gz').unlink(missing_ok=True)
@@ -121,12 +121,12 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
             None
         """
 
-        export_modules_commands = f'\'cd {str(self._source_repo_dir)} && ' \
+        export_modules_commands = f'\'cd {self._source_repo_dir} && ' \
                                 'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
-                                f'make ARCH=arm64 modules_install INSTALL_MOD_PATH={str(self._output_dir)} && ' \
-                                f'find {str(self._output_dir)}/lib -type l -delete && ' \
-                                f'tar -P --xform=\'s:{str(self._output_dir)}::\' --numeric-owner -p -czf {str(self._output_dir)}/kernel_modules.tar.gz {str(self._output_dir)}/lib && ' \
-                                f'rm -rf {str(self._output_dir)}/lib\''
+                                f'make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir} && ' \
+                                f'find {self._output_dir}/lib -type l -delete && ' \
+                                f'tar -P --xform=\'s:{self._output_dir}::\' --numeric-owner -p -czf {self._output_dir}/kernel_modules.tar.gz {self._output_dir}/lib && ' \
+                                f'rm -rf {self._output_dir}/lib\''
 
         # Check if Kernel sources are available
         if not self._source_repo_dir.is_dir():
@@ -142,13 +142,13 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
-                # Run build commands in container
+                # Run commands in container
                 ZynqMP_AMD_Kernel_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', export_modules_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while exporting Kernel modules: {str(e)}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
-            # Run build commands without using a container
+            # Run commands without using a container
             ZynqMP_AMD_Kernel_Builder_Alma9._run_sh_command(['sh', '-c', export_modules_commands])
         else:
             Builder._err_unsup_container_tool()
