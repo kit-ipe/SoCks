@@ -691,7 +691,7 @@ class Builder:
         with tarfile.open(block_pkg_path, "w:gz") as archive:
             for file in self._output_dir.iterdir():
                 if not file.samefile(block_pkg_path):
-                    archive.add(file, arcname=file.name)
+                    archive.add(file.resolve(strict=True), arcname=file.name)
 
 
     def import_dependencies(self):
