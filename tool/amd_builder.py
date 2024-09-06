@@ -44,7 +44,7 @@ class AMD_Builder(builder.Builder):
             None
         """
 
-        potential_mounts = [f'{str(self._xsa_dir)}:Z', f'{self._pc_xilinx_path}:ro', f'{str(self._repo_dir)}:Z', f'{str(self._work_dir)}:Z', f'{str(self._output_dir)}:Z']
+        potential_mounts = [f'{self._xsa_dir}:Z', f'{self._pc_xilinx_path}:ro', f'{self._repo_dir}:Z', f'{self._work_dir}:Z', f'{self._output_dir}:Z']
 
         AMD_Builder._start_container(self, potential_mounts=potential_mounts)
 
@@ -109,14 +109,14 @@ class AMD_Builder(builder.Builder):
             if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the source_xsa directory from the container
-                    AMD_Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._xsa_dir)}:/app/source_xsa:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/source_xsa/* /app/source_xsa/.* 2> /dev/null || true\"'])
+                    AMD_Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._xsa_dir}:/app/source_xsa:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/source_xsa/* /app/source_xsa/.* 2> /dev/null || true\"'])
                 except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the source_xsa directory: {str(e)}')
+                    pretty_print.print_error(f'An error occurred while cleaning the source_xsa directory: {e}')
                     sys.exit(1)
 
             elif self._pc_container_tool  == 'none':
                 # Clean up the source_xsa directory without using a container
-                AMD_Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._xsa_dir)}/* {str(self._xsa_dir)}/.* 2> /dev/null || true\"'])
+                AMD_Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._xsa_dir}/* {self._xsa_dir}/.* 2> /dev/null || true\"'])
             else:
                 AMD_Builder._err_unsup_container_tool()
 

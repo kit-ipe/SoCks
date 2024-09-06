@@ -405,7 +405,7 @@ class Builder:
 
         # Check if the required container file exists
         if not self._container_file.is_file():
-            pretty_print.print_error(f'File {str(self._container_file)} not found.')
+            pretty_print.print_error(f'File {self._container_file} not found.')
             sys.exit(1)
 
         try:
@@ -422,7 +422,7 @@ class Builder:
                 # Build image, if necessary
                 if last_tag_timestamp < last_file_mod_timestamp:
                     pretty_print.print_build(f'Building docker image {self._container_image}...')
-                    Builder._run_sh_command(['docker', 'build', '-t', self._container_image, '-f', str(self._container_file), '--build-arg', f'user_name={self._host_user}', '--build-arg', f'user_id={str(self._host_user_id)}', '.'])
+                    Builder._run_sh_command(['docker', 'build', '-t', self._container_image, '-f', str(self._container_file), '--build-arg', f'user_name={self._host_user}', '--build-arg', f'user_id={self._host_user_id}', '.'])
                 else:
                     pretty_print.print_build(f'No need to build the docker image {self._container_image}...')
 
@@ -448,7 +448,7 @@ class Builder:
             else:
                 Builder._err_unsup_container_tool()
         except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the container image: {str(e)}')
+                pretty_print.print_error(f'An error occurred while building the container image: {e}')
                 sys.exit(1)
 
 
@@ -480,7 +480,7 @@ class Builder:
                 # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
                 Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while initializing the repository: {str(e)}')
+                pretty_print.print_error(f'An error occurred while initializing the repository: {e}')
                 sys.exit(1)
         else:
             pretty_print.print_build('No need to initialize the local repo...')
@@ -518,7 +518,7 @@ class Builder:
                 Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch])
                 Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while creating new patches: {str(e)}')
+                pretty_print.print_error(f'An error occurred while creating new patches: {e}')
                 sys.exit(1)
         else:
             pretty_print.print_warning('No commits found that can be used as sources for patches.')
@@ -557,7 +557,7 @@ class Builder:
                 # Create the flag if it doesn't exist and update the timestamps
                 self._patches_applied_flag.touch()
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while applying patches: {str(e)}')
+                pretty_print.print_error(f'An error occurred while applying patches: {e}')
                 sys.exit(1)
         else:
             pretty_print.print_build('No need to apply patches...')
@@ -619,7 +619,7 @@ class Builder:
             if len(items) == 1:
                 last_file_mod_timestamp = items[0].stat().st_mtime
             else:
-                pretty_print.print_error(f'There is more than one item in {str(self._download_dir)}\nPlease empty the directory')
+                pretty_print.print_error(f'There is more than one item in {self._download_dir}\nPlease empty the directory')
                 sys.exit(1)
 
         if last_file_mod_timestamp < last_modified_timestamp:
@@ -749,7 +749,7 @@ class Builder:
             None
         """
 
-        potential_mounts = [f'{str(self._repo_dir)}:Z', f'{str(self._work_dir)}:Z', f'{str(self._output_dir)}:Z']
+        potential_mounts = [f'{self._repo_dir}:Z', f'{self._work_dir}:Z', f'{self._output_dir}:Z']
 
         Builder._start_container(self, potential_mounts=potential_mounts)
 
@@ -785,7 +785,7 @@ class Builder:
                 # Start the container
                 Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while executing the container: {str(e)}')
+                pretty_print.print_error(f'An error occurred while executing the container: {e}')
                 sys.exit(1)
 
         elif self._pc_container_tool  == 'none':
@@ -819,9 +819,9 @@ class Builder:
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Open the menuconfig tool in the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', menuconfig_commands])
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', menuconfig_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while running the menuconfig tool: {str(e)}')
+                pretty_print.print_error(f'An error occurred while running the menuconfig tool: {e}')
                 sys.exit(1)
 
         elif self._pc_container_tool  == 'none':
@@ -857,9 +857,9 @@ class Builder:
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Prepare clean sources in the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', prep_srcs_commands])
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', prep_srcs_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while preparing clean sources: {str(e)}')
+                pretty_print.print_error(f'An error occurred while preparing clean sources: {e}')
                 sys.exit(1)
 
         elif self._pc_container_tool  == 'none':
@@ -893,7 +893,7 @@ class Builder:
                 else:
                     pretty_print.print_build(f'No need to clean container image {self._container_image}, the image doesn\'t exist...')
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while cleaning the container image: {str(e)}')
+                pretty_print.print_error(f'An error occurred while cleaning the container image: {e}')
                 sys.exit(1)
 
         elif self._pc_container_tool  == 'none':
@@ -921,7 +921,7 @@ class Builder:
             # Check if there are uncommited changes in the git repo
             results = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'status', '--porcelain'])
             if results.stdout:
-                pretty_print.print_warning(f'There are uncommited changes in {str(self._source_repo_dir)}. Do you really want to clean this repo? (y/n) ', end='')
+                pretty_print.print_warning(f'There are uncommited changes in {self._source_repo_dir}. Do you really want to clean this repo? (y/n) ', end='')
                 answer = input('')
                 if answer.lower() not in ['y', 'Y', 'yes', 'Yes']:
                     pretty_print.print_clean('Cleaning abborted...')
@@ -931,14 +931,14 @@ class Builder:
             if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the repo directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
                 except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the repo directory: {str(e)}')
+                    pretty_print.print_error(f'An error occurred while cleaning the repo directory: {e}')
                     sys.exit(1)
 
             elif self._pc_container_tool  == 'none':
                 # Clean up the repo directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._repo_dir)}/* {str(self._repo_dir)}/.* 2> /dev/null || true\"'])
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
 
@@ -971,14 +971,14 @@ class Builder:
             if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the output directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._output_dir)}:/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._output_dir}:/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
                 except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the output directory: {str(e)}')
+                    pretty_print.print_error(f'An error occurred while cleaning the output directory: {e}')
                     sys.exit(1)
 
             elif self._pc_container_tool  == 'none':
                 # Clean up the output directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._output_dir)}/* {str(self._output_dir)}/.* 2> /dev/null || true\"'])
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
 
@@ -1008,14 +1008,14 @@ class Builder:
             if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the work directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._work_dir)}:/app/work:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/work/* /app/work/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._work_dir}:/app/work:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/work/* /app/work/.* 2> /dev/null || true\"'])
                 except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the work directory: {str(e)}')
+                    pretty_print.print_error(f'An error occurred while cleaning the work directory: {e}')
                     sys.exit(1)
 
             elif self._pc_container_tool  == 'none':
                 # Clean up the work directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._work_dir)}/* {str(self._work_dir)}/.* 2> /dev/null || true\"'])
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
 
@@ -1045,14 +1045,14 @@ class Builder:
             if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the download directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._download_dir)}:/app/download:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/download/* /app/download/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._download_dir}:/app/download:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/download/* /app/download/.* 2> /dev/null || true\"'])
                 except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the download directory: {str(e)}')
+                    pretty_print.print_error(f'An error occurred while cleaning the download directory: {e}')
                     sys.exit(1)
 
             elif self._pc_container_tool  == 'none':
                 # Clean up the download directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._download_dir)}/* {str(self._download_dir)}/.* 2> /dev/null || true\"'])
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
 
@@ -1082,14 +1082,14 @@ class Builder:
             if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the dependencies directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._dependencies_dir)}:/app/dependencies:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/dependencies/* /app/dependencies/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._dependencies_dir}:/app/dependencies:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/dependencies/* /app/dependencies/.* 2> /dev/null || true\"'])
                 except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the dependencies directory: {str(e)}')
+                    pretty_print.print_error(f'An error occurred while cleaning the dependencies directory: {e}')
                     sys.exit(1)
 
             elif self._pc_container_tool  == 'none':
                 # Clean up the dependencies directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {str(self._dependencies_dir)}/* {str(self._dependencies_dir)}/.* 2> /dev/null || true\"'])
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._dependencies_dir}/* {self._dependencies_dir}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
 

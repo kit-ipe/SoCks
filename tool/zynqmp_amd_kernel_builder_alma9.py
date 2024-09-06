@@ -90,9 +90,9 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
-                ZynqMP_AMD_Kernel_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', kernel_build_commands])
+                ZynqMP_AMD_Kernel_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', kernel_build_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the Linux Kernel: {str(e)}')
+                pretty_print.print_error(f'An error occurred while building the Linux Kernel: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
@@ -143,9 +143,9 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
-                ZynqMP_AMD_Kernel_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', export_modules_commands])
+                ZynqMP_AMD_Kernel_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', export_modules_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while exporting Kernel modules: {str(e)}')
+                pretty_print.print_error(f'An error occurred while exporting Kernel modules: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container

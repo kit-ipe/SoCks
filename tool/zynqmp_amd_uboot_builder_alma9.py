@@ -85,7 +85,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
 
         # Check whether the specified file exists
         if not bl31_bin_path.is_file():
-            pretty_print.print_error(f'The following file was not found: {str(bl31_bin_path)}')
+            pretty_print.print_error(f'The following file was not found: {bl31_bin_path}')
             sys.exit(1)
 
         # Calculate md5 of the provided file
@@ -131,9 +131,9 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
-                ZynqMP_AMD_UBoot_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', uboot_build_commands])
+                ZynqMP_AMD_UBoot_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', uboot_build_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while building das U-Boot: {str(e)}')
+                pretty_print.print_error(f'An error occurred while building das U-Boot: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container

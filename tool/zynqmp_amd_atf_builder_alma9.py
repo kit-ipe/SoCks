@@ -32,7 +32,7 @@ class ZynqMP_AMD_ATF_Builder_Alma9(builder.Builder):
             None
         """
 
-        atf_build_commands = f'\'cd {str(self._source_repo_dir)} && ' \
+        atf_build_commands = f'\'cd {self._source_repo_dir} && ' \
                                 'make distclean && ' \
                                 'make CROSS_COMPILE=aarch64-none-elf- PLAT=zynqmp RESET_TO_BL31=1 ZYNQMP_CONSOLE=cadence0\''
 
@@ -46,9 +46,9 @@ class ZynqMP_AMD_ATF_Builder_Alma9(builder.Builder):
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
-                ZynqMP_AMD_ATF_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', atf_build_commands])
+                ZynqMP_AMD_ATF_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', atf_build_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the ATF: {str(e)}')
+                pretty_print.print_error(f'An error occurred while building the ATF: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container

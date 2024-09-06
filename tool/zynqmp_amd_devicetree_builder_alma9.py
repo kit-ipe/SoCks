@@ -90,7 +90,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
                 # Run commands in container
                 ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{self._xsa_dir}:{self._xsa_dir}:Z', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._base_work_dir}:{self._base_work_dir}:Z', self._container_image, 'sh', '-c', prep_dt_srcs_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while preparing devicetree sources: {str(e)}')
+                pretty_print.print_error(f'An error occurred while preparing devicetree sources: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
@@ -147,7 +147,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
                                     # Write the include line
                                     dts_top_file.write(incl_line)
         except Exception as e:
-            pretty_print.print_error(f'An error occurred while adding devicetree includes: {str(e)}')
+            pretty_print.print_error(f'An error occurred while adding devicetree includes: {e}')
             sys.exit(1)
 
         if self._pc_container_tool  in ('docker', 'podman'):
@@ -155,7 +155,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
                 # Run commands in container
                 ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._base_work_dir}:{self._base_work_dir}:Z', self._container_image, 'sh', '-c', dt_build_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the base devicetree: {str(e)}')
+                pretty_print.print_error(f'An error occurred while building the base devicetree: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
@@ -216,7 +216,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
                 # Run commands in container
                 ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._overlay_work_dir}:{self._overlay_work_dir}:Z', self._container_image, 'sh', '-c', dt_overlays_build_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while building devicetree overlays: {str(e)}')
+                pretty_print.print_error(f'An error occurred while building devicetree overlays: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container

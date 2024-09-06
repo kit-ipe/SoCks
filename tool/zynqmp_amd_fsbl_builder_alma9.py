@@ -82,9 +82,9 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(amd_builder.AMD_Builder):
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
-                ZynqMP_AMD_FSBL_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{str(self._xsa_dir)}:{str(self._xsa_dir)}:Z', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._work_dir)}:{str(self._work_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', create_fsbl_project_commands])
+                ZynqMP_AMD_FSBL_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{self._xsa_dir}:{self._xsa_dir}:Z', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', create_fsbl_project_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while creating the FSBL project: {str(e)}')
+                pretty_print.print_error(f'An error occurred while creating the FSBL project: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
@@ -137,9 +137,9 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(amd_builder.AMD_Builder):
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
-                ZynqMP_AMD_FSBL_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{str(self._xsa_dir)}:{str(self._xsa_dir)}:Z', '-v', f'{str(self._repo_dir)}:{str(self._repo_dir)}:Z', '-v', f'{str(self._output_dir)}:{str(self._output_dir)}:Z', self._container_image, 'sh', '-c', fsbl_build_commands])
+                ZynqMP_AMD_FSBL_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{self._xsa_dir}:{self._xsa_dir}:Z', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', fsbl_build_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the FSBL: {str(e)}')
+                pretty_print.print_error(f'An error occurred while building the FSBL: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container

@@ -163,7 +163,7 @@ project_cfg_root_file = project_dir / 'project.yml'
 
 # Check if we are in a SoCks project
 if not project_cfg_root_file.exists():
-    pretty_print.print_error(f'The current directory {str(project_dir)} is not a SoCks project directory. No project configuration file \'project.yml\' found.')
+    pretty_print.print_error(f'The current directory {project_dir} is not a SoCks project directory. No project configuration file \'project.yml\' found.')
     sys.exit(1)
 
 # Get project configuration
