@@ -322,7 +322,7 @@
         },
         "rootfs": {
           "type": "object",
-          "required": ["source", "builder", "container"],
+          "required": ["source", "builder", "release", "container"],
           "additionalProperties": false,
           "properties": {
             "source": {
@@ -331,6 +331,10 @@
             },
             "builder": {
               "description": "Builder class to be used",
+              "type": "string"
+            },
+            "release": {
+              "description": "Release version of the OS to be built",
               "type": "string"
             },
             "project": {

@@ -1,0 +1,8 @@
+# locmap.repo
+
+[locmap]
+name=locmap [stable]
+baseurl=http://linuxsoft.cern.ch/internal/repos/potd8el-stable/$basearch/os
+enabled=1
+gpgcheck=True
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-kojiv2

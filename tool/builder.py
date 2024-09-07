@@ -269,6 +269,14 @@ class Builder:
                 if any(search_path.samefile(ignore_path) for ignore_path in ignore_list):
                     continue
 
+            # Skip directories that we are not allowed to access
+            if search_path.is_dir() and not os.access(search_path, os.R_OK):
+                continue
+
+            # Skip broken symlinks
+            if search_path.is_symlink() and not search_path.exists():
+                continue
+
             if search_path.is_dir():
                 subdir_search_list = list(search_path.iterdir())
                 if subdir_search_list:
@@ -554,6 +562,7 @@ class Builder:
                 Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch])
                 Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch])
                 Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch])
+
                 # Create the flag if it doesn't exist and update the timestamps
                 self._patches_applied_flag.touch()
             except Exception as e:
