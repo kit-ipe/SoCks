@@ -288,6 +288,7 @@ for key0, value0 in project_cfg['blocks'].items():
 builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].enable_multiarch()
 builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].build_base_rootfs()
 builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_fs_layers()
+builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_users()
 
 # ToDos:
 #- boot-image should be a block. It should contain a depends property.

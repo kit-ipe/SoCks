@@ -156,7 +156,7 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
                                 f'for dir in ./*; do "$dir"/install_layer.sh {self._build_dir}/; done\''
 
         # Check whether a RootFS is present
-        if not pathlib.Path(self._build_dir).is_dir():
+        if not self._build_dir.is_dir():
             pretty_print.print_error(f'RootFS at {self._build_dir} not found.')
             sys.exit(1)
 
@@ -183,3 +183,51 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
 
         # Create the flag if it doesn't exist and update the timestamps
         self._pfs_added_flag.touch()
+
+
+    def add_users(self):
+        """
+        Adds users to the root file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        add_users_commands = f'\'cp -r {self._repo_dir / "users"} {self._build_dir / "tmp"} && ' \
+                            f'chroot {self._build_dir} /bin/bash /tmp/users/add_users.sh && ' \
+                            f'rm -rf {self._build_dir}/tmp/users\''
+
+        # Check whether a RootFS is present
+        if not self._build_dir.is_dir():
+            pretty_print.print_error(f'RootFS at {self._build_dir} not found.')
+            sys.exit(1)
+
+        # Check whether users need to be added
+        if self._users_added_flag.is_file() and not ZynqMP_AMD_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir / 'users'], out_search_list=[self._work_dir]):
+            pretty_print.print_build('No need to add users. No altered source files detected...')
+            return
+
+        pretty_print.print_build('Adding users...')
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Run commands in container
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_users_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while adding users: {e}')
+                sys.exit(1)
+        elif self._pc_container_tool  == 'none':
+            # Run commands without using a container
+            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_users_commands])
+        else:
+            Builder._err_unsup_container_tool()
+
+        # Create the flag if it doesn't exist and update the timestamps
+        self._users_added_flag.touch()
