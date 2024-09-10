@@ -185,35 +185,24 @@ with project_cfg_schema_file.open('r') as f:
 jsonschema.validate(project_cfg, project_cfg_schema)
 
 # Create builder objects
-builder_modules = [ 'zynqmp_amd_atf_builder_alma9', 'zynqmp_amd_uboot_builder_alma9',
-                    'zynqmp_amd_kernel_builder_alma9', 'zynqmp_amd_vivado_hog_builder_alma9',
-                    'zynqmp_amd_fsbl_builder_alma9', 'zynqmp_amd_pmufw_builder_alma9',
-                    'zynqmp_amd_devicetree_builder_alma9', 'zynqmp_amd_alma_rootfs_builder_alma9']
 builders = {}
-
 for key0, value0 in project_cfg['blocks'].items():
-    if key0 in ['atf', 'u-boot', 'kernel', 'vivado', 'fsbl', 'pmu-fw', 'devicetree', 'rootfs']:    # ToDo: Remove. Just temporary here for testing.
-        builder_found = False
-        for module_name in builder_modules:
-            try:
-                module = importlib.import_module(module_name)
-                if hasattr(module, value0['builder']):
-                    # Get access to the builder class
-                    builder_class = getattr(module, value0['builder'])
-                    # Create a project configuration object for the builder that only contains information that is intended for this builder, i.e. remove all information for other builders
-                    builder_project_cfg = copy.deepcopy(project_cfg)
-                    for key1, value1 in project_cfg['blocks'].items():
-                        if  key1 != key0:
-                            builder_project_cfg['blocks'].pop(key1)
-                    # Add builder object to dict
-                    builders[value0['builder']] = builder_class(project_cfg=builder_project_cfg, socks_dir=socks_dir, project_dir=project_dir)
-                    builder_found = True
-                    break
-            except ImportError:
-                continue
-        if not builder_found:
-            pretty_print.print_error(f"No builder class {value0['builder']} available")
-            sys.exit(1)
+    builder_class_name = value0['builder']
+    builder_module_name = builder_class_name.lower()
+    try:
+        module = importlib.import_module(builder_module_name)
+        # Get access to the builder class
+        builder_class = getattr(module, builder_class_name)
+        # Create a project configuration object for the builder that only contains information that is intended for this builder, i.e. remove all information for other builders
+        builder_project_cfg = copy.deepcopy(project_cfg)
+        for key1, value1 in project_cfg['blocks'].items():
+            if  key1 != key0:
+                builder_project_cfg['blocks'].pop(key1)
+        # Add builder object to dict
+        builders[builder_class_name] = builder_class(project_cfg=builder_project_cfg, socks_dir=socks_dir, project_dir=project_dir)
+    except ImportError:
+        pretty_print.print_error(f"No builder class {builder_class_name} available")
+        sys.exit(1)
 
 #
 # From here onwards it is just for testing
@@ -291,4 +280,8 @@ builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_fs_layers()
 builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_users()
 
 # ToDos:
-#- boot-image should be a block. It should contain a depends property.
+# - Variable builder_modules should not be needed. The project configuration contains a list of all classes needed and the class name is related to the file name. This should be enough.
+#- I think the vivado block should only export the xsa and no bit file. And only one xsa file and not two.
+#- The import_dependencies function should contains a functinality that checks if the archive(s) contains everything it should contain. Maybe the blocks should contain a list (or lists of lists or so if more than one dependency) that specifies which files should be available in each dependecy archive.
+#- boot-image (boot.bin) should be a block. It should contain a depends property.
+#- Maybe the sd card build functionality should also be a block. Maybe it should be part of a zynq-image block or someting.

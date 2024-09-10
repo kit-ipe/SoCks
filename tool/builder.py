@@ -263,40 +263,44 @@ class Builder:
         latest_file = None
         latest_mtime = 0
 
+        # Convert the ignore list to absolute paths for comparison
+        if ignore_list:
+            ignore_list = {p.resolve() for p in ignore_list}
+
         for search_path in search_list:
-            # Skip if the file or directory is in the ignore list
-            if ignore_list:
-                if any(search_path.samefile(ignore_path) for ignore_path in ignore_list):
-                    continue
+            # Walk directory and its subdirectories
+            for dir_path, dir_names, file_names in os.walk(search_path): #ToDo: In Python 3.12 there should be a pathlib Version of walk
+                current_dir = pathlib.Path(dir_path).resolve()
 
-            # Skip directories that we are not allowed to access
-            if search_path.is_dir() and not os.access(search_path, os.R_OK):
-                continue
-
-            # Skip broken symlinks
-            if search_path.is_symlink() and not search_path.exists():
-                continue
-
-            if search_path.is_dir():
-                subdir_search_list = list(search_path.iterdir())
-                if subdir_search_list:
-                    latest_file_subdir = Builder._find_last_modified_file(search_list=subdir_search_list, ignore_list=ignore_list)
-                    if latest_file_subdir:
-                        # Get the modification time of the file
-                        file_mtime = latest_file_subdir.stat().st_mtime
-                        # Update if this file is more recently modified
-                        if file_mtime > latest_mtime:
-                            latest_mtime = file_mtime
-                            latest_file = latest_file_subdir
+                # Skip if the current directory is in the ignore list
+                if ignore_list:
+                    if current_dir in ignore_list:
                         continue
 
-            else:
-                # Get the modification time of the file
-                file_mtime = search_path.stat().st_mtime
-                # Update if this file is more recently modified
-                if file_mtime > latest_mtime:
-                    latest_mtime = file_mtime
-                    latest_file = search_path
+                # Remove any subdirectories that are in the ignore list to prevent descending into them
+                #if ignore_list:
+                #    dir_names[:] = [d for d in dir_names if (current_dir / d).resolve() not in ignore_list]
+
+                # Iterate over files in the current directory
+                for filename in file_names:
+                    file_path = current_dir / filename
+
+                    # Skip if the file is in the ignore list
+                    if ignore_list:
+                        if file_path in ignore_list:
+                            continue
+
+                    # Skip broken symlinks
+                    if file_path.is_symlink() and not file_path.exists():
+                        continue
+
+                    # Get the modification time of the file
+                    file_mtime = file_path.stat().st_mtime
+
+                    # Update if this file is more recently modified
+                    if file_mtime > latest_mtime:
+                        latest_mtime = file_mtime
+                        latest_file = file_path
 
         return latest_file
 
@@ -356,6 +360,62 @@ class Builder:
         else:
             return True
 
+
+    @staticmethod
+    def _check_rebuilt_required_faster(src_search_list: typing.List[pathlib.Path], src_ignore_list: typing.List[pathlib.Path] = None, out_search_list: typing.List[pathlib.Path] = None, out_ignore_list: typing.List[pathlib.Path] = None) -> bool:
+        """
+        Check whether some file(s) needs to be rebuilt.
+
+        Args:
+            src_search_list:
+                List of directories and files to be searched for the most
+                recently modified source file.
+            src_ignore_list:
+                List of directories and files to be ignored when searching
+                for the most recently modified source file.
+            out_search_list:
+                List of directories and files to be searched for the most
+                recently modified output file.
+            out_ignore_list:
+                List of directories and files to be ignored when searching
+                for the most recently modified output file.
+
+        Returns:
+            True if a rebuild is required, i.e. if the source files are newer
+            than the output files. False if a rebuild is not required, i.e.
+            if the output files are newer than the source files.
+
+        Raises:
+            None
+        """
+
+        # Find last modified source file
+        src_search_str = ' '.join(list(map(str, src_search_list)))
+        if src_ignore_list:
+            src_ignore_str = f'\( -path {" -prune -o -path ".join(list(map(str, src_ignore_list)))} -prune \) -o'
+        else:
+            src_ignore_str = ''
+
+        results = Builder._get_sh_results(['find', src_search_str, src_ignore_str, '\( -type f -o -type l \) -print0', '2>', '/dev/null', '|', 'xargs', '-0', 'stat', '-L', '--format', '\'%Y\'', '2>', '/dev/null', '|', 'sort', '-nr'])
+        latest_src_mod = results.stdout.splitlines()[0]
+
+        # Find last modified output file
+        out_search_str = ' '.join(list(map(str, out_search_list)))
+        if out_ignore_list:
+            out_ignore_str = f'\( -path {" -prune -o -path ".join(list(map(str, out_ignore_list)))} -prune \) -o'
+        else:
+            out_ignore_str = ''
+
+        results = Builder._get_sh_results(['find', out_search_str, out_ignore_str, '\( -type f -o -type l \) -print0', '2>', '/dev/null', '|', 'xargs', '-0', 'stat', '-L', '--format', '\'%Y\'', '2>', '/dev/null', '|', 'sort', '-nr'])
+        latest_out_mod = results.stdout.splitlines()[0]
+
+        # If there are source and output files, check whether a rebuild is required
+        if latest_src_mod and latest_out_mod:
+            return int(latest_src_mod) > int(latest_out_mod)
+
+        # A rebuild is required if source or output files are missing
+        else:
+            return True
 
     @staticmethod
     def _err_unsup_container_tool():
