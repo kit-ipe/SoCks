@@ -123,11 +123,3 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
             pretty_print.print_error(f'Unexpected number of {len(xsa_files)} *.xsa files in output direct. Expected was 1.')
             sys.exit(1)
         (self._output_dir / xsa_files[0].name).symlink_to(xsa_files[0])
-        (self._output_dir / 'system.xsa').symlink_to(self._output_dir / xsa_files[0].name)
-
-        bit_files = list(self._source_repo_dir.glob(f'bin/{self._pc_project_name}-*/{self._pc_project_name}-*.bit'))
-        if len(bit_files) != 1:
-            pretty_print.print_error(f'Unexpected number of {len(bit_files)} *.bit files in output direct. Expected was 1.')
-            sys.exit(1)
-        (self._output_dir / bit_files[0].name).symlink_to(bit_files[0])
-        (self._output_dir / 'system.bit').symlink_to(self._output_dir / bit_files[0].name)

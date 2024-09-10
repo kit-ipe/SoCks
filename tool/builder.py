@@ -13,6 +13,8 @@ import requests
 import validators
 import tqdm
 import tarfile
+import re
+import hashlib
 
 import pretty_print
 
@@ -268,7 +270,30 @@ class Builder:
             ignore_list = {p.resolve() for p in ignore_list}
 
         for search_path in search_list:
-            # Walk directory and its subdirectories
+            # Handle file or symlink
+            if search_path.is_file() or search_path.is_symlink():
+                file_path = search_path.resolve()
+
+                # Skip if the file is in the ignore list
+                if ignore_list:
+                    if file_path in ignore_list:
+                        continue
+
+                # Skip broken symlinks
+                if file_path.is_symlink() and not file_path.exists():
+                    continue
+
+                # Get the modification time of the file
+                file_mtime = file_path.stat().st_mtime
+
+                # Update if this file is more recently modified
+                if file_mtime > latest_mtime:
+                    latest_mtime = file_mtime
+                    latest_file = file_path
+
+                continue
+
+            # Handle directory, including its subdirectories
             for dir_path, dir_names, file_names in os.walk(search_path): #ToDo: In Python 3.12 there should be a pathlib Version of walk
                 current_dir = pathlib.Path(dir_path).resolve()
 
@@ -278,8 +303,8 @@ class Builder:
                         continue
 
                 # Remove any subdirectories that are in the ignore list to prevent descending into them
-                #if ignore_list:
-                #    dir_names[:] = [d for d in dir_names if (current_dir / d).resolve() not in ignore_list]
+                if ignore_list:
+                    dir_names[:] = [d for d in dir_names if (current_dir / d).resolve() not in ignore_list]
 
                 # Iterate over files in the current directory
                 for filename in file_names:
@@ -778,8 +803,9 @@ class Builder:
         for block_name, block_pkg_path_str in self._pc_project_dependencies.items():
             block_pkg_path = self._project_dir / block_pkg_path_str
             import_path = self._dependencies_dir / block_name
+            imp_block_pkg_path = import_path / block_pkg_path.name
 
-            # Check whether the file exists
+            # Check whether the file to be imported exists
             if not block_pkg_path.is_file():
                 pretty_print.print_error(f'Unable to import block package. The following file does not exist: {block_pkg_path}')
                 sys.exit(1)
@@ -789,17 +815,37 @@ class Builder:
                 pretty_print.print_error(f'Unable to import block package. The following archive type is not supported: {block_pkg_path.name.partition(".")[2]}')
                 sys.exit(1)
 
+            # Calculate md5 of the provided block package
+            md5_new_file = hashlib.md5(block_pkg_path.read_bytes()).hexdigest()
+            # Read md5 of previously imported block package
+            md5_existsing_file = 0
+            if imp_block_pkg_path.is_file():
+                md5_existsing_file = hashlib.md5(imp_block_pkg_path.read_bytes()).hexdigest()
+
             # Check whether this dependencie needs to be imported
-            if not Builder._check_rebuilt_required(src_search_list=[block_pkg_path], out_search_list=[import_path]):
-                pretty_print.print_build('No need to import block package. No altered source files detected...')
-                return
+            if md5_existsing_file == md5_new_file:
+                pretty_print.print_build(f'No need to import block package {block_pkg_path.name}. No altered source files detected...')
+                continue
+
+            # Clean directory of this dependency
+            Builder.clean_dependencies(self=self, dependency=block_name)
 
             # Import block package
-            pretty_print.print_build('Importing block packages...')
+            pretty_print.print_build(f'Importing block package {block_pkg_path.name}...')
 
             import_path.mkdir(parents=True, exist_ok=True)
-            shutil.copy(block_pkg_path, import_path / block_pkg_path.name)
-            with tarfile.open(import_path / block_pkg_path.name, "r:*") as archive:
+            shutil.copy(block_pkg_path, imp_block_pkg_path)
+            with tarfile.open(imp_block_pkg_path, "r:*") as archive:
+                    # Check whether all expected files are included
+                    content = archive.getnames()
+                    for pattern in self._block_deps[block_name]:
+                        matched_files = [file for file in content if re.fullmatch(pattern=pattern, string=file)]
+                        # A file is missing if no file matches the pattern
+                        if not matched_files:
+                            pretty_print.print_error(f'The block package {block_pkg_path} does not contain a file that matches the regex {pattern}')
+                            # Remove imported block package
+                            imp_block_pkg_path.unlink()
+                            sys.exit(1)
                     # Extract all contents to the output directory
                     archive.extractall(path=import_path)
 
@@ -1132,12 +1178,12 @@ class Builder:
             pretty_print.print_clean('No need to clean the download directory...')
 
 
-    def clean_dependencies(self):
+    def clean_dependencies(self, dependency: str = ''):
         """
         This function cleans the dependencies directory.
 
         Args:
-            None
+            The dependency to be cleaned. If not specified, all dependencies are cleaned.
 
         Returns:
             None
@@ -1146,24 +1192,32 @@ class Builder:
             None
         """
 
-        if self._dependencies_dir.exists():
-            pretty_print.print_clean('Cleaning dependencies directory...')
+        if (self._dependencies_dir / dependency).exists():
+            if dependency == '':
+                pretty_print.print_clean('Cleaning dependencies directory...')
+            else:
+                pretty_print.print_clean(f'Cleaning dependencies subdirectory {dependency}...')
+
             if self._pc_container_tool  in ('docker', 'podman'):
                 try:
                     # Clean up the dependencies directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._dependencies_dir}:/app/dependencies:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/dependencies/* /app/dependencies/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._dependencies_dir}:/app/dependencies:Z', self._container_image, 'sh', '-c', f'\"rm -rf /app/dependencies/{dependency}/* /app/dependencies/{dependency}/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the dependencies directory: {e}')
                     sys.exit(1)
 
             elif self._pc_container_tool  == 'none':
                 # Clean up the dependencies directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._dependencies_dir}/* {self._dependencies_dir}/.* 2> /dev/null || true\"'])
+                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._dependencies_dir}/{dependency}/* {self._dependencies_dir}/{dependency}/.* 2> /dev/null || true\"'])
             else:
                 Builder._err_unsup_container_tool()
 
             # Remove empty download directory
-            self._dependencies_dir.rmdir()
+            if dependency == '':
+                self._dependencies_dir.rmdir()
 
         else:
-            pretty_print.print_clean('No need to clean the dependencies directory...')
+            if dependency == '':
+                pretty_print.print_clean('No need to clean the dependencies directory...')
+            else:
+                pretty_print.print_clean(f'No need to clean the dependencies subdirectory {dependency}...')

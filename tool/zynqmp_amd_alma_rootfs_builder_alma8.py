@@ -17,6 +17,14 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
                         project_dir=project_dir,
                         block_name=block_name)
 
+        # Products of other blocks on which this block depends
+        # This dict is used to check whether the imported block packages contain
+        # all the required files. Regex can be used to describe the expected files.
+        self._block_deps = {
+            'kernel': ['kernel_modules.tar.gz'],
+            'vivado': ['.*.xsa']
+        }
+
         # Import project configuration
         self._pc_alma_release = project_cfg['blocks']['rootfs']['release']
 

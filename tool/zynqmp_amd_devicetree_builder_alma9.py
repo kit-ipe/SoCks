@@ -19,6 +19,13 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
                         project_dir=project_dir,
                         block_name=block_name)
 
+        # Products of other blocks on which this block depends
+        # This dict is used to check whether the imported block packages contain
+        # all the required files. Regex can be used to describe the expected files.
+        self._block_deps = {
+            'vivado': ['.*.xsa']
+        }
+
         # Project directories
         self._dt_incl_dir = self._project_src_dir / self._block_name / 'dt_includes'
         self._dt_overlay_dir = self._project_src_dir / self._block_name / 'dt_overlays'

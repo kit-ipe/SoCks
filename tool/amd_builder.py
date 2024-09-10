@@ -63,20 +63,15 @@ class AMD_Builder(builder.Builder):
             None
         """
 
-        xsa_path = self._dependencies_dir / 'vivado' / 'system.xsa'
+        xsa_files = list((self._dependencies_dir / 'vivado').glob('*.xsa'))
 
-        # Check whether the file exists
-        if not xsa_path.is_file():
-            pretty_print.print_error(f'XSA archive {xsa_path} not found')
-            sys.exit(1)
-        
-        # Check whether the file is a xsa archive
-        if xsa_path.suffix != '.xsa':
-            pretty_print.print_error(f'The extension of the file {xsa_path} is not \'xsa\'')
+        # Check if there is more than one XSA file in the xsa directory
+        if len(xsa_files) != 1:
+            pretty_print.print_error(f'Not exactly one XSA archive in {self._dependencies_dir / "vivado"}.')
             sys.exit(1)
 
         # Check whether the xsa archive needs to be imported
-        if not AMD_Builder._check_rebuilt_required(src_search_list=[xsa_path], out_search_list=[self._xsa_dir]):
+        if not AMD_Builder._check_rebuilt_required(src_search_list=[xsa_files[0]], out_search_list=[self._xsa_dir]):
             pretty_print.print_build('No need to import XSA archive. No altered source files detected...')
             return
         
@@ -87,7 +82,7 @@ class AMD_Builder(builder.Builder):
         pretty_print.print_build('Importing XSA archive...')
 
         # Copy XSA archive
-        shutil.copy(xsa_path, self._xsa_dir / xsa_path.name)
+        shutil.copy(xsa_files[0], self._xsa_dir / xsa_files[0].name)
 
 
     def clean_source_xsa(self):

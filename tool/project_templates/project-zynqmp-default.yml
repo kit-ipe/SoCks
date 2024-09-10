@@ -66,6 +66,9 @@ blocks:
     release: "8"
     project:
       # If no 'pre-built' property is specified, the block must be built locally
+      dependencies:
+        kernel: "temp/kernel/output/kernel.tar.gz"
+        vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "alma8-rootfs-builder-alma8"
       tag: "xilinx-v{{externalTools/xilinx/version}}"

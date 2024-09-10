@@ -263,6 +263,7 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_Kernel_Builder_Alma9'].export_modules()
 #builders['ZynqMP_AMD_Kernel_Builder_Alma9'].clean_repo()
 #builders['ZynqMP_AMD_Kernel_Builder_Alma9'].clean_output()
+#builders['ZynqMP_AMD_Kernel_Builder_Alma9'].export_block_package()
 
 # Devicetree
 #builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].init_repo()
@@ -274,14 +275,13 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].build_dt_overlays()
 
 # Root File System
-builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].enable_multiarch()
-builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].build_base_rootfs()
-builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_fs_layers()
-builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_users()
+builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].import_dependencies()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].enable_multiarch()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].build_base_rootfs()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_fs_layers()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_users()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].clean_dependencies()
 
 # ToDos:
-# - Variable builder_modules should not be needed. The project configuration contains a list of all classes needed and the class name is related to the file name. This should be enough.
-#- I think the vivado block should only export the xsa and no bit file. And only one xsa file and not two.
-#- The import_dependencies function should contains a functinality that checks if the archive(s) contains everything it should contain. Maybe the blocks should contain a list (or lists of lists or so if more than one dependency) that specifies which files should be available in each dependecy archive.
-#- boot-image (boot.bin) should be a block. It should contain a depends property.
-#- Maybe the sd card build functionality should also be a block. Maybe it should be part of a zynq-image block or someting.
+# - boot-image (boot.bin) should be a block. It should contain a depends property.
+# - Maybe the sd card build functionality should also be a block. Maybe it should be part of a zynq-image block or someting.
