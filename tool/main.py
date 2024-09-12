@@ -283,7 +283,11 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_users()
 #builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].clean_dependencies()
 #builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_kmodules()
-builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_pl()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_pl()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].build_tarball()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].export_block_package()
+builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].import_prebuilt()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].download_pre_built()
 
 # ToDos:
 # - boot-image (boot.bin) should be a block. It should contain a depends property.

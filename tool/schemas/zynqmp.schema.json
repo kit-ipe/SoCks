@@ -362,6 +362,10 @@
                     "vivado": {
                       "description": "Path to the block package, relative to the project directory",
                       "type": "string"
+                    },
+                    "rootfs": {
+                      "description": "Path to the block package, relative to the project directory. This setting provides the option to import a pre-built rootfs that is to be finished",
+                      "type": "string"
                     }
                   }
                 }

@@ -700,23 +700,23 @@ class Builder:
             sys.exit(1)
 
         #Check if the file needs to be downloaded
-        last_modified = response.headers.get('Last-Modified')
-        if last_modified:
-            last_modified_timestamp = parser.parse(last_modified).timestamp()
+        last_mod_online = response.headers.get('Last-Modified')
+        if last_mod_online:
+            last_mod_online_timestamp = parser.parse(last_mod_online).timestamp()
         else:
             pretty_print.print_error(f'No \'Last-Modified\' header found for {self._pc_project_prebuilt}')
             sys.exit(1)
 
-        last_file_mod_timestamp = 0
+        last_mod_local_timestamp = 0
         if self._download_dir.is_dir():
             items = list(self._download_dir.iterdir())
             if len(items) == 1:
-                last_file_mod_timestamp = items[0].stat().st_mtime
-            else:
+                last_mod_local_timestamp = items[0].stat().st_mtime
+            elif len(items) != 0:
                 pretty_print.print_error(f'There is more than one item in {self._download_dir}\nPlease empty the directory')
                 sys.exit(1)
 
-        if last_file_mod_timestamp < last_modified_timestamp:
+        if last_mod_local_timestamp < last_mod_online_timestamp:
             pretty_print.print_build('Downloading archive with pre-built files...')
 
             Builder.clean_download(self=self)
@@ -1104,12 +1104,13 @@ class Builder:
             pretty_print.print_clean('No need to clean the output directory...')
 
 
-    def clean_work(self):
+    def clean_work(self, as_root: bool = False):
         """
         This function cleans the work directory.
 
         Args:
-            None
+            as_root:
+                Set to True if the working directory is to be cleaned by the root user.
 
         Returns:
             None
@@ -1122,8 +1123,11 @@ class Builder:
             pretty_print.print_clean('Cleaning work directory...')
             if self._pc_container_tool  in ('docker', 'podman'):
                 try:
+                    user_opt = ''
+                    if as_root:
+                        user_opt = '-u root'
                     # Clean up the work directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._work_dir}:/app/work:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/work/* /app/work/.* 2> /dev/null || true\"'])
+                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', user_opt, '-v', f'{self._work_dir}:/app/work:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/work/* /app/work/.* 2> /dev/null || true\"'])
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while cleaning the work directory: {e}')
                     sys.exit(1)
@@ -1183,7 +1187,8 @@ class Builder:
         This function cleans the dependencies directory.
 
         Args:
-            The dependency to be cleaned. If not specified, all dependencies are cleaned.
+            dependency:
+                The dependency to be cleaned. If not specified, all dependencies are cleaned.
 
         Returns:
             None
