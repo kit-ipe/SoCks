@@ -68,6 +68,7 @@ blocks:
       # If no 'pre-built' property is specified, the block must be built locally
       dependencies:
         kernel: "temp/kernel/output/kernel.tar.gz"
+        devicetree: "temp/devicetree/output/devicetree.tar.gz"
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "alma8-rootfs-builder-alma8"

@@ -348,10 +348,14 @@
                 },
                 "dependencies": {
                   "type": "object",
-                  "required": ["kernel", "vivado"],
+                  "required": ["kernel", "devicetree", "vivado"],
                   "additionalProperties": false,
                   "properties": {
                     "kernel": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    },
+                    "devicetree": {
                       "description": "Path to the block package, relative to the project directory",
                       "type": "string"
                     },

@@ -273,14 +273,17 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].prepare_dt_sources()
 #builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].build_base_devicetree()
 #builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].build_dt_overlays()
+#builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].export_block_package()
 
 # Root File System
-builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].import_dependencies()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].import_dependencies()
 #builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].enable_multiarch()
 #builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].build_base_rootfs()
 #builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_fs_layers()
 #builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_users()
 #builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].clean_dependencies()
+#builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_kmodules()
+builders['ZynqMP_AMD_Alma_RootFS_Builder_Alma8'].add_pl()
 
 # ToDos:
 # - boot-image (boot.bin) should be a block. It should contain a depends property.
