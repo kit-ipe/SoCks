@@ -462,6 +462,26 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             ZynqMP_AMD_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
 
 
+    def build_prebuilt(self):
+        """
+        This target can be used to pre-build the RootFS, e.g. in a CI pipeline.
+        The tarball is renamed to underline that it is only a pre-built and not
+        a complete project file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        pretty_print.print_error(f'ToDo: This needs to be implemented!')
+        sys.exit(1)
+
+
     def import_prebuilt(self, prebuilt_path: pathlib.Path = None):
         """
         Imports a pre-built root file system and overwrites the existing one.
