@@ -62,7 +62,7 @@ blocks:
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   rootfs:
     source: "local_build"
-    builder: "ZynqMP_AMD_Alma_RootFS_Builder_Alma8"
+    builder: "ZynqMP_Alma_RootFS_Builder_Alma8"
     release: "8"
     project:
       # If no 'pre-built' property is specified, the block must be built locally

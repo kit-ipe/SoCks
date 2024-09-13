@@ -13,7 +13,7 @@ import tqdm
 import pretty_print
 import builder
 
-class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
+class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
     """
     AlmaLinux root file system builder class
     """
@@ -86,15 +86,15 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
 
         if self._pc_container_tool  == 'docker':
             try:
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['docker', 'pull', 'multiarch/qemu-user-static'])
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['docker', 'run', '--rm', '--privileged', 'multiarch/qemu-user-static', '--reset', '-p', 'yes'])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['docker', 'pull', 'multiarch/qemu-user-static'])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['docker', 'run', '--rm', '--privileged', 'multiarch/qemu-user-static', '--reset', '-p', 'yes'])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while activating multiarch for docker: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'podman':
             try:
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'podman', 'pull', 'multiarch/qemu-user-static'])
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'podman', 'run', '--rm', '--privileged', 'multiarch/qemu-user-static', '--reset', '-p', 'yes'])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'podman', 'pull', 'multiarch/qemu-user-static'])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'podman', 'run', '--rm', '--privileged', 'multiarch/qemu-user-static', '--reset', '-p', 'yes'])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while activating multiarch for docker: {e}')
                 sys.exit(1)
@@ -102,7 +102,7 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             pretty_print.print_warning(f'Multiarch is not activated in native mode.')
             return
         else:
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
 
 
     def build_base_rootfs(self):
@@ -120,7 +120,7 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
         """
 
         # Check whether the base root file system needs to be built
-        if not ZynqMP_AMD_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir], src_ignore_list=[self._repo_dir / 'predefined_fs_layers', self._repo_dir / 'users'], out_search_list=[self._work_dir]):
+        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir], src_ignore_list=[self._repo_dir / 'predefined_fs_layers', self._repo_dir / 'users'], out_search_list=[self._work_dir]):
             pretty_print.print_build('No need to rebuild the base root file system. No altered source files detected...')
             return
 
@@ -132,9 +132,9 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
         # Create ID file. This file will be added to the RootFS as a read only file
         with self._version_file.open('w') as f:
             print("Filesystem version:", file=f)
-            results = ZynqMP_AMD_Alma_RootFS_Builder_Alma8._get_sh_results(['git', '-C', str(self._project_dir), '--no-pager', 'show', '-s', '--format="Commit date: %ci  %d"'])
+            results = ZynqMP_Alma_RootFS_Builder_Alma8._get_sh_results(['git', '-C', str(self._project_dir), '--no-pager', 'show', '-s', '--format="Commit date: %ci  %d"'])
             print(results.stdout, file=f, end='')
-            results = ZynqMP_AMD_Alma_RootFS_Builder_Alma8._get_sh_results(['git', '-C', str(self._project_dir), 'describe', '--dirty', '--always', '--tags', '--abbrev=14'])
+            results = ZynqMP_Alma_RootFS_Builder_Alma8._get_sh_results(['git', '-C', str(self._project_dir), 'describe', '--dirty', '--always', '--tags', '--abbrev=14'])
             print(results.stdout, file=f, end='')
 
         # In the last step, the service auditd.service is deactivated because it breaks things
@@ -148,15 +148,15 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             try:
                 # Run commands in container
                 # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', base_rootfs_build_commands])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', base_rootfs_build_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while building the base root file system: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', base_rootfs_build_commands])
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', base_rootfs_build_commands])
         else:
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
 
         # Remove flags
         self._pfs_added_flag.unlink(missing_ok=True)
@@ -183,7 +183,7 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             sys.exit(1)
 
         # Check whether the predefined file system layers need to be added
-        if self._pfs_added_flag.is_file() and not ZynqMP_AMD_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir / 'predefined_fs_layers'], out_search_list=[self._work_dir]):
+        if self._pfs_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir / 'predefined_fs_layers'], out_search_list=[self._work_dir]):
             pretty_print.print_build('No need to add predefined file system layers. No altered source files detected...')
             return
 
@@ -196,15 +196,15 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             try:
                 # Run commands in container
                 # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_fs_layers_commands])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_fs_layers_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while adding predefined file system layers: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_fs_layers_commands])
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_fs_layers_commands])
         else:
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
 
         # Create the flag if it doesn't exist and update the timestamps
         self._pfs_added_flag.touch()
@@ -230,7 +230,7 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             sys.exit(1)
 
         # Check whether users need to be added
-        if self._users_added_flag.is_file() and not ZynqMP_AMD_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir / 'users'], out_search_list=[self._work_dir]):
+        if self._users_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir / 'users'], out_search_list=[self._work_dir]):
             pretty_print.print_build('No need to add users. No altered source files detected...')
             return
 
@@ -244,15 +244,15 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             try:
                 # Run commands in container
                 # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_users_commands])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_users_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while adding users: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_users_commands])
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_users_commands])
         else:
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
 
         # Create the flag if it doesn't exist and update the timestamps
         self._users_added_flag.touch()
@@ -311,15 +311,15 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             try:
                 # Run commands in container
                 # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_kmodules_commands])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_kmodules_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while adding Kernel Modules: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_kmodules_commands])
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_kmodules_commands])
         else:
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
 
         # Save checksum in file
         with self._source_kmods_md5_file.open('w') as f:
@@ -364,7 +364,7 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
                 md5_existsing_xsa_file = f.read()
 
         # Check if the PL files need to be added
-        if md5_existsing_xsa_file == md5_new_xsa_file and (self._build_dir / 'etc/dt-overlays').is_dir() and not ZynqMP_AMD_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._dependencies_dir / 'devicetree'], out_search_list=[self._build_dir / 'etc/dt-overlays']):
+        if md5_existsing_xsa_file == md5_new_xsa_file and (self._build_dir / 'etc/dt-overlays').is_dir() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._dependencies_dir / 'devicetree'], out_search_list=[self._build_dir / 'etc/dt-overlays']):
             pretty_print.print_build('No need to add files for the programmable logic (PL). No altered source files detected...')
             return
 
@@ -400,15 +400,15 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             try:
                 # Run commands in container
                 # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_pl_commands])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_pl_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while adding files for the programmable logic (PL): {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_pl_commands])
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_pl_commands])
         else:
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
 
         # Save checksum in file
         with self._source_xsa_md5_file.open('w') as f:
@@ -430,7 +430,7 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
         """
 
         # Check if the tarball needs to be built
-        if not ZynqMP_AMD_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._work_dir], out_search_list=[self._output_dir]):
+        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._work_dir], out_search_list=[self._output_dir]):
             pretty_print.print_build('No need to rebuild tarball. No altered source files detected...')
             return
 
@@ -451,15 +451,15 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             try:
                 # Run commands in container
                 # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', tarball_build_commands])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', tarball_build_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while building the tarball: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', tarball_build_commands])
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', tarball_build_commands])
         else:
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
 
 
     def build_prebuilt(self):
@@ -531,8 +531,8 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             pretty_print.print_build('No need to import the pre-built root file system. No altered source files detected...')
             return
 
-        ZynqMP_AMD_Alma_RootFS_Builder_Alma8.clean_work(self=self, as_root=True)
-        ZynqMP_AMD_Alma_RootFS_Builder_Alma8.clean_output(self=self)
+        ZynqMP_Alma_RootFS_Builder_Alma8.clean_work(self=self, as_root=True)
+        ZynqMP_Alma_RootFS_Builder_Alma8.clean_output(self=self)
         self._work_dir.mkdir(parents=True)
         self._output_dir.mkdir(parents=True)
 
@@ -548,15 +548,15 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             try:
                 # Run commands in container
                 # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', extract_pb_rootfs_commands])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', extract_pb_rootfs_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while importing the pre-built root file system: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', extract_pb_rootfs_commands])
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', extract_pb_rootfs_commands])
         else:
-            ZynqMP_AMD_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
 
         # Save checksum in file
         with self._source_pb_rootfs_md5_file.open('w') as f:
@@ -634,7 +634,7 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
 
         pretty_print.print_build('Downloading archive with pre-built root file system...')
 
-        ZynqMP_AMD_Alma_RootFS_Builder_Alma8.clean_download(self=self)
+        ZynqMP_Alma_RootFS_Builder_Alma8.clean_download(self=self)
         self._download_dir.mkdir(parents=True)
 
         # Download the file
@@ -645,4 +645,4 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             download_progress.t.close()
 
         # Import the pre-built root file system
-        ZynqMP_AMD_Alma_RootFS_Builder_Alma8.import_prebuilt(self=self, prebuilt_path=self._download_dir / filename)
+        ZynqMP_Alma_RootFS_Builder_Alma8.import_prebuilt(self=self, prebuilt_path=self._download_dir / filename)
