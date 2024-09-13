@@ -41,18 +41,6 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(amd_builder.AMD_Builder):
             None
         """
 
-        create_pmufw_project_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
-                                            f'source {self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/settings64.sh && ' \
-                                            f'SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa) && ' \
-                                            'printf \"set hwdsgn [hsi open_hw_design ${SOURCE_XSA_PATH}]' \
-                                            f'    \r\nhsi generate_app -hw \$hwdsgn -os standalone -proc psu_pmu_0 -app zynqmp_pmufw -sw pmufw -dir {self._source_repo_dir}\" > {self._work_dir}/generate_pmufw_prj.tcl && ' \
-                                            f'xsct -nodisp {self._work_dir}/generate_pmufw_prj.tcl && ' \
-                                            f'git -C {self._source_repo_dir} init --initial-branch=main && ' \
-                                            f'git -C {self._source_repo_dir} config user.email "container-user@example.com" && ' \
-                                            f'git -C {self._source_repo_dir} config user.name "container-user" && ' \
-                                            f'git -C {self._source_repo_dir} add {self._source_repo_dir}/. && ' \
-                                            f'git -C {self._source_repo_dir} commit --quiet -m "Initial commit"\''
-
         pretty_print.print_build('Creating the PMU Firmware project...')
 
         xsa_files = list(self._xsa_dir.glob('*.xsa'))
@@ -85,6 +73,18 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(amd_builder.AMD_Builder):
         self._work_dir.mkdir(parents=True)
         self._repo_dir.mkdir(parents=True)
         self._output_dir.mkdir(parents=True, exist_ok=True)
+
+        create_pmufw_project_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
+                                            f'source {self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/settings64.sh && ' \
+                                            f'SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa) && ' \
+                                            'printf \"set hwdsgn [hsi open_hw_design ${SOURCE_XSA_PATH}]' \
+                                            f'    \r\nhsi generate_app -hw \$hwdsgn -os standalone -proc psu_pmu_0 -app zynqmp_pmufw -sw pmufw -dir {self._source_repo_dir}\" > {self._work_dir}/generate_pmufw_prj.tcl && ' \
+                                            f'xsct -nodisp {self._work_dir}/generate_pmufw_prj.tcl && ' \
+                                            f'git -C {self._source_repo_dir} init --initial-branch=main && ' \
+                                            f'git -C {self._source_repo_dir} config user.email "container-user@example.com" && ' \
+                                            f'git -C {self._source_repo_dir} config user.name "container-user" && ' \
+                                            f'git -C {self._source_repo_dir} add {self._source_repo_dir}/. && ' \
+                                            f'git -C {self._source_repo_dir} commit --quiet -m "Initial commit"\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
@@ -123,12 +123,6 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(amd_builder.AMD_Builder):
             None
         """
 
-        pmufw_build_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
-                                f'source {self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/settings64.sh && ' \
-                                f'cd {self._source_repo_dir} && ' \
-                                'make clean && ' \
-                                'make\''
-
         # Check whether the PMU Firmware needs to be built
         if not ZynqMP_AMD_PMUFW_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'executable.elf'], out_search_list=[self._source_repo_dir / 'executable.elf']):
             pretty_print.print_build('No need to rebuild the PMU Firmware. No altered source files detected...')
@@ -140,6 +134,12 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(amd_builder.AMD_Builder):
         if not pathlib.Path(self._pc_xilinx_path).is_dir():
             pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
             sys.exit(1)
+
+        pmufw_build_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
+                                f'source {self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/settings64.sh && ' \
+                                f'cd {self._source_repo_dir} && ' \
+                                'make clean && ' \
+                                'make\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:

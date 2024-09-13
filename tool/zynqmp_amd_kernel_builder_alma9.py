@@ -75,17 +75,17 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
             None
         """
 
-        kernel_build_commands = f'\'cd {self._source_repo_dir} && ' \
-                                'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
-                                'make ARCH=arm64 olddefconfig && ' \
-                                f'make ARCH=arm64 -j{self._pc_make_threads}\''
-
         # Check whether the Kernel needs to be built
         if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'arch/arm64/boot'], out_search_list=[self._source_repo_dir / 'arch/arm64/boot']):
             pretty_print.print_build('No need to rebuild the Linux Kernel. No altered source files detected...')
             return
 
         pretty_print.print_build('Building Linux Kernel...')
+
+        kernel_build_commands = f'\'cd {self._source_repo_dir} && ' \
+                                'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
+                                'make ARCH=arm64 olddefconfig && ' \
+                                f'make ARCH=arm64 -j{self._pc_make_threads}\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
@@ -121,13 +121,6 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
             None
         """
 
-        export_modules_commands = f'\'cd {self._source_repo_dir} && ' \
-                                'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
-                                f'make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir} && ' \
-                                f'find {self._output_dir}/lib -type l -delete && ' \
-                                f'tar -P --xform=\'s:{self._output_dir}::\' --numeric-owner -p -czf {self._output_dir}/kernel_modules.tar.gz {self._output_dir}/lib && ' \
-                                f'rm -rf {self._output_dir}/lib\''
-
         # Check if Kernel sources are available
         if not self._source_repo_dir.is_dir():
             pretty_print.print_build('No output files to extract Kernel modules...')
@@ -139,6 +132,13 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
             return
 
         pretty_print.print_build('Exporting Kernel Modules...')
+
+        export_modules_commands = f'\'cd {self._source_repo_dir} && ' \
+                                'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
+                                f'make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir} && ' \
+                                f'find {self._output_dir}/lib -type l -delete && ' \
+                                f'tar -P --xform=\'s:{self._output_dir}::\' --numeric-owner -p -czf {self._output_dir}/kernel_modules.tar.gz {self._output_dir}/lib && ' \
+                                f'rm -rf {self._output_dir}/lib\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:

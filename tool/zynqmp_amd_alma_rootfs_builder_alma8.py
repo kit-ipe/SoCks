@@ -119,13 +119,6 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             None
         """
 
-        # In the last step, the service auditd.service is deactivated because it breaks things
-        base_rootfs_build_commands = f'\'cd {self._repo_dir} && ' \
-                                    f'python3 mkrootfs.py --root={self._build_dir} --arch={self._target_arch} --extra=extra_rpms.txt --releasever={self._pc_alma_release} && ' \
-                                    f'mv {self._work_dir}/fs_version {self._build_dir}/etc/fs_version && ' \
-                                    f'chmod 0444 {self._build_dir}/etc/fs_version && ' \
-                                    f'rm -f {self._build_dir}/etc/systemd/system/multi-user.target.wants/auditd.service\''
-
         # Check whether the base root file system needs to be built
         if not ZynqMP_AMD_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir], src_ignore_list=[self._repo_dir / 'predefined_fs_layers', self._repo_dir / 'users'], out_search_list=[self._work_dir]):
             pretty_print.print_build('No need to rebuild the base root file system. No altered source files detected...')
@@ -143,6 +136,13 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             print(results.stdout, file=f, end='')
             results = ZynqMP_AMD_Alma_RootFS_Builder_Alma8._get_sh_results(['git', '-C', str(self._project_dir), 'describe', '--dirty', '--always', '--tags', '--abbrev=14'])
             print(results.stdout, file=f, end='')
+
+        # In the last step, the service auditd.service is deactivated because it breaks things
+        base_rootfs_build_commands = f'\'cd {self._repo_dir} && ' \
+                                    f'python3 mkrootfs.py --root={self._build_dir} --arch={self._target_arch} --extra=extra_rpms.txt --releasever={self._pc_alma_release} && ' \
+                                    f'mv {self._work_dir}/fs_version {self._build_dir}/etc/fs_version && ' \
+                                    f'chmod 0444 {self._build_dir}/etc/fs_version && ' \
+                                    f'rm -f {self._build_dir}/etc/systemd/system/multi-user.target.wants/auditd.service\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
@@ -177,9 +177,6 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             None
         """
 
-        add_fs_layers_commands = f'\'cd {self._repo_dir / "predefined_fs_layers"} && ' \
-                                f'for dir in ./*; do "$dir"/install_layer.sh {self._build_dir}/; done\''
-
         # Check whether a RootFS is present
         if not self._build_dir.is_dir():
             pretty_print.print_error(f'RootFS at {self._build_dir} not found.')
@@ -191,6 +188,9 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             return
 
         pretty_print.print_build('Adding predefined file system layers...')
+
+        add_fs_layers_commands = f'\'cd {self._repo_dir / "predefined_fs_layers"} && ' \
+                                f'for dir in ./*; do "$dir"/install_layer.sh {self._build_dir}/; done\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
@@ -224,10 +224,6 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             None
         """
 
-        add_users_commands = f'\'cp -r {self._repo_dir / "users"} {self._build_dir / "tmp"} && ' \
-                            f'chroot {self._build_dir} /bin/bash /tmp/users/add_users.sh && ' \
-                            f'rm -rf {self._build_dir}/tmp/users\''
-
         # Check whether a RootFS is present
         if not self._build_dir.is_dir():
             pretty_print.print_error(f'RootFS at {self._build_dir} not found.')
@@ -239,6 +235,10 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             return
 
         pretty_print.print_build('Adding users...')
+
+        add_users_commands = f'\'cp -r {self._repo_dir / "users"} {self._build_dir / "tmp"} && ' \
+                            f'chroot {self._build_dir} /bin/bash /tmp/users/add_users.sh && ' \
+                            f'rm -rf {self._build_dir}/tmp/users\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
@@ -272,15 +272,6 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             None
         """
 
-        add_kmodules_commands = f'\'cd {self._work_dir} && ' \
-                                f'tar -xzf kernel_modules.tar.gz && ' \
-                                f'chown -R root:root lib && ' \
-                                f'chmod -R 000 lib && ' \
-                                f'chmod -R u=rwX,go=rX lib && ' \
-                                f'rm -rf {self._build_dir}/lib/modules/* && ' \
-                                f'mv lib/modules/* {self._build_dir}/lib/modules/ && ' \
-                                f'rm -rf lib\''
-
         # Check whether a RootFS is present
         if not self._build_dir.is_dir():
             pretty_print.print_error(f'RootFS at {self._build_dir} not found.')
@@ -306,6 +297,15 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
 
         # Create copy of the Kernel module archive
         shutil.copy(kmods_archive, temp_kmods_archive)
+
+        add_kmodules_commands = f'\'cd {self._work_dir} && ' \
+                                f'tar -xzf kernel_modules.tar.gz && ' \
+                                f'chown -R root:root lib && ' \
+                                f'chmod -R 000 lib && ' \
+                                f'chmod -R u=rwX,go=rX lib && ' \
+                                f'rm -rf {self._build_dir}/lib/modules/* && ' \
+                                f'mv lib/modules/* {self._build_dir}/lib/modules/ && ' \
+                                f'rm -rf lib\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
@@ -342,12 +342,6 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
         Raises:
             None
         """
-
-        add_pl_commands = f'\'chown -R root:root {self._work_dir}/system.bit {self._work_dir}/*.dtbo && ' \
-                        f'chmod -R u=rw,go=r {self._work_dir}/system.bit {self._work_dir}/*.dtbo && ' \
-                        f'mv {self._work_dir}/system.bit {self._build_dir}/lib/firmware/ && ' \
-                        f'mkdir -p {self._build_dir}/etc/dt-overlays && ' \
-                        f'mv {self._work_dir}/*.dtbo {self._build_dir}/etc/dt-overlays/\''
 
         # Check whether a RootFS is present
         if not self._build_dir.is_dir():
@@ -396,6 +390,12 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
         for file in (self._dependencies_dir / 'devicetree').glob('*.dtbo'):
             shutil.copy(file, self._work_dir / file.name)
 
+        add_pl_commands = f'\'chown -R root:root {self._work_dir}/system.bit {self._work_dir}/*.dtbo && ' \
+                        f'chmod -R u=rw,go=r {self._work_dir}/system.bit {self._work_dir}/*.dtbo && ' \
+                        f'mv {self._work_dir}/system.bit {self._build_dir}/lib/firmware/ && ' \
+                        f'mkdir -p {self._build_dir}/etc/dt-overlays && ' \
+                        f'mv {self._work_dir}/*.dtbo {self._build_dir}/etc/dt-overlays/\''
+
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
@@ -429,6 +429,13 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
             None
         """
 
+        # Check if the tarball needs to be built
+        if not ZynqMP_AMD_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._work_dir], out_search_list=[self._output_dir]):
+            pretty_print.print_build('No need to rebuild tarball. No altered source files detected...')
+            return
+
+        pretty_print.print_build('Building tarball...')
+
         # Tar was tested with three compression options:
         # Option	Size	Duration
         # --xz	872M	real	17m59.080s
@@ -439,13 +446,6 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
                                 f'if id {self._host_user} >/dev/null 2>&1; then ' \
                                 f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{self._rootfs_name}.tar.xz"}; ' \
                                 f'fi\''
-
-        # Check if the tarball needs to be built
-        if not ZynqMP_AMD_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._work_dir], out_search_list=[self._output_dir]):
-            pretty_print.print_build('No need to rebuild tarball. No altered source files detected...')
-            return
-
-        pretty_print.print_build('Building tarball...')
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
@@ -493,9 +493,6 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
 
         temp_prebuilt_rootfs_file = self._work_dir / prebuilt_rootfs_file.name
 
-        extract_pb_rootfs_commands = f'\'mkdir -p {self._build_dir} && ' \
-                                    f'tar --numeric-owner -p -xf {temp_prebuilt_rootfs_file} -C {self._build_dir}\''
-
         # Check whether the file is a supported archive
         if prebuilt_rootfs_file.name.partition('.')[2] not in ['tar.gz', 'tgz', 'tar.xz', 'txz']:
             pretty_print.print_error(f'Unable to import block package. The following archive type is not supported: {prebuilt_rootfs_file.name.partition(".")[2]}')
@@ -523,6 +520,9 @@ class ZynqMP_AMD_Alma_RootFS_Builder_Alma8(builder.Builder):
         shutil.copy(prebuilt_rootfs_file, temp_prebuilt_rootfs_file)
 
         pretty_print.print_build('Importing pre-built root file system...')
+
+        extract_pb_rootfs_commands = f'\'mkdir -p {self._build_dir} && ' \
+                                    f'tar --numeric-owner -p -xf {temp_prebuilt_rootfs_file} -C {self._build_dir}\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:

@@ -122,18 +122,18 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
             None
         """
 
-        uboot_build_commands = f'\'cd {self._source_repo_dir} && ' \
-                                'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
-                                'export ARCH=aarch64 && ' \
-                                'make olddefconfig && ' \
-                                f'make -j{self._pc_make_threads}\''
-
         # Check whether das U-Boot needs to be built
         if not ZynqMP_AMD_UBoot_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd'], out_search_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd']):
             pretty_print.print_build('No need to rebuild U-Boot. No altered source files detected...')
             return
 
         pretty_print.print_build('Building U-Boot...')
+
+        uboot_build_commands = f'\'cd {self._source_repo_dir} && ' \
+                                'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
+                                'export ARCH=aarch64 && ' \
+                                'make olddefconfig && ' \
+                                f'make -j{self._pc_make_threads}\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
