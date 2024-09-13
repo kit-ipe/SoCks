@@ -560,23 +560,25 @@ class Builder:
         """
 
         # Skip all operations if the repo already exists
-        if not self._source_repo_dir.exists():
-            pretty_print.print_build('Initializing local repo...')
-            try:
-                self._output_dir.mkdir(parents=True, exist_ok=True)
-                self._repo_dir.mkdir(parents=True, exist_ok=True)
-
-                # Clone the repo
-                Builder._run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo_branch, self._source_repo_url, str(self._source_repo_dir)])
-                # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
-                # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while initializing the repository: {e}')
-                sys.exit(1)
-        else:
+        if self._source_repo_dir.exists():
             pretty_print.print_build('No need to initialize the local repo...')
+            return
+
+        pretty_print.print_build('Initializing local repo...')
+
+        try:
+            self._output_dir.mkdir(parents=True, exist_ok=True)
+            self._repo_dir.mkdir(parents=True, exist_ok=True)
+
+            # Clone the repo
+            Builder._run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo_branch, self._source_repo_url, str(self._source_repo_dir)])
+            # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
+            # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
+        except Exception as e:
+            pretty_print.print_error(f'An error occurred while initializing the repository: {e}')
+            sys.exit(1)
 
 
     def create_patches(self):
@@ -595,26 +597,28 @@ class Builder:
 
         # Only create patches if there are commits on branch self._git_local_dev_branch that are not on branch self._git_local_dev_branch.
         result_new_commits = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'log', '--cherry-pick', '--oneline', self._git_local_dev_branch, f'^{self._git_local_ref_branch}'])
-        if result_new_commits.stdout:
-            pretty_print.print_build('Creating patches...')
-            try:
-                # Create patches
-                result_new_patches = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
-                # Add newly created patches to self._patch_list_file
-                for line in result_new_patches.stdout.splitlines():
-                    new_patch = line.rpartition('/')[2]
-                    print(f'Patch {new_patch} was created')
-                    with self._patch_list_file.open('a') as f:
-                        print(new_patch, file=f, end='\n')
-                # Synchronize the branches ref and dev to be able to detect new commits in the future
-                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch])
-                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch])
-                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while creating new patches: {e}')
-                sys.exit(1)
-        else:
+        if not result_new_commits.stdout:
             pretty_print.print_warning('No commits found that can be used as sources for patches.')
+            return
+
+        pretty_print.print_build('Creating patches...')
+
+        try:
+            # Create patches
+            result_new_patches = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
+            # Add newly created patches to self._patch_list_file
+            for line in result_new_patches.stdout.splitlines():
+                new_patch = line.rpartition('/')[2]
+                print(f'Patch {new_patch} was created')
+                with self._patch_list_file.open('a') as f:
+                    print(new_patch, file=f, end='\n')
+            # Synchronize the branches ref and dev to be able to detect new commits in the future
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch])
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch])
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch])
+        except Exception as e:
+            pretty_print.print_error(f'An error occurred while creating new patches: {e}')
+            sys.exit(1)
 
 
     def apply_patches(self):
@@ -633,29 +637,31 @@ class Builder:
         """
 
         # Skip all operations if the patches have already been applied
-        if not self._patches_applied_flag.exists():
-            pretty_print.print_build('Applying patches...')
-            try:
-                if self._patch_list_file.is_file():
-                    with self._patch_list_file.open('r') as f:
-                        for patch in f:
-                            if patch:
-                                # Apply patch
-                                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'am', str(self._patch_dir / patch)])
-                
-                # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch])
-                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch])
-                Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch])
-
-                # Create the flag if it doesn't exist and update the timestamps
-                self._patches_applied_flag.touch()
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while applying patches: {e}')
-                sys.exit(1)
-        else:
+        if self._patches_applied_flag.exists():
             pretty_print.print_build('No need to apply patches...')
-    
+            return
+
+        pretty_print.print_build('Applying patches...')
+
+        try:
+            if self._patch_list_file.is_file():
+                with self._patch_list_file.open('r') as f:
+                    for patch in f:
+                        if patch:
+                            # Apply patch
+                            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'am', str(self._patch_dir / patch)])
+
+            # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch])
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch])
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch])
+
+            # Create the flag if it doesn't exist and update the timestamps
+            self._patches_applied_flag.touch()
+        except Exception as e:
+            pretty_print.print_error(f'An error occurred while applying patches: {e}')
+            sys.exit(1)
+
 
     def download_pre_built(self):
         """
@@ -716,37 +722,37 @@ class Builder:
                 pretty_print.print_error(f'There is more than one item in {self._download_dir}\nPlease empty the directory')
                 sys.exit(1)
 
-        if last_mod_local_timestamp < last_mod_online_timestamp:
-            pretty_print.print_build('Downloading archive with pre-built files...')
-
-            Builder.clean_download(self=self)
-            self._download_dir.mkdir(parents=True)
-
-            # Download the file
-            download_progress.t = None
-            filename = self._pc_project_prebuilt.rpartition('/')[2]
-            urllib.request.urlretrieve(self._pc_project_prebuilt, self._download_dir / filename, reporthook=download_progress)
-            if download_progress.t:
-                download_progress.t.close()
-
-            Builder.clean_output(self=self)
-            self._output_dir.mkdir(parents=True)
-
-            #Extract pre-built files
-            file_extension = filename.partition('.')[2]
-            if file_extension in ['tar.gz', 'tgz', 'tar.xz', 'txz']:
-                # tarfile doesn't support parallelised decompression. One would have to use shell
-                # tools for that. For file system archives it might be worth it to save time.
-                # This should also be done in a container.
-                with tarfile.open(self._download_dir / filename, "r:*") as archive:
-                    # Extract all contents to the output directory
-                    archive.extractall(path=self._output_dir)
-            else:
-                pretty_print.print_error(f'The following archive type is not supported: {file_extension}')
-                sys.exit(1)
-
-        else:
+        if last_mod_local_timestamp > last_mod_online_timestamp:
             pretty_print.print_build('No need to download pre-built files...')
+            return
+
+        pretty_print.print_build('Downloading archive with pre-built files...')
+
+        Builder.clean_download(self=self)
+        self._download_dir.mkdir(parents=True)
+
+        # Download the file
+        download_progress.t = None
+        filename = self._pc_project_prebuilt.rpartition('/')[2]
+        urllib.request.urlretrieve(self._pc_project_prebuilt, self._download_dir / filename, reporthook=download_progress)
+        if download_progress.t:
+            download_progress.t.close()
+
+        Builder.clean_output(self=self)
+        self._output_dir.mkdir(parents=True)
+
+        #Extract pre-built files
+        file_extension = filename.partition('.')[2]
+        if file_extension in ['tar.gz', 'tgz', 'tar.xz', 'txz']:
+            # tarfile doesn't support parallelised decompression. One would have to use shell
+            # tools for that. For file system archives it might be worth it to save time.
+            # This should also be done in a container.
+            with tarfile.open(self._download_dir / filename, "r:*") as archive:
+                # Extract all contents to the output directory
+                archive.extractall(path=self._output_dir)
+        else:
+            pretty_print.print_error(f'The following archive type is not supported: {file_extension}')
+            sys.exit(1)
 
 
     def export_block_package(self):
@@ -1032,39 +1038,40 @@ class Builder:
             None
         """
 
-        if self._repo_dir.exists():
-            # Check if there are uncommited changes in the git repo
-            results = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'status', '--porcelain'])
-            if results.stdout:
-                pretty_print.print_warning(f'There are uncommited changes in {self._source_repo_dir}. Do you really want to clean this repo? (y/n) ', end='')
-                answer = input('')
-                if answer.lower() not in ['y', 'Y', 'yes', 'Yes']:
-                    pretty_print.print_clean('Cleaning abborted...')
-                    sys.exit(1)
-
-            pretty_print.print_clean('Cleaning repo directory...')
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    # Clean up the repo directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the repo directory: {e}')
-                    sys.exit(1)
-
-            elif self._pc_container_tool  == 'none':
-                # Clean up the repo directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true\"'])
-            else:
-                Builder._err_unsup_container_tool()
-
-            # Remove flag
-            self._patches_applied_flag.unlink(missing_ok=True)
-
-            # Remove empty repo directory
-            self._repo_dir.rmdir()
-
-        else:
+        if not self._repo_dir.exists():
             pretty_print.print_clean('No need to clean the repo directory...')
+            return
+
+        # Check if there are uncommited changes in the git repo
+        results = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'status', '--porcelain'])
+        if results.stdout:
+            pretty_print.print_warning(f'There are uncommited changes in {self._source_repo_dir}. Do you really want to clean this repo? (y/n) ', end='')
+            answer = input('')
+            if answer.lower() not in ['y', 'Y', 'yes', 'Yes']:
+                pretty_print.print_clean('Cleaning abborted...')
+                sys.exit(1)
+
+        pretty_print.print_clean('Cleaning repo directory...')
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Clean up the repo directory from the container
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while cleaning the repo directory: {e}')
+                sys.exit(1)
+
+        elif self._pc_container_tool  == 'none':
+            # Clean up the repo directory without using a container
+            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true\"'])
+        else:
+            Builder._err_unsup_container_tool()
+
+        # Remove flag
+        self._patches_applied_flag.unlink(missing_ok=True)
+
+        # Remove empty repo directory
+        self._repo_dir.rmdir()
 
 
     def clean_output(self):
@@ -1081,27 +1088,28 @@ class Builder:
             None
         """
 
-        if self._output_dir.exists():
-            pretty_print.print_clean('Cleaning output directory...')
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    # Clean up the output directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._output_dir}:/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the output directory: {e}')
-                    sys.exit(1)
-
-            elif self._pc_container_tool  == 'none':
-                # Clean up the output directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true\"'])
-            else:
-                Builder._err_unsup_container_tool()
-
-            # Remove empty output directory
-            self._output_dir.rmdir()
-
-        else:
+        if not self._output_dir.exists():
             pretty_print.print_clean('No need to clean the output directory...')
+            return
+
+        pretty_print.print_clean('Cleaning output directory...')
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Clean up the output directory from the container
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._output_dir}:/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while cleaning the output directory: {e}')
+                sys.exit(1)
+
+        elif self._pc_container_tool  == 'none':
+            # Clean up the output directory without using a container
+            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true\"'])
+        else:
+            Builder._err_unsup_container_tool()
+
+        # Remove empty output directory
+        self._output_dir.rmdir()
 
 
     def clean_work(self, as_root: bool = False):
@@ -1119,30 +1127,31 @@ class Builder:
             None
         """
 
-        if self._work_dir.exists():
-            pretty_print.print_clean('Cleaning work directory...')
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    user_opt = ''
-                    if as_root:
-                        user_opt = '-u root'
-                    # Clean up the work directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', user_opt, '-v', f'{self._work_dir}:/app/work:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/work/* /app/work/.* 2> /dev/null || true\"'])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the work directory: {e}')
-                    sys.exit(1)
-
-            elif self._pc_container_tool  == 'none':
-                # Clean up the work directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true\"'])
-            else:
-                Builder._err_unsup_container_tool()
-
-            # Remove empty work directory
-            self._work_dir.rmdir()
-
-        else:
+        if not self._work_dir.exists():
             pretty_print.print_clean('No need to clean the work directory...')
+            return
+
+        pretty_print.print_clean('Cleaning work directory...')
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                user_opt = ''
+                if as_root:
+                    user_opt = '-u root'
+                # Clean up the work directory from the container
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', user_opt, '-v', f'{self._work_dir}:/app/work:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/work/* /app/work/.* 2> /dev/null || true\"'])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while cleaning the work directory: {e}')
+                sys.exit(1)
+
+        elif self._pc_container_tool  == 'none':
+            # Clean up the work directory without using a container
+            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true\"'])
+        else:
+            Builder._err_unsup_container_tool()
+
+        # Remove empty work directory
+        self._work_dir.rmdir()
 
 
     def clean_download(self):
@@ -1159,27 +1168,28 @@ class Builder:
             None
         """
 
-        if self._download_dir.exists():
-            pretty_print.print_clean('Cleaning download directory...')
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    # Clean up the download directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._download_dir}:/app/download:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/download/* /app/download/.* 2> /dev/null || true\"'])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the download directory: {e}')
-                    sys.exit(1)
-
-            elif self._pc_container_tool  == 'none':
-                # Clean up the download directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true\"'])
-            else:
-                Builder._err_unsup_container_tool()
-
-            # Remove empty download directory
-            self._download_dir.rmdir()
-
-        else:
+        if not self._download_dir.exists():
             pretty_print.print_clean('No need to clean the download directory...')
+            return
+
+        pretty_print.print_clean('Cleaning download directory...')
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Clean up the download directory from the container
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._download_dir}:/app/download:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/download/* /app/download/.* 2> /dev/null || true\"'])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while cleaning the download directory: {e}')
+                sys.exit(1)
+
+        elif self._pc_container_tool  == 'none':
+            # Clean up the download directory without using a container
+            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true\"'])
+        else:
+            Builder._err_unsup_container_tool()
+
+        # Remove empty download directory
+        self._download_dir.rmdir()
 
 
     def clean_dependencies(self, dependency: str = ''):
@@ -1197,32 +1207,32 @@ class Builder:
             None
         """
 
-        if (self._dependencies_dir / dependency).exists():
-            if dependency == '':
-                pretty_print.print_clean('Cleaning dependencies directory...')
-            else:
-                pretty_print.print_clean(f'Cleaning dependencies subdirectory {dependency}...')
-
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    # Clean up the dependencies directory from the container
-                    Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._dependencies_dir}:/app/dependencies:Z', self._container_image, 'sh', '-c', f'\"rm -rf /app/dependencies/{dependency}/* /app/dependencies/{dependency}/.* 2> /dev/null || true\"'])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the dependencies directory: {e}')
-                    sys.exit(1)
-
-            elif self._pc_container_tool  == 'none':
-                # Clean up the dependencies directory without using a container
-                Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._dependencies_dir}/{dependency}/* {self._dependencies_dir}/{dependency}/.* 2> /dev/null || true\"'])
-            else:
-                Builder._err_unsup_container_tool()
-
-            # Remove empty download directory
-            if dependency == '':
-                self._dependencies_dir.rmdir()
-
-        else:
+        if not (self._dependencies_dir / dependency).exists():
             if dependency == '':
                 pretty_print.print_clean('No need to clean the dependencies directory...')
             else:
                 pretty_print.print_clean(f'No need to clean the dependencies subdirectory {dependency}...')
+            return
+
+        if dependency == '':
+            pretty_print.print_clean('Cleaning dependencies directory...')
+        else:
+            pretty_print.print_clean(f'Cleaning dependencies subdirectory {dependency}...')
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Clean up the dependencies directory from the container
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._dependencies_dir}:/app/dependencies:Z', self._container_image, 'sh', '-c', f'\"rm -rf /app/dependencies/{dependency}/* /app/dependencies/{dependency}/.* 2> /dev/null || true\"'])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while cleaning the dependencies directory: {e}')
+                sys.exit(1)
+
+        elif self._pc_container_tool  == 'none':
+            # Clean up the dependencies directory without using a container
+            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._dependencies_dir}/{dependency}/* {self._dependencies_dir}/{dependency}/.* 2> /dev/null || true\"'])
+        else:
+            Builder._err_unsup_container_tool()
+
+        # Remove empty download directory
+        if dependency == '':
+            self._dependencies_dir.rmdir()
