@@ -171,14 +171,11 @@ project_cfg = compose_project_configuration(config_file_name=project_cfg_root_fi
 project_cfg = resolve_placeholders(project_cfg, project_cfg)
 
 # Validate project configuration
-if 'projectType' in project_cfg:
-    project_cfg_schema_file = socks_dir / 'schemas' / f'{project_cfg["projectType"]}.schema.json'
-    if not project_cfg_schema_file.is_file():
-        pretty_print.print_error(f'{project_cfg["projectType"]} is not a supported project type.')
-        sys.exit(1)
-else:
-    pretty_print.print_error('Project configuration is missing the \'projectType\' field.')
+project_cfg_schema_file = socks_dir / 'schemas' / f'{project_cfg["project"]["type"]}.schema.json'
+if not project_cfg_schema_file.is_file():
+    pretty_print.print_error(f'{project_cfg["project"]["type"]} is not a supported project type.')
     sys.exit(1)
+
 with project_cfg_schema_file.open('r') as f:
     project_cfg_schema = json.load(f)
 
@@ -237,6 +234,7 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_download()
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_repo()
 #builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_output()
+#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].export_block_package()
 
 # Vivado
 
@@ -250,12 +248,14 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_xsa()
 #builders['ZynqMP_AMD_FSBL_Builder_Alma9'].create_fsbl_project()
 #builders['ZynqMP_AMD_FSBL_Builder_Alma9'].build_fsbl()
+#builders['ZynqMP_AMD_FSBL_Builder_Alma9'].export_block_package()
 
 # PMU Firmware
 #builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].import_dependencies()
 #builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].import_xsa()
 #builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].create_pmufw_project()
 #builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].build_pmufw()
+#builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].export_block_package()
 
 # Kernel
 #builders['ZynqMP_AMD_Kernel_Builder_Alma9'].init_repo()
@@ -286,9 +286,15 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_Alma_RootFS_Builder_Alma8'].add_pl()
 #builders['ZynqMP_Alma_RootFS_Builder_Alma8'].build_tarball()
 #builders['ZynqMP_Alma_RootFS_Builder_Alma8'].export_block_package()
-builders['ZynqMP_Alma_RootFS_Builder_Alma8'].import_prebuilt()
+#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].import_prebuilt()
 #builders['ZynqMP_Alma_RootFS_Builder_Alma8'].download_pre_built()
+
+# Image
+#builders['ZynqMP_AMD_Image_Builder_Alma9'].import_dependencies()
+#builders['ZynqMP_AMD_Image_Builder_Alma9'].boot_img()
+#builders['ZynqMP_AMD_Image_Builder_Alma9'].start_container()
+builders['ZynqMP_AMD_Image_Builder_Alma9'].sd_card_img()
 
 # ToDos:
 # - boot-image (boot.bin) should be a block. It should contain a depends property.
-# - Maybe the sd card build functionality should also be a block. Maybe it should be part of a zynq-image block or someting.
+# - I think it would be good to use the dependency information from the project cfg to build a tree and use that to find out which components have to be build. This would require a build funcion in every block that builds the full block. Maybe cmd_build to highlight that this is a command. Maybe the same for clean.

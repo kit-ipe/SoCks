@@ -4,13 +4,25 @@
   "title": "ZynqMP SoCks Project",
   "description": "Description of a ZynqMP SoCks project",
   "type": "object",
-  "required": ["projectType", "externalTools", "blocks"],
+  "required": ["project", "externalTools", "blocks"],
   "additionalProperties": false,
   "properties": {
-    "projectType": {
-      "description": "The unique identifier of the project type",
-      "type": "string",
-      "const": "zynqmp"
+    "project": {
+      "type": "object",
+      "required": ["type", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "description": "The unique identifier of the project type",
+          "type": "string",
+          "const": "zynqmp"
+        },
+        "name": {
+          "description": "The name of the project",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]*$"
+        }
+      }
     },
     "externalTools": {
       "type": "object",
@@ -481,6 +493,86 @@
                 "pre-built": {
                   "description": "URL or path to the pre-built files",
                   "type": "string"
+                }
+              }
+            },
+            "container": {
+              "type": "object",
+              "required": ["image", "tag"],
+              "additionalProperties": false,
+              "properties": {
+                "image": {
+                  "description": "Container image to build the block",
+                  "type": "string"
+                },
+                "tag": {
+                  "description": "Container image tag",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "image": {
+          "type": "object",
+          "required": ["source", "builder", "project", "container"],
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "description": "Source for obtaining the block",
+              "enum": ["local_build", "download", "pre-built"]
+            },
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            },
+            "project": {
+              "type": "object",
+              "required": ["dependencies"],
+              "additionalProperties": false,
+              "properties": {
+                "pre-built": {
+                  "description": "URL or path to the pre-built files",
+                  "type": "string"
+                },
+                "dependencies": {
+                  "type": "object",
+                  "required": ["atf", "devicetree", "fsbl", "kernel", "pmu-fw", "rootfs", "u-boot", "vivado"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "atf": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    },
+                    "devicetree": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    },
+                    "fsbl": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    },
+                    "kernel": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    },
+                    "pmu-fw": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    },
+                    "rootfs": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    },
+                    "u-boot": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    },
+                    "vivado": {
+                      "description": "Path to the block package, relative to the project directory",
+                      "type": "string"
+                    }
+                  }
                 }
               }
             },

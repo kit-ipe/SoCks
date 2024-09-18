@@ -27,6 +27,7 @@ class Builder:
         self._block_name = block_name
 
         # Import project configuration
+        self._pc_name = project_cfg['project']['name']
         self._pc_container_tool = project_cfg['externalTools']['containerTool']
         self._pc_make_threads = project_cfg["externalTools"]["make"]["maxBuildThreads"]
         self._pc_container_image = project_cfg["blocks"][self._block_name]["container"]["image"]
@@ -442,24 +443,6 @@ class Builder:
         else:
             return True
 
-    @staticmethod
-    def _err_unsup_container_tool():
-        """
-        Display an error message that the requested container tool is not supported.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        pretty_print.print_error(f'Containerization tool {self._pc_container_tool } is not supported. Options are \'docker\', \'podman\' and \'none\'.')
-        sys.exit(1)
-    
 
     @staticmethod
     def _err_container_feature(feature: str):
@@ -477,6 +460,24 @@ class Builder:
         """
 
         pretty_print.print_error(f'{feature} is only available if a containerization tool is used.')
+        sys.exit(1)
+
+
+    def _err_unsup_container_tool():
+        """
+        Display an error message that the requested container tool is not supported.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        pretty_print.print_error(f'Containerization tool {self._pc_container_tool } is not supported. Options are \'docker\', \'podman\' and \'none\'.')
         sys.exit(1)
 
 

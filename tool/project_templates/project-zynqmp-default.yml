@@ -1,7 +1,8 @@
 ---
 import:
   - project-default.yml
-projectType: "zynqmp"
+project:
+  type: "zynqmp"
 externalTools:
   xilinx:
     # Property 'path' must be specified outside this default project configuration file
@@ -94,4 +95,21 @@ blocks:
       # If no 'pre-built' property is specified, the block must be built locally
     container:
       image: "amd-xilinx-tools-alma9"
+      tag: "xilinx-v{{externalTools/xilinx/version}}"
+  image:
+    source: "local_build"
+    builder: "ZynqMP_AMD_Image_Builder_Alma9"
+    project:
+      # If no 'pre-built' property is specified, the block must be built locally
+      dependencies:
+        atf: "temp/atf/output/atf.tar.gz"
+        devicetree: "temp/devicetree/output/devicetree.tar.gz"
+        fsbl: "temp/fsbl/output/fsbl.tar.gz"
+        kernel: "temp/kernel/output/kernel.tar.gz"
+        pmu-fw: "temp/pmu-fw/output/pmu-fw.tar.gz"
+        rootfs: "temp/rootfs/output/rootfs.tar.gz"
+        u-boot: "temp/u-boot/output/u-boot.tar.gz"
+        vivado: "temp/vivado/output/vivado.tar.gz"
+    container:
+      image: "image-builder-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"

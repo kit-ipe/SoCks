@@ -1,6 +1,8 @@
 ---
 import:
   - project-zynqmp-default.yml
+project:
+  name: "test-project"
 externalTools:
   xilinx:
     path: "/media/marvin/T9MF/Tools/Xilinx"
