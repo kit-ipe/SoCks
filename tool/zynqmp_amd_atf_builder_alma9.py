@@ -54,10 +54,10 @@ class ZynqMP_AMD_ATF_Builder_Alma9(builder.Builder):
             # Run commands without using a container
             ZynqMP_AMD_ATF_Builder_Alma9._run_sh_command(['sh', '-c', atf_build_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Create symlinks to the output files
         (self._output_dir / 'bl31.elf').unlink(missing_ok=True)
         (self._output_dir / 'bl31.elf').symlink_to(self._source_repo_dir / 'build/zynqmp/release/bl31/bl31.elf')
         (self._output_dir / 'bl31.bin').unlink(missing_ok=True)
-        (self._output_dir / 'bl31.bin').symlink_to(self._source_repo_dir / 'build/zynqmp/release/bl31.bin')     
+        (self._output_dir / 'bl31.bin').symlink_to(self._source_repo_dir / 'build/zynqmp/release/bl31.bin')

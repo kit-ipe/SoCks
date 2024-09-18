@@ -68,8 +68,8 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(amd_builder.AMD_Builder):
             pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
             sys.exit(1)
 
-        ZynqMP_AMD_PMUFW_Builder_Alma9.clean_work(self=self)
-        ZynqMP_AMD_PMUFW_Builder_Alma9.clean_repo(self=self)
+        self.clean_work()
+        self.clean_repo()
         self._work_dir.mkdir(parents=True)
         self._repo_dir.mkdir(parents=True)
         self._output_dir.mkdir(parents=True, exist_ok=True)
@@ -97,7 +97,7 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(amd_builder.AMD_Builder):
             # Run commands without using a container
             ZynqMP_AMD_PMUFW_Builder_Alma9._run_sh_command(['sh', '-c', create_pmufw_project_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
         ZynqMP_AMD_PMUFW_Builder_Alma9._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
@@ -152,7 +152,7 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(amd_builder.AMD_Builder):
             # Run commands without using a container
             ZynqMP_AMD_PMUFW_Builder_Alma9._run_sh_command(['sh', '-c', pmufw_build_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Create symlink to the output file
         (self._output_dir / 'pmufw.elf').unlink(missing_ok=True)

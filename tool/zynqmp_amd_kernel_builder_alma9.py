@@ -36,7 +36,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
                                 'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
                                 'make ARCH=arm64 menuconfig\''
 
-        builder.Builder._run_menuconfig(self, menuconfig_commands=menuconfig_commands)
+        self._run_menuconfig(menuconfig_commands=menuconfig_commands)
 
 
     def prep_clean_srcs(self):
@@ -58,7 +58,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
                                 'make ARCH=arm64 xilinx_zynqmp_defconfig && ' \
                                 'printf \"\n# Do not ignore the config file\n!.config\n\" >> .gitignore\''
 
-        builder.Builder._prep_clean_srcs(self, prep_srcs_commands=prep_srcs_commands)
+        self._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
 
 
     def build_kernel(self):
@@ -98,7 +98,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
             # Run commands without using a container
             ZynqMP_AMD_Kernel_Builder_Alma9._run_sh_command(['sh', '-c', kernel_build_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Create symlink to the output files
         (self._output_dir / 'Image').unlink(missing_ok=True)
@@ -151,4 +151,4 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
             # Run commands without using a container
             ZynqMP_AMD_Kernel_Builder_Alma9._run_sh_command(['sh', '-c', export_modules_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()

@@ -43,7 +43,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(amd_builder.AMD_Builder):
         self._uboot_img_path = self._dependencies_dir / 'u-boot/u-boot.elf'
         self._vivado_xsa_path = None
 
-        self._sdc_image_name = f'{self._pc_name}_sd_card.img'
+        self._sdc_image_name = f'{self._pc_prj_name}_sd_card.img'
 
         # Project directories
         self._misc_dir = self._project_src_dir / self._block_name / 'misc'

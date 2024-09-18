@@ -78,7 +78,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
             pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
             sys.exit(1)
 
-        ZynqMP_AMD_Devicetree_Builder_Alma9.clean_work(self=self)
+        self.clean_work()
         self._base_work_dir.mkdir(parents=True)
 
         prep_dt_srcs_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
@@ -102,7 +102,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
             # Run commands without using a container
             ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command(['sh', '-c', prep_dt_srcs_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Save checksum in file
         with self._source_xsa_md5_file.open('w') as f:
@@ -167,7 +167,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
             # Run commands without using a container
             ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command(['sh', '-c', dt_build_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
         
@@ -228,7 +228,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
             # Run commands without using a container
             ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command(['sh', '-c', dt_overlays_build_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
 

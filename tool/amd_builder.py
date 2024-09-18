@@ -76,7 +76,7 @@ class AMD_Builder(builder.Builder):
             return
         
         # Clean source xsa directory
-        AMD_Builder.clean_source_xsa(self=self)
+        self.clean_source_xsa()
         self._xsa_dir.mkdir(parents=True)
 
         pretty_print.print_build('Importing XSA archive...')
@@ -113,7 +113,7 @@ class AMD_Builder(builder.Builder):
                 # Clean up the source_xsa directory without using a container
                 AMD_Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._xsa_dir}/* {self._xsa_dir}/.* 2> /dev/null || true\"'])
             else:
-                AMD_Builder._err_unsup_container_tool()
+                self._err_unsup_container_tool()
 
             # Remove empty source_xsa directory
             self._xsa_dir.rmdir()

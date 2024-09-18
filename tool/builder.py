@@ -27,7 +27,7 @@ class Builder:
         self._block_name = block_name
 
         # Import project configuration
-        self._pc_name = project_cfg['project']['name']
+        self._pc_prj_name = project_cfg['project']['name']
         self._pc_container_tool = project_cfg['externalTools']['containerTool']
         self._pc_make_threads = project_cfg["externalTools"]["make"]["maxBuildThreads"]
         self._pc_container_image = project_cfg["blocks"][self._block_name]["container"]["image"]
@@ -463,7 +463,7 @@ class Builder:
         sys.exit(1)
 
 
-    def _err_unsup_container_tool():
+    def _err_unsup_container_tool(self):
         """
         Display an error message that the requested container tool is not supported.
 
@@ -540,7 +540,7 @@ class Builder:
             elif self._pc_container_tool  == 'none':
                 pretty_print.print_warning('Container image is not built in native mode.')
             else:
-                Builder._err_unsup_container_tool()
+                self._err_unsup_container_tool()
         except Exception as e:
                 pretty_print.print_error(f'An error occurred while building the container image: {e}')
                 sys.exit(1)
@@ -729,7 +729,7 @@ class Builder:
 
         pretty_print.print_build('Downloading archive with pre-built files...')
 
-        Builder.clean_download(self=self)
+        self.clean_download()
         self._download_dir.mkdir(parents=True)
 
         # Download the file
@@ -739,7 +739,7 @@ class Builder:
         if download_progress.t:
             download_progress.t.close()
 
-        Builder.clean_output(self=self)
+        self.clean_output()
         self._output_dir.mkdir(parents=True)
 
         #Extract pre-built files
@@ -835,7 +835,7 @@ class Builder:
                 continue
 
             # Clean directory of this dependency
-            Builder.clean_dependencies(self=self, dependency=block_name)
+            self.clean_dependencies(dependency=block_name)
 
             # Import block package
             pretty_print.print_build(f'Importing block package {block_pkg_path.name}...')
@@ -914,7 +914,7 @@ class Builder:
             # This function is only supported if a container tool is used
             Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
 
     def _run_menuconfig(self, menuconfig_commands: str):
@@ -950,7 +950,7 @@ class Builder:
             # Open the menuconfig tool without using a container
             Builder._run_sh_command(['sh', '-c', menuconfig_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
 
     def _prep_clean_srcs(self, prep_srcs_commands: str):
@@ -988,7 +988,7 @@ class Builder:
             # Prepare clean sources without using a container
             Builder._run_sh_command(['sh', '-c', prep_srcs_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
 
     def clean_container_image(self):
@@ -1022,7 +1022,7 @@ class Builder:
             # This function is only supported if a container tool is used
             Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
 
     def clean_repo(self):
@@ -1066,7 +1066,7 @@ class Builder:
             # Clean up the repo directory without using a container
             Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true\"'])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Remove flag
         self._patches_applied_flag.unlink(missing_ok=True)
@@ -1107,7 +1107,7 @@ class Builder:
             # Clean up the output directory without using a container
             Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true\"'])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Remove empty output directory
         self._output_dir.rmdir()
@@ -1149,7 +1149,7 @@ class Builder:
             # Clean up the work directory without using a container
             Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true\"'])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Remove empty work directory
         self._work_dir.rmdir()
@@ -1187,7 +1187,7 @@ class Builder:
             # Clean up the download directory without using a container
             Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true\"'])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Remove empty download directory
         self._download_dir.rmdir()
@@ -1232,7 +1232,7 @@ class Builder:
             # Clean up the dependencies directory without using a container
             Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._dependencies_dir}/{dependency}/* {self._dependencies_dir}/{dependency}/.* 2> /dev/null || true\"'])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Remove empty download directory
         if dependency == '':

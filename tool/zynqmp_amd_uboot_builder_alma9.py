@@ -46,7 +46,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
                                 'export ARCH=aarch64 && ' \
                                 'make menuconfig\''
 
-        builder.Builder._run_menuconfig(self, menuconfig_commands=menuconfig_commands)
+        self._run_menuconfig(menuconfig_commands=menuconfig_commands)
 
 
     def prep_clean_srcs(self):
@@ -69,7 +69,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
                                 'make xilinx_zynqmp_virt_defconfig && ' \
                                 'printf \"\n# Do not ignore the config file\n!.config\n\" >> .gitignore\''
 
-        builder.Builder._prep_clean_srcs(self, prep_srcs_commands=prep_srcs_commands)
+        self._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
 
 
     def copy_atf(self):
@@ -146,7 +146,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
             # Run commands without using a container
             ZynqMP_AMD_UBoot_Builder_Alma9._run_sh_command(['sh', '-c', uboot_build_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Create symlink to the output file
         (self._output_dir / 'u-boot.elf').unlink(missing_ok=True)

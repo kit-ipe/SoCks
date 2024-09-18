@@ -64,7 +64,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
             # Run commands without using a container
             ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command(['sh', '-c', create_vivado_project_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
 
     def build_vivado_project(self):
@@ -94,7 +94,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
             sys.exit(1)
 
         # Clean output directory
-        ZynqMP_AMD_Vivado_Hog_Builder_Alma9.clean_output(self=self)
+        self.clean_output()
         self._output_dir.mkdir(parents=True)
 
         vivado_build_commands = f'\'rm -rf {self._source_repo_dir}/bin' \
@@ -115,7 +115,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
             # Run commands without using a container
             ZynqMP_AMD_Vivado_Hog_Builder_Alma9._run_sh_command(['sh', '-c', vivado_build_commands])
         else:
-            Builder._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Create symlinks to the output files
         xsa_files = list(self._source_repo_dir.glob(f'bin/{self._pc_project_name}-*/{self._pc_project_name}-*.xsa'))

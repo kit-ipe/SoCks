@@ -39,7 +39,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
         # Import project configuration
         self._pc_alma_release = project_cfg['blocks']['rootfs']['release']
 
-        self._rootfs_name = f'almalinux{self._pc_alma_release}_rev1_xck26'
+        self._rootfs_name = f'almalinux{self._pc_alma_release}_zynqmp_{self._pc_prj_name}'
         self._target_arch = 'aarch64'
         
         # Project directories
@@ -102,7 +102,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             pretty_print.print_warning(f'Multiarch is not activated in native mode.')
             return
         else:
-            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
 
     def build_base_rootfs(self):
@@ -156,7 +156,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             # Run commands without using a container
             ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', base_rootfs_build_commands])
         else:
-            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Remove flags
         self._pfs_added_flag.unlink(missing_ok=True)
@@ -204,7 +204,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             # Run commands without using a container
             ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_fs_layers_commands])
         else:
-            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Create the flag if it doesn't exist and update the timestamps
         self._pfs_added_flag.touch()
@@ -252,7 +252,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             # Run commands without using a container
             ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_users_commands])
         else:
-            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Create the flag if it doesn't exist and update the timestamps
         self._users_added_flag.touch()
@@ -319,7 +319,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             # Run commands without using a container
             ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_kmodules_commands])
         else:
-            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Save checksum in file
         with self._source_kmods_md5_file.open('w') as f:
@@ -408,7 +408,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             # Run commands without using a container
             ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_pl_commands])
         else:
-            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Save checksum in file
         with self._source_xsa_md5_file.open('w') as f:
@@ -459,7 +459,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             # Run commands without using a container
             ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', tarball_build_commands])
         else:
-            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
 
     def build_prebuilt(self):
@@ -531,8 +531,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             pretty_print.print_build('No need to import the pre-built root file system. No altered source files detected...')
             return
 
-        ZynqMP_Alma_RootFS_Builder_Alma8.clean_work(self=self, as_root=True)
-        ZynqMP_Alma_RootFS_Builder_Alma8.clean_output(self=self)
+        self.clean_work(as_root=True)
+        self.clean_output()
         self._work_dir.mkdir(parents=True)
         self._output_dir.mkdir(parents=True)
 
@@ -556,7 +556,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             # Run commands without using a container
             ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', extract_pb_rootfs_commands])
         else:
-            ZynqMP_Alma_RootFS_Builder_Alma8._err_unsup_container_tool()
+            self._err_unsup_container_tool()
 
         # Save checksum in file
         with self._source_pb_rootfs_md5_file.open('w') as f:
@@ -634,7 +634,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
 
         pretty_print.print_build('Downloading archive with pre-built root file system...')
 
-        ZynqMP_Alma_RootFS_Builder_Alma8.clean_download(self=self)
+        self.clean_download()
         self._download_dir.mkdir(parents=True)
 
         # Download the file
@@ -645,4 +645,4 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             download_progress.t.close()
 
         # Import the pre-built root file system
-        ZynqMP_Alma_RootFS_Builder_Alma8.import_prebuilt(self=self, prebuilt_path=self._download_dir / filename)
+        self.import_prebuilt(prebuilt_path=self._download_dir / filename)
