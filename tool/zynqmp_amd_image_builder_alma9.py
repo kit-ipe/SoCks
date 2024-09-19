@@ -1,7 +1,6 @@
 import sys
 import pathlib
 import shutil
-import tarfile
 import zipfile
 
 import pretty_print
@@ -242,13 +241,14 @@ class ZynqMP_AMD_Image_Builder_Alma9(amd_builder.AMD_Builder):
         """
 
         # Get path of the root file system
-        with tarfile.open(self._dependencies_dir / 'rootfs/rootfs.tar.gz', "r:*") as archive:
-            members = list(archive.getmembers())
-            # Check if there is more than one file in the archive
-            if len(members) != 1:
-                pretty_print.print_error(f'Not exactly one file in archive {self._dependencies_dir / "rootfs/rootfs.tar.gz"}.')
-                sys.exit(1)
-            rootfs_archive = self._dependencies_dir / 'rootfs' / members[0].name
+        archives = list((self._dependencies_dir / 'rootfs').glob('*.tar.??'))
+
+        # Check if there is more than one archive in the dependencie directory
+        if len(archives) != 1:
+            pretty_print.print_error(f'Not exactly one archive in {self._dependencies_dir / "rootfs"}.')
+            sys.exit(1)
+
+        rootfs_archive = archives[0]
 
         # Check whether the sd card image needs to be built
         if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuilt_required(src_search_list=[self._output_dir / 'BOOT.BIN', self._output_dir / 'boot.scr', self._output_dir / 'image.ub', rootfs_archive], out_search_list=[self._output_dir / self._sdc_image_name]):

@@ -810,7 +810,7 @@ class Builder:
         for block_name, block_pkg_path_str in self._pc_project_dependencies.items():
             block_pkg_path = self._project_dir / block_pkg_path_str
             import_path = self._dependencies_dir / block_name
-            imp_block_pkg_path = import_path / block_pkg_path.name
+            block_pkg_md5_file = self._dependencies_dir / f'block_pkg_{block_name}.md5'
 
             # Check whether the file to be imported exists
             if not block_pkg_path.is_file():
@@ -824,10 +824,11 @@ class Builder:
 
             # Calculate md5 of the provided block package
             md5_new_file = hashlib.md5(block_pkg_path.read_bytes()).hexdigest()
-            # Read md5 of previously imported block package
+            # Read md5 of previously imported block package, if any
             md5_existsing_file = 0
-            if imp_block_pkg_path.is_file():
-                md5_existsing_file = hashlib.md5(imp_block_pkg_path.read_bytes()).hexdigest()
+            if block_pkg_md5_file.is_file():
+                with block_pkg_md5_file.open('r') as f:
+                    md5_existsing_file = f.read()
 
             # Check whether this dependencie needs to be imported
             if md5_existsing_file == md5_new_file:
@@ -841,8 +842,7 @@ class Builder:
             pretty_print.print_build(f'Importing block package {block_pkg_path.name}...')
 
             import_path.mkdir(parents=True, exist_ok=True)
-            shutil.copy(block_pkg_path, imp_block_pkg_path)
-            with tarfile.open(imp_block_pkg_path, "r:*") as archive:
+            with tarfile.open(block_pkg_path, "r:*") as archive:
                     # Check whether all expected files are included
                     content = archive.getnames()
                     for pattern in self._block_deps[block_name]:
@@ -850,11 +850,13 @@ class Builder:
                         # A file is missing if no file matches the pattern
                         if not matched_files:
                             pretty_print.print_error(f'The block package {block_pkg_path} does not contain a file that matches the regex {pattern}')
-                            # Remove imported block package
-                            imp_block_pkg_path.unlink()
                             sys.exit(1)
                     # Extract all contents to the output directory
                     archive.extractall(path=import_path)
+
+            # Save checksum in file
+            with block_pkg_md5_file.open('w') as f:
+                print(md5_new_file, file=f, end='')
 
 
     def start_container(self):

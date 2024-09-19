@@ -291,6 +291,8 @@ for key0, value0 in project_cfg['blocks'].items():
 
 # Image
 #builders['ZynqMP_AMD_Image_Builder_Alma9'].import_dependencies()
+#builders['ZynqMP_AMD_Image_Builder_Alma9'].linux_img()
+#builders['ZynqMP_AMD_Image_Builder_Alma9'].bootscr_img()
 #builders['ZynqMP_AMD_Image_Builder_Alma9'].boot_img()
 #builders['ZynqMP_AMD_Image_Builder_Alma9'].start_container()
 builders['ZynqMP_AMD_Image_Builder_Alma9'].sd_card_img()

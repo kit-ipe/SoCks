@@ -2,7 +2,6 @@ import sys
 import pathlib
 import shutil
 import hashlib
-import tarfile
 import zipfile
 from dateutil import parser
 import urllib
@@ -503,13 +502,12 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
         # Get path of the pre-built root file system
         prebuilt_rootfs_file = prebuilt_path
         if prebuilt_rootfs_file is None:
-            with tarfile.open(self._dependencies_dir / self._block_name / 'rootfs.tar.gz', "r:*") as archive:
-                members = list(archive.getmembers())
-                # Check if there is more than one file in the archive
-                if len(members) != 1:
-                    pretty_print.print_error(f'Not exactly one file in archive {self._dependencies_dir / self._block_name / "rootfs.tar.gz"}.')
-                    sys.exit(1)
-                prebuilt_rootfs_file = self._dependencies_dir / self._block_name / members[0].name
+            archives = list((self._dependencies_dir / self._block_name).glob('*.tar.??'))
+            # Check if there is more than one archive in the dependencie directory
+            if len(archives) != 1:
+                pretty_print.print_error(f'Not exactly one archive in {self._dependencies_dir / self._block_name}.')
+                sys.exit(1)
+            prebuilt_rootfs_file = archives[0]
 
         temp_prebuilt_rootfs_file = self._work_dir / prebuilt_rootfs_file.name
 
