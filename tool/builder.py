@@ -30,6 +30,7 @@ class Builder:
         self._pc_prj_name = project_cfg['project']['name']
         self._pc_container_tool = project_cfg['externalTools']['containerTool']
         self._pc_make_threads = project_cfg["externalTools"]["make"]["maxBuildThreads"]
+        self._pc_block_source = project_cfg["blocks"][self._block_name]["source"]
         self._pc_container_image = project_cfg["blocks"][self._block_name]["container"]["image"]
         self._pc_container_tag = project_cfg["blocks"][self._block_name]["container"]["tag"]
 
@@ -108,6 +109,8 @@ class Builder:
         self._patch_list_file = self._patch_dir / 'patches.cfg'
         # Flag to remember if patches have already been applied
         self._patches_applied_flag = self._project_temp_dir / self._block_name / '.patchesapplied'
+        # File for saving the checksum of the imported, pre-built block package
+        self._source_pb_md5_file = self._work_dir / 'source_pb.md5'
 
 
     @staticmethod
@@ -664,9 +667,9 @@ class Builder:
             sys.exit(1)
 
 
-    def download_pre_built(self):
+    def _download_prebuilt(self):
         """
-        Download pre-built files instead of building them locally.
+        Download pre-built files.
 
         Args:
             None
@@ -685,15 +688,6 @@ class Builder:
             downloaded = block_num * block_size
             download_progress.t.update(downloaded - download_progress.t.n)
 
-        # Get URL
-        if self._pc_project_prebuilt is None:
-            pretty_print.print_error(f'The property blocks/{self._block_name}/project/pre-built is not provided')
-            sys.exit(1)
-
-        if not validators.url(self._pc_project_prebuilt):
-            pretty_print.print_error(f'The value of blocks/{self._block_name}/project/pre-built is not a valid URL: {self._pc_project_prebuilt}')
-            sys.exit(1)
-
         # Send a HEAD request to get the HTTP headers
         response = requests.head(self._pc_project_prebuilt, allow_redirects=True)
 
@@ -706,7 +700,7 @@ class Builder:
             pretty_print.print_error(f'The following file could not be downloaded: {self._pc_project_prebuilt}\nUnexpected status code {response.status_code}')
             sys.exit(1)
 
-        #Check if the file needs to be downloaded
+        # Get timestamp of the file online
         last_mod_online = response.headers.get('Last-Modified')
         if last_mod_online:
             last_mod_online_timestamp = parser.parse(last_mod_online).timestamp()
@@ -714,6 +708,7 @@ class Builder:
             pretty_print.print_error(f'No \'Last-Modified\' header found for {self._pc_project_prebuilt}')
             sys.exit(1)
 
+        # Get timestamp of the downloaded file, if any
         last_mod_local_timestamp = 0
         if self._download_dir.is_dir():
             items = list(self._download_dir.iterdir())
@@ -723,6 +718,7 @@ class Builder:
                 pretty_print.print_error(f'There is more than one item in {self._download_dir}\nPlease empty the directory')
                 sys.exit(1)
 
+        # Check if the file needs to be downloaded
         if last_mod_local_timestamp > last_mod_online_timestamp:
             pretty_print.print_build('No need to download pre-built files...')
             return
@@ -739,21 +735,77 @@ class Builder:
         if download_progress.t:
             download_progress.t.close()
 
+
+    def import_prebuilt(self):
+        """
+        Imports a pre-built block package. If a URL is provided instead of a path, the file is downloaded.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Get path of the pre-built block package
+        if self._pc_project_prebuilt is None:
+            pretty_print.print_error(f'The property blocks/{self._block_name}/project/pre-built is required to import the block, but it is not set.')
+            sys.exit(1)
+        elif validators.url(self._pc_project_prebuilt):
+            self._download_prebuilt()
+            downloads = list(self._download_dir.glob('*'))
+            # Check if there is more than one file in the download directory
+            if len(downloads) != 1:
+                pretty_print.print_error(f'Not exactly one file in {self._download_dir}.')
+                sys.exit(1)
+            prebuilt_block_package = downloads[0]
+        else:
+            try:
+                prebuilt_block_package = pathlib.Path(self._pc_project_prebuilt)
+            except ValueError:
+                pretty_print.print_error(f'{self._pc_project_prebuilt} is not a valid URL and not a valid path')
+                sys.exit(1)
+
+        # Check whether the file to be imported exists
+        if not prebuilt_block_package.is_file():
+            pretty_print.print_error(f'Unable to import block package. The following file does not exist: {prebuilt_block_package}')
+            sys.exit(1)
+
+        # Check whether the file is a supported archive
+        if prebuilt_block_package.name.partition('.')[2] not in ['tar.gz', 'tgz', 'tar.xz', 'txz']:
+            pretty_print.print_error(f'Unable to import block package. The following archive type is not supported: {prebuilt_block_package.name.partition(".")[2]}')
+            sys.exit(1)
+
+        # Calculate md5 of the provided file
+        md5_new_file = hashlib.md5(prebuilt_block_package.read_bytes()).hexdigest()
+        # Read md5 of previously used file, if any
+        md5_existsing_file = 0
+        if self._source_pb_md5_file.is_file():
+            with self._source_pb_md5_file.open('r') as f:
+                md5_existsing_file = f.read()
+
+        # Check if the pre-built block package needs to be imported
+        if md5_existsing_file == md5_new_file:
+            pretty_print.print_build('No need to import the pre-built block package. No altered source files detected...')
+            return
+
+        pretty_print.print_build('Importing pre-built block package...')
+
         self.clean_output()
         self._output_dir.mkdir(parents=True)
+        self._work_dir.mkdir(parents=True, exist_ok=True)
 
         #Extract pre-built files
-        file_extension = filename.partition('.')[2]
-        if file_extension in ['tar.gz', 'tgz', 'tar.xz', 'txz']:
-            # tarfile doesn't support parallelised decompression. One would have to use shell
-            # tools for that. For file system archives it might be worth it to save time.
-            # This should also be done in a container.
-            with tarfile.open(self._download_dir / filename, "r:*") as archive:
-                # Extract all contents to the output directory
-                archive.extractall(path=self._output_dir)
-        else:
-            pretty_print.print_error(f'The following archive type is not supported: {file_extension}')
-            sys.exit(1)
+        with tarfile.open(prebuilt_block_package, "r:*") as archive:
+            # Extract all contents to the output directory
+            archive.extractall(path=self._output_dir)
+
+        # Save checksum in file
+        with self._source_pb_md5_file.open('w') as f:
+            print(md5_new_file, file=f, end='')
 
 
     def export_block_package(self):

@@ -17,6 +17,26 @@ class ZynqMP_AMD_ATF_Builder_Alma9(builder.Builder):
                         project_dir=project_dir,
                         block_name=block_name)
 
+        # Block commands. Each command is composed of a list of member functions of the builder class.
+        # The user can use these commands to interact with the block.
+        self.block_cmds = {
+            'prepare': [],
+            'build': [],
+            'clean': [],
+            'create_patches': [],
+            'start_container': []
+        }
+
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_repo, self.clean_output])
+        self.block_cmds['start_container'].append(self.start_container)
+        if self._pc_block_source == 'build':
+            self.block_cmds['prepare'].extend([self.build_container_image, self.init_repo, self.apply_patches])
+            self.block_cmds['build'].extend(self.block_cmds['prepare'])
+            self.block_cmds['build'].extend([self.build_atf, self.export_block_package])
+            self.block_cmds['create_patches'].append(self.create_patches)
+        elif self._pc_block_source == 'import':
+            self.block_cmds['build'].extend([self.import_prebuilt])
+
 
     def build_atf(self):
         """

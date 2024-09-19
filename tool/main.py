@@ -207,18 +207,8 @@ for key0, value0 in project_cfg['blocks'].items():
 
 # ATF
 
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].build_container_image()
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].init_repo()
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].apply_patches()
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].create_patches()
-
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].build_atf()
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].export_block_package()
-
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].download_pre_built()
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_download()
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_repo()
-#builders['ZynqMP_AMD_ATF_Builder_Alma9'].clean_output()
+#for func in builders['ZynqMP_AMD_ATF_Builder_Alma9'].block_cmds['build']:
+#    func()
 
 # U-Boot
 
@@ -286,7 +276,7 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_Alma_RootFS_Builder_Alma8'].add_pl()
 #builders['ZynqMP_Alma_RootFS_Builder_Alma8'].build_tarball()
 #builders['ZynqMP_Alma_RootFS_Builder_Alma8'].export_block_package()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].import_prebuilt()
+builders['ZynqMP_Alma_RootFS_Builder_Alma8'].import_prebuilt()
 #builders['ZynqMP_Alma_RootFS_Builder_Alma8'].download_pre_built()
 
 # Image
@@ -295,8 +285,10 @@ for key0, value0 in project_cfg['blocks'].items():
 #builders['ZynqMP_AMD_Image_Builder_Alma9'].bootscr_img()
 #builders['ZynqMP_AMD_Image_Builder_Alma9'].boot_img()
 #builders['ZynqMP_AMD_Image_Builder_Alma9'].start_container()
-builders['ZynqMP_AMD_Image_Builder_Alma9'].sd_card_img()
+#builders['ZynqMP_AMD_Image_Builder_Alma9'].sd_card_img()
 
 # ToDos:
-# - boot-image (boot.bin) should be a block. It should contain a depends property.
-# - I think it would be good to use the dependency information from the project cfg to build a tree and use that to find out which components have to be build. This would require a build funcion in every block that builds the full block. Maybe cmd_build to highlight that this is a command. Maybe the same for clean.
+# - I think it would be good to use the dependency information from the project cfg to build a tree and
+#   use that to find out which components have to be build. This should be done in this main file.
+#   This would require a build funcion in every block that builds the full block. Maybe cmd_build to
+#   highlight that this is a command. Maybe the same for clean.

@@ -10,7 +10,7 @@ externalTools:
     # Property 'license' must be specified outside this default project configuration file
 blocks:
   atf:
-    source: "local_build"
+    source: "build"
     builder: "ZynqMP_AMD_ATF_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/arm-trusted-firmware.git"
@@ -20,7 +20,7 @@ blocks:
       image: "amd-atf-builder-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   devicetree:
-    source: "local_build"
+    source: "build"
     builder: "ZynqMP_AMD_Devicetree_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/device-tree-xlnx.git"
@@ -32,7 +32,7 @@ blocks:
       image: "amd-xilinx-tools-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   fsbl:
-    source: "local_build"
+    source: "build"
     builder: "ZynqMP_AMD_FSBL_Builder_Alma9"
     project:
       # If no 'pre-built' property is specified, the block must be built locally
@@ -42,7 +42,7 @@ blocks:
       image: "amd-xilinx-tools-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   kernel:
-    source: "local_build"
+    source: "build"
     builder: "ZynqMP_AMD_Kernel_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/linux-xlnx.git"
@@ -52,7 +52,7 @@ blocks:
       image: "kernel-builder-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   pmu-fw:
-    source: "local_build"
+    source: "build"
     builder: "ZynqMP_AMD_PMUFW_Builder_Alma9"
     project:
       # If no 'pre-built' property is specified, the block must be built locally
@@ -62,7 +62,7 @@ blocks:
       image: "amd-xilinx-tools-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   rootfs:
-    source: "local_build"
+    source: "build"
     builder: "ZynqMP_Alma_RootFS_Builder_Alma8"
     release: "8"
     project:
@@ -75,7 +75,7 @@ blocks:
       image: "alma8-rootfs-builder-alma8"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   u-boot:
-    source: "local_build"
+    source: "build"
     builder: "ZynqMP_AMD_UBoot_Builder_Alma9"
     project:
       sources: "https://github.com/Xilinx/u-boot-xlnx.git"
@@ -87,7 +87,7 @@ blocks:
       image: "u-boot-builder-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   vivado:
-    source: "local_build"
+    source: "build"
     # Property 'builder' must be specified outside this default project configuration file
     project:
       # Property 'sources' must be specified outside this default project configuration file
@@ -97,7 +97,7 @@ blocks:
       image: "amd-xilinx-tools-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   image:
-    source: "local_build"
+    source: "build"
     builder: "ZynqMP_AMD_Image_Builder_Alma9"
     project:
       # If no 'pre-built' property is specified, the block must be built locally
