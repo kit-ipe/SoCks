@@ -47,6 +47,25 @@ class ZynqMP_AMD_Image_Builder_Alma9(amd_builder.AMD_Builder):
         # Project directories
         self._misc_dir = self._project_src_dir / self._block_name / 'misc'
 
+        # The user can use block commands to interact with the block.
+        # Each command represents a list of member functions of the builder class.
+        self.block_cmds = {
+            'prepare': [],
+            'build': [],
+            'clean': [],
+            'start_container': []
+        }
+        if self._pc_block_source == 'build':
+            self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies])
+            self.block_cmds['build'].extend(self.block_cmds['prepare'])
+            self.block_cmds['build'].extend([self.linux_img, self.bootscr_img, self.boot_img])
+            self.block_cmds['build_sd_card'].extend(self.block_cmds['build'])
+            self.block_cmds['build_sd_card'].extend([self.sd_card_img])
+            self.block_cmds['start_container'].extend([self.start_container])
+        elif self._pc_block_source == 'import':
+            self.block_cmds['build'].extend([self.import_prebuilt])
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_dependencies, self.clean_output])
+
 
     def start_container(self):
         """
@@ -228,7 +247,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(amd_builder.AMD_Builder):
 
     def sd_card_img(self):
         """
-        Exports an image file that can be written to a SD card
+        Builds an image file that can be written to a SD card
 
         Args:
             None

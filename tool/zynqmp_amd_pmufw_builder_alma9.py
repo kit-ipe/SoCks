@@ -26,6 +26,25 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(amd_builder.AMD_Builder):
             'vivado': ['.*.xsa']
         }
 
+        # The user can use block commands to interact with the block.
+        # Each command represents a list of member functions of the builder class.
+        self.block_cmds = {
+            'prepare': [],
+            'build': [],
+            'clean': [],
+            'create_patches': [],
+            'start_container': []
+        }
+        if self._pc_block_source == 'build':
+            self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies, self.import_xsa, self.create_pmufw_project, self.apply_patches])
+            self.block_cmds['build'].extend(self.block_cmds['prepare'])
+            self.block_cmds['build'].extend([self.build_pmufw, self.export_block_package])
+            self.block_cmds['create_patches'].extend([self.create_patches])
+            self.block_cmds['start_container'].extend([self.start_container])
+        elif self._pc_block_source == 'import':
+            self.block_cmds['build'].extend([self.import_prebuilt])
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_source_xsa, self.clean_dependencies, self.clean_output])
+
 
     def create_pmufw_project(self):
         """

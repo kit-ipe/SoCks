@@ -17,6 +17,29 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
                         project_dir=project_dir,
                         block_name=block_name)
 
+        # The user can use block commands to interact with the block.
+        # Each command represents a list of member functions of the builder class.
+        self.block_cmds = {
+            'prepare': [],
+            'build': [],
+            'clean': [],
+            'create_patches': [],
+            'start_container': [],
+            'menucfg': [],
+            'prep_clean_srcs': []
+        }
+        if self._pc_block_source == 'build':
+            self.block_cmds['prepare'].extend([self.build_container_image, self.init_repo, self.apply_patches])
+            self.block_cmds['build'].extend(self.block_cmds['prepare'])
+            self.block_cmds['build'].extend([self.build_kernel, self.export_modules, self.export_block_package])
+            self.block_cmds['create_patches'].extend([self.create_patches])
+            self.block_cmds['start_container'].extend([self.start_container])
+            self.block_cmds['menucfg'].extend([self.run_menuconfig])
+            self.block_cmds['prep_clean_srcs'].extend([self.prep_clean_srcs])
+        elif self._pc_block_source == 'import':
+            self.block_cmds['build'].extend([self.import_prebuilt])
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_output])
+
 
     def run_menuconfig(self):
         """

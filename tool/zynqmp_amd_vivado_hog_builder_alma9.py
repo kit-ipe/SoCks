@@ -20,6 +20,23 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
         # Import project configuration
         self._pc_project_name = project_cfg['blocks'][self._block_name]['project']['name']
 
+        # The user can use block commands to interact with the block.
+        # Each command represents a list of member functions of the builder class.
+        self.block_cmds = {
+            'prepare': [],
+            'build': [],
+            'clean': [],
+            'start_container': []
+        }
+        if self._pc_block_source == 'build':
+            self.block_cmds['prepare'].extend([self.build_container_image, self.init_repo, self.create_vivado_project])
+            self.block_cmds['build'].extend(self.block_cmds['prepare'])
+            self.block_cmds['build'].extend([self.build_vivado_project, self.export_block_package])
+            self.block_cmds['start_container'].extend([self.start_container])
+        elif self._pc_block_source == 'import':
+            self.block_cmds['build'].extend([self.import_prebuilt])
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_output])
+
 
     def create_vivado_project(self):
         """

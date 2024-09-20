@@ -57,6 +57,26 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
         # File for saving the checksum of the XSA archive used
         self._source_xsa_md5_file = self._work_dir / 'source_xsa.md5'
 
+        # The user can use block commands to interact with the block.
+        # Each command represents a list of member functions of the builder class.
+        self.block_cmds = {
+            'prepare': [],
+            'build': [],
+            'prebuild': [],
+            'clean': [],
+            'start_container': []
+        }
+        if self._pc_block_source == 'build':
+            self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies, self.enable_multiarch])
+            self.block_cmds['build'].extend(self.block_cmds['prepare'])
+            self.block_cmds['build'].extend([self.build_base_rootfs, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_tarball, self.export_block_package])
+            self.block_cmds['prebuild'].extend(self.block_cmds['prepare'])
+            self.block_cmds['prebuild'].extend([self.build_base_rootfs, self.build_tarball, self.mark_prebuilt, self.export_block_package])
+            self.block_cmds['start_container'].extend([self.start_container])
+        elif self._pc_block_source == 'import':
+            self.block_cmds['build'].extend([self.import_prebuilt, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_tarball, self.export_block_package])
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_dependencies, self.clean_output])
+
 
     def enable_multiarch(self):
         """
@@ -459,11 +479,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             self._err_unsup_container_tool()
 
 
-    def build_prebuilt(self):
+    def mark_prebuilt(self):
         """
-        This target can be used to pre-build the RootFS, e.g. in a CI pipeline.
-        The tarball is renamed to underline that it is only a pre-built and not
-        a complete project file system.
+        Renames the tarball to underline that it is only a pre-built and not a
+        complete project file system.
 
         Args:
             None

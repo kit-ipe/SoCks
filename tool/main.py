@@ -206,86 +206,40 @@ for key0, value0 in project_cfg['blocks'].items():
 #
 
 # ATF
-
 #for func in builders['ZynqMP_AMD_ATF_Builder_Alma9'].block_cmds['build']:
 #    func()
 
 # U-Boot
-
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].import_dependencies()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].init_repo()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].apply_patches()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].copy_atf()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].build_uboot()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].run_menuconfig()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].prep_clean_srcs()
-
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_dependencies()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_download()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_repo()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].clean_output()
-#builders['ZynqMP_AMD_UBoot_Builder_Alma9'].export_block_package()
+#for func in builders['ZynqMP_AMD_UBoot_Builder_Alma9'].block_cmds['build']:
+#    func()
 
 # Vivado
-
-#builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].init_repo()
-#builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].create_vivado_project()
-#builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].build_vivado_project()
-#builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].export_block_package()
+#for func in builders['ZynqMP_AMD_Vivado_Hog_Builder_Alma9'].block_cmds['build']:
+#    func()
 
 # FSBL
-#builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_dependencies()
-#builders['ZynqMP_AMD_FSBL_Builder_Alma9'].import_xsa()
-#builders['ZynqMP_AMD_FSBL_Builder_Alma9'].create_fsbl_project()
-#builders['ZynqMP_AMD_FSBL_Builder_Alma9'].build_fsbl()
-#builders['ZynqMP_AMD_FSBL_Builder_Alma9'].export_block_package()
+#for func in builders['ZynqMP_AMD_FSBL_Builder_Alma9'].block_cmds['build']:
+#    func()
 
 # PMU Firmware
-#builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].import_dependencies()
-#builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].import_xsa()
-#builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].create_pmufw_project()
-#builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].build_pmufw()
-#builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].export_block_package()
+#for func in builders['ZynqMP_AMD_PMUFW_Builder_Alma9'].block_cmds['build']:
+#    func()
 
 # Kernel
-#builders['ZynqMP_AMD_Kernel_Builder_Alma9'].init_repo()
-#builders['ZynqMP_AMD_Kernel_Builder_Alma9'].build_kernel()
-#builders['ZynqMP_AMD_Kernel_Builder_Alma9'].export_modules()
-#builders['ZynqMP_AMD_Kernel_Builder_Alma9'].clean_repo()
-#builders['ZynqMP_AMD_Kernel_Builder_Alma9'].clean_output()
-#builders['ZynqMP_AMD_Kernel_Builder_Alma9'].export_block_package()
+#for func in builders['ZynqMP_AMD_Kernel_Builder_Alma9'].block_cmds['build']:
+#    func()
 
 # Devicetree
-#builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].init_repo()
-#builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].apply_patches()
-#builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].import_dependencies()
-#builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].import_xsa()
-#builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].prepare_dt_sources()
-#builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].build_base_devicetree()
-#builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].build_dt_overlays()
-#builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].export_block_package()
+#for func in builders['ZynqMP_AMD_Devicetree_Builder_Alma9'].block_cmds['build']:
+#    func()
 
 # Root File System
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].import_dependencies()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].enable_multiarch()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].build_base_rootfs()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].add_fs_layers()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].add_users()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].clean_dependencies()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].add_kmodules()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].add_pl()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].build_tarball()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].export_block_package()
-builders['ZynqMP_Alma_RootFS_Builder_Alma8'].import_prebuilt()
-#builders['ZynqMP_Alma_RootFS_Builder_Alma8'].download_pre_built()
+#for func in builders['ZynqMP_Alma_RootFS_Builder_Alma9'].block_cmds['build']:
+#    func()
 
 # Image
-#builders['ZynqMP_AMD_Image_Builder_Alma9'].import_dependencies()
-#builders['ZynqMP_AMD_Image_Builder_Alma9'].linux_img()
-#builders['ZynqMP_AMD_Image_Builder_Alma9'].bootscr_img()
-#builders['ZynqMP_AMD_Image_Builder_Alma9'].boot_img()
-#builders['ZynqMP_AMD_Image_Builder_Alma9'].start_container()
-#builders['ZynqMP_AMD_Image_Builder_Alma9'].sd_card_img()
+#for func in builders['ZynqMP_AMD_Image_Builder_Alma9'].block_cmds['build']:
+#    func()
 
 # ToDos:
 # - I think it would be good to use the dependency information from the project cfg to build a tree and
