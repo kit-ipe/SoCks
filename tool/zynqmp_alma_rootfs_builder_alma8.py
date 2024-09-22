@@ -2,6 +2,7 @@ import sys
 import pathlib
 import shutil
 import hashlib
+import tarfile
 import zipfile
 from dateutil import parser
 import urllib
@@ -31,8 +32,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
         self._block_deps = {
             'kernel': ['kernel_modules.tar.gz'],
             'devicetree': ['system.dtb', 'system.dts'],
-            'vivado': ['.*.xsa'],
-            'rootfs': ['.*tar...']
+            'vivado': ['.*.xsa']
         }
 
         # Import project configuration
@@ -66,14 +66,15 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             'clean': [],
             'start_container': []
         }
+        self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies, self.enable_multiarch])
         if self._pc_block_source == 'build':
-            self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies, self.enable_multiarch])
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
             self.block_cmds['build'].extend([self.build_base_rootfs, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_tarball, self.export_block_package])
             self.block_cmds['prebuild'].extend(self.block_cmds['prepare'])
-            self.block_cmds['prebuild'].extend([self.build_base_rootfs, self.build_tarball, self.mark_prebuilt, self.export_block_package])
+            self.block_cmds['prebuild'].extend([self.build_base_rootfs, self.build_tarball_prebuilt, self.export_block_package])
             self.block_cmds['start_container'].extend([self.start_container])
         elif self._pc_block_source == 'import':
+            self.block_cmds['build'].extend(self.block_cmds['prepare'])
             self.block_cmds['build'].extend([self.import_prebuilt, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_tarball, self.export_block_package])
         self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_dependencies, self.clean_output, self.rm_temp_block])
 
@@ -144,7 +145,6 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
         pretty_print.print_build('Building the base root file system...')
 
         self._work_dir.mkdir(parents=True, exist_ok=True)
-        self._output_dir.mkdir(parents=True, exist_ok=True)
 
         # Create ID file. This file will be added to the RootFS as a read only file
         with self._version_file.open('w') as f:
@@ -165,7 +165,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             try:
                 # Run commands in container
                 # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', base_rootfs_build_commands])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', base_rootfs_build_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while building the base root file system: {e}')
                 sys.exit(1)
@@ -432,12 +432,14 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             print(md5_new_xsa_file, file=f, end='')
 
 
-    def build_tarball(self):
+    def build_tarball(self, prebuilt: bool = False):
         """
         Packs the entire rootfs in a tarball.
 
         Args:
-            None
+            prebuilt:
+                Set to True if the tarball will contain pre-built files
+                instead of a complete project file system.
 
         Returns:
             None
@@ -453,15 +455,23 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
 
         pretty_print.print_build('Building tarball...')
 
+        if prebuilt:
+            tarball_name = f'almalinux{self._pc_alma_release}_zynqmp_pre-built'
+        else:
+            tarball_name = self._rootfs_name
+
+        self.clean_output()
+        self._output_dir.mkdir(parents=True)
+
         # Tar was tested with three compression options:
         # Option	Size	Duration
         # --xz	872M	real	17m59.080s
         # -I pxz	887M	real	3m43.987s
         # -I pigz	1.3G	real	0m20.747s
         tarball_build_commands = f'\'cd {self._build_dir} && ' \
-                                f'tar -I pxz --numeric-owner -p -cf  {self._output_dir / f"{self._rootfs_name}.tar.xz"} ./ && ' \
+                                f'tar -I pxz --numeric-owner -p -cf  {self._output_dir / f"{tarball_name}.tar.xz"} ./ && ' \
                                 f'if id {self._host_user} >/dev/null 2>&1; then ' \
-                                f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{self._rootfs_name}.tar.xz"}; ' \
+                                f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{tarball_name}.tar.xz"}; ' \
                                 f'fi\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
@@ -479,10 +489,9 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             self._err_unsup_container_tool()
 
 
-    def mark_prebuilt(self):
+    def build_tarball_prebuilt(self):
         """
-        Renames the tarball to underline that it is only a pre-built and not a
-        complete project file system.
+        Packs the entire pre-built rootfs in a tarball.
 
         Args:
             None
@@ -494,8 +503,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             None
         """
 
-        pretty_print.print_error(f'ToDo: This needs to be implemented!')
-        sys.exit(1)
+        self.build_tarball(prebuilt = True)
 
 
     def import_prebuilt(self):
@@ -549,19 +557,23 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             pretty_print.print_build('No need to import the pre-built root file system. No altered source files detected...')
             return
 
-        self.clean_work(as_root=True)
-        self.clean_output()
+        self.clean_work()
         self._work_dir.mkdir(parents=True)
-        self._output_dir.mkdir(parents=True)
-
-        # Create a copy of the pre-built archive in a location that is available in the container
-        temp_prebuilt_rootfs_file = self._work_dir / prebuilt_block_package.name
-        shutil.copy(prebuilt_block_package, temp_prebuilt_rootfs_file)
 
         pretty_print.print_build('Importing pre-built root file system...')
 
+        #Extract pre-built files
+        with tarfile.open(prebuilt_block_package, "r:*") as archive:
+            content = archive.getnames()
+            if len(content) != 1:
+                pretty_print.print_error(f'There are {len(content)} files in archive {prebuilt_block_package}. Expected was 1.')
+                sys.exit(1)
+            prebuilt_rootfs_archive = content[0]
+            # Extract all contents to the work directory
+            archive.extractall(path=self._work_dir)
+
         extract_pb_rootfs_commands = f'\'mkdir -p {self._build_dir} && ' \
-                                    f'tar --numeric-owner -p -xf {temp_prebuilt_rootfs_file} -C {self._build_dir}\''
+                                    f'tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._build_dir}\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
@@ -581,8 +593,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
         with self._source_pb_md5_file.open('w') as f:
             print(md5_new_file, file=f, end='')
 
-        # Delete copy of the pre-built archive
-        temp_prebuilt_rootfs_file.unlink()
+        # Delete imported, pre-built rootfs archive
+        (self._work_dir / prebuilt_rootfs_archive).unlink()
 
 
     def clean_work(self):

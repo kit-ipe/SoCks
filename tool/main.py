@@ -234,12 +234,12 @@ for key0, value0 in project_cfg['blocks'].items():
 #    func()
 
 # Root File System
-#for func in builders['ZynqMP_Alma_RootFS_Builder_Alma8'].block_cmds['build']:
-#    func()
+for func in builders['ZynqMP_Alma_RootFS_Builder_Alma8'].block_cmds['build']:
+    func()
 
 # Image
-for func in builders['ZynqMP_AMD_Image_Builder_Alma9'].block_cmds['build']:
-    func()
+#for func in builders['ZynqMP_AMD_Image_Builder_Alma9'].block_cmds['build']:
+#    func()
 
 # ToDos:
 # - I think it would be good to use the dependency information from the project cfg to build a tree and
