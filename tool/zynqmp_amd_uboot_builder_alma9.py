@@ -69,7 +69,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
                                 'export ARCH=aarch64 && ' \
                                 'make menuconfig\''
 
-        self._run_menuconfig(menuconfig_commands=menuconfig_commands)
+        super()._run_menuconfig(menuconfig_commands=menuconfig_commands)
 
 
     def prep_clean_srcs(self):
@@ -92,7 +92,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
                                 'make xilinx_zynqmp_virt_defconfig && ' \
                                 'printf \"\n# Do not ignore the config file\n!.config\n\" >> .gitignore\''
 
-        self._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
+        super()._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
 
 
     def copy_atf(self):

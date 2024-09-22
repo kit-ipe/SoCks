@@ -59,7 +59,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
                                 'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
                                 'make ARCH=arm64 menuconfig\''
 
-        self._run_menuconfig(menuconfig_commands=menuconfig_commands)
+        super()._run_menuconfig(menuconfig_commands=menuconfig_commands)
 
 
     def prep_clean_srcs(self):
@@ -81,7 +81,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
                                 'make ARCH=arm64 xilinx_zynqmp_defconfig && ' \
                                 'printf \"\n# Do not ignore the config file\n!.config\n\" >> .gitignore\''
 
-        self._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
+        super()._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
 
 
     def build_kernel(self):
