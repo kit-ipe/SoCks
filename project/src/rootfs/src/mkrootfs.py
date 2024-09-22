@@ -22,7 +22,7 @@ import augeas
 dirname, filename = os.path.split(os.path.abspath(__file__))
 
 # Set path of the DNF config (lists repos that can be used by DNF)
-dnf_conf=dirname+'/dnf_build_time.conf'
+dnf_conf=dirname+'/dnf.conf'
 print("DNF config path: " + dnf_conf)
 
 # Function for running shell command
@@ -34,20 +34,13 @@ def run_cmd(command):
             output = process.stdout.readline()
             if output:
                 print(output.strip().decode('utf-8'))
-        if process.returncode != 0:
-            raise subprocess.CalledProcessError(process.returncode, ' '.join(command))
     except:
         raise
 
 # Function for running a DNF command
 def run_dnf(rootfs_dir, releasever, command, packages):
-    repos="appstream,appstream-source,baseos,baseos-source,extras,extras-source,plus,powertools,ha,cern,locmap,openafs,ipbus-sw-base,ipbus-sw-updates,smash"
+    repos="appstream,appstream-source,baseos,baseos-source,extras,extras-source,plus,powertools,ha,ipbus-sw-base,ipbus-sw-updates,smash"
     cmd=["dnf", "-y", "--nodocs", "-c", dnf_conf, "--releasever="+releasever, "--forcearch="+arch, "--repo="+repos+epel, "--verbose", "--installroot="+rootfs_dir, command] + packages
-    run_cmd(cmd)
-
-# Function for running a DNF config-manager command
-def run_dnf_config_manager(rootfs_dir, releasever, command):
-    cmd=["dnf", "-y", "--nodocs", "--releasever="+releasever, "--forcearch="+arch, "--verbose", "--installroot="+rootfs_dir, "config-manager"] + command
     run_cmd(cmd)
 
 # Set up parser
@@ -107,7 +100,7 @@ elif arch == "armv7hl":
 
 # Build the base rootfs
 run_dnf(rootdir,rv,"clean",["all"])    # Clean all cache files generated from repository metadata
-run_dnf(rootdir,rv,"update",[])     # Update all the installed packages
+run_dnf(rootdir,rv,"update",[" "])     # Update all the installed packages
 print ("\nRunning dnf group install...\n")
 run_dnf(rootdir,rv,"groupinstall",["Minimal Install","--with-optional"])    # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
 
@@ -118,22 +111,13 @@ run_dnf(rootdir,rv,"autoremove",[" "])
 
 # Enable additional repos
 print ("\nEnabling additional repos...\n")
-
-key_path="/etc/pki/rpm-gpg/"
-if not os.path.exists(key_path+"RPM-GPG-KEY-EPEL-"+rv.split('.')[0]):
+epel_key_source="https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8"
+epel_key_path="/etc/pki/rpm-gpg/"
+if not os.path.exists(epel_key_path+"RPM-GPG-KEY-EPEL-8"):
     print ("EPEL key not found. EPEL needs to be enabled in the host system ('dnf install epel-release')")
-    raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), key_path+"RPM-GPG-KEY-EPEL-"+rv.split('.')[0])
-if not os.path.exists(key_path+"RPM-GPG-KEY-kojiv2"):
-    print ("CERN GPG key not found. The key can be downloaded from here: https://gitlab.cern.ch/linuxsupport/rpms/cern-gpg-keys/")
-    raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), key_path+"RPM-GPG-KEY-kojiv2")
-    
-run_dnf(rootdir,rv,"install",["epel-release"])     					# Install EPEL in rootfs
-run_dnf_config_manager(rootdir,rv,["--set-enabled","epel"])     	# Enable EPEL in rootfs
-run_dnf_config_manager(rootdir,rv,["--set-enabled","epel-testing"])	# Enable EPEL Testing in rootfs
-run_dnf_config_manager(rootdir,rv,["--set-enabled","powertools"])	# Enable PowerTools in rootfs
-run_dnf_config_manager(rootdir,rv,["--set-enabled","plus"])     	# Enable Plus in rootfs
-cern_key_source = "https://gitlab.cern.ch/api/v4/projects/141918/repository/files/src%2FRPM-GPG-KEY-kojiv2/raw?ref=main"
-run_cmd(["curl", "-o", rootdir+key_path+"RPM-GPG-KEY-kojiv2", cern_key_source])    # Install CERN key in rootfs
+    raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), epel_key_path+"RPM-GPG-KEY-EPEL-8")
+run_cmd(["wget", epel_key_source, "-P", rootdir+epel_key_path])    # Install EPEL key in rootfs
+
 
 # Installing user defined packages
 if args['extra'] is not None:

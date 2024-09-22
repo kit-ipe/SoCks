@@ -43,7 +43,7 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(amd_builder.AMD_Builder):
             self.block_cmds['start_container'].extend([self.start_container])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend([self.import_prebuilt])
-        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_source_xsa, self.clean_dependencies, self.clean_output])
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_source_xsa, self.clean_dependencies, self.clean_output, self.rm_temp_block])
 
 
     def create_fsbl_project(self):

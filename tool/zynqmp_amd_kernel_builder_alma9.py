@@ -38,7 +38,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
             self.block_cmds['prep_clean_srcs'].extend([self.prep_clean_srcs])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend([self.import_prebuilt])
-        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_output])
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_output, self.rm_temp_block])
 
 
     def run_menuconfig(self):

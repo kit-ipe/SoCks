@@ -1,0 +1,42 @@
+FROM almalinux:9
+
+# Build-time variables
+ARG user_name=root
+ARG user_id=0
+
+# Switch to the root user to configure the image
+USER root
+
+# Enable Power Tools repo
+RUN dnf -y install 'dnf-command(config-manager)'
+RUN dnf config-manager --set-enabled crb
+
+# Enable EPEL repo
+RUN dnf -y install epel-release
+
+# Install development tools
+RUN dnf -y group install "Development Tools"
+RUN dnf -y install dtc
+
+# Install additional packages required for xsct
+RUN dnf -y install glibc-locale-source glibc-langpack-en
+RUN dnf -y install ncurses-libs ncurses-compat-libs
+RUN dnf -y install libxcrypt-compat
+
+# Install dependencies for the Vivado GUI
+RUN dnf -y install libXtst
+
+# Install uhal
+RUN curl https://ipbus.web.cern.ch/doc/user/html/_downloads/ipbus-sw.el9.repo -o /etc/yum.repos.d/ipbus-sw.repo
+RUN dnf -y groupinstall uhal
+
+# Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
+RUN getent group $user_name || groupadd --gid $user_id $user_name
+RUN getent passwd $user_name || adduser --uid $user_id --gid $user_id --base-dir "/home" $user_name
+USER $user_name
+WORKDIR /home/$user_name
+
+# Install IPBB
+RUN mkdir -p /home/$user_name/tools
+RUN cd /home/$user_name/tools; curl -L https://github.com/ipbus/ipbb/archive/dev/2024b.tar.gz | tar xvz
+RUN cd /home/$user_name/tools; source ipbb-dev-2024b/env.sh

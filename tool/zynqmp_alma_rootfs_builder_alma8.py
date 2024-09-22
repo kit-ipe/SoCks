@@ -75,7 +75,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
             self.block_cmds['start_container'].extend([self.start_container])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend([self.import_prebuilt, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_tarball, self.export_block_package])
-        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_dependencies, self.clean_output])
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_dependencies, self.clean_output, self.rm_temp_block])
 
 
     def enable_multiarch(self):
@@ -583,3 +583,20 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
 
         # Delete copy of the pre-built archive
         temp_prebuilt_rootfs_file.unlink()
+
+
+    def clean_work(self):
+            """
+            This function cleans the work directory.
+
+            Args:
+                None
+
+            Returns:
+                None
+
+            Raises:
+                None
+            """
+
+            super().clean_work(as_root=True)

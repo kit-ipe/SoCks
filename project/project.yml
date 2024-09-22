@@ -16,5 +16,5 @@ blocks:
     builder: "ZynqMP_AMD_Vivado_Hog_Builder_Alma9"
     project:
       sources: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
-      branch: "main"
+      branch: "test"
       name: "serenity-s1-kria"

@@ -14,6 +14,7 @@ libuuid-devel
 pam-devel
 openldap-devel 
 pugixml-devel
+which
 gdb
 expect
 net-tools
@@ -34,6 +35,7 @@ strace
 minicom
 i2c-tools
 screen
+chrony
 rpm-build-libs
 rpm-build
 python3-pip
@@ -46,16 +48,15 @@ yaml-cpp-devel
 msgpack-devel
 cppzmq-devel
 dosfstools
-libxml2
 libxml2-devel
 python3-libxml2
 python3-lxml
+libxml2 
 libxslt 
 libxslt-devel
 python3-psutil
 python3-setuptools-wheel
 llvm-toolset
+dnf
 podman
-locmap-release
-locmap
 smash*

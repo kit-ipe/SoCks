@@ -1186,7 +1186,10 @@ class Builder:
             pretty_print.print_clean('No need to clean the work directory...')
             return
 
-        pretty_print.print_clean('Cleaning work directory...')
+        if as_root:
+            pretty_print.print_clean('Cleaning work directory as root user...')
+        else:
+            pretty_print.print_clean('Cleaning work directory...')
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
@@ -1291,3 +1294,27 @@ class Builder:
         # Remove empty download directory
         if dependency == '':
             self._dependencies_dir.rmdir()
+
+
+    def rm_temp_block(self):
+        """
+        This function deletes the empty temp directory of a block.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if not (self._project_temp_dir / self._block_name).exists():
+            pretty_print.print_clean(f'No need to clean the temp directory of block {self._block_name}...')
+            return
+
+        pretty_print.print_clean(f'Cleaning temp directory of block {self._block_name}...')
+
+        # Remove empty temp directory
+        (self._project_temp_dir / self._block_name).rmdir()
