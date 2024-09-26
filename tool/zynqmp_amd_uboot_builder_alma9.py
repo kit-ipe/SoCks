@@ -32,22 +32,23 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
             'prepare': [],
             'build': [],
             'clean': [],
-            'create_patches': [],
-            'start_container': [],
+            'create-patches': [],
+            'start-container': [],
             'menucfg': [],
-            'prep_clean_srcs': []
+            'prep-clean-srcs': []
         }
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_dependencies, self.clean_output, self.rm_temp_block])
         if self._pc_block_source == 'build':
             self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies, self.init_repo, self.copy_atf, self.apply_patches])
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
             self.block_cmds['build'].extend([self.build_uboot, self.export_block_package])
-            self.block_cmds['create_patches'].extend([self.create_patches])
-            self.block_cmds['start_container'].extend([self.start_container])
+            self.block_cmds['create-patches'].extend([self.create_patches])
+            self.block_cmds['start-container'].extend([self.start_container])
             self.block_cmds['menucfg'].extend([self.run_menuconfig])
-            self.block_cmds['prep_clean_srcs'].extend([self.prep_clean_srcs])
+            self.block_cmds['prep-clean-srcs'].extend(self.block_cmds['clean'])
+            self.block_cmds['prep-clean-srcs'].extend([self.build_container_image, self.init_repo, self.prep_clean_srcs])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend([self.import_prebuilt])
-        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_dependencies, self.clean_output, self.rm_temp_block])
 
 
     def run_menuconfig(self):

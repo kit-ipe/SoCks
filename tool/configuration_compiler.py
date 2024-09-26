@@ -8,7 +8,7 @@ import re
 
 import pretty_print
 
-class Cfg_Compiler:
+class Configuration_Compiler:
     """
     A class to compile the project configuration
     """
@@ -63,7 +63,7 @@ class Cfg_Compiler:
         for key, value in source.items():
             if key in target and isinstance(target[key], dict) and isinstance(value, dict):
                 # If both values are dictionaries, merge them recursively
-                target[key] = Cfg_Compiler._merge_dicts(target[key], value)
+                target[key] = Configuration_Compiler._merge_dicts(target[key], value)
             elif key in target and isinstance(target[key], list) and isinstance(value, list):
                 # If both values are lists, merge them without duplicating elements
                 target[key] = list(set(target[key] + value))
@@ -95,7 +95,7 @@ class Cfg_Compiler:
         """
 
         try:
-            config_file = Cfg_Compiler._find_file(file_name=config_file_name, search_list=[socks_dir / 'project_templates', project_dir]) # ToDo: I think these paths should not be hard coded here
+            config_file = Configuration_Compiler._find_file(file_name=config_file_name, search_list=[socks_dir / 'project_templates', project_dir]) # ToDo: I think these paths should not be hard coded here
         except FileNotFoundError as e:
             print(repr(e))
             sys.exit(1)
@@ -109,7 +109,7 @@ class Cfg_Compiler:
         if 'import' in cfg_layer:
             for file_name in cfg_layer['import']:
                 # Recursively merge the so far composed return value with the file to be imported
-                ret = Cfg_Compiler._merge_dicts(target=Cfg_Compiler._merge_cfg_files(config_file_name=file_name, socks_dir=socks_dir, project_dir=project_dir), source=ret)
+                ret = Configuration_Compiler._merge_dicts(target=Configuration_Compiler._merge_cfg_files(config_file_name=file_name, socks_dir=socks_dir, project_dir=project_dir), source=ret)
             # Remove the 'import' key from the so far composed configuration, as it is no longer needed
             del ret['import']
 
@@ -137,12 +137,12 @@ class Cfg_Compiler:
         if isinstance(search_object, dict):
             # Traverse dictionary
             for key, value in search_object.items():
-                search_object[key] = Cfg_Compiler._resolve_placeholders(project_cfg, value)
+                search_object[key] = Configuration_Compiler._resolve_placeholders(project_cfg, value)
 
         elif isinstance(search_object, list):
             # Traverse list
             for i, item in enumerate(search_object):
-                search_object[i] = Cfg_Compiler._resolve_placeholders(project_cfg, item)
+                search_object[i] = Configuration_Compiler._resolve_placeholders(project_cfg, item)
 
         elif isinstance(search_object, str):
             # Replace placeholders in string, if present
@@ -189,10 +189,10 @@ class Cfg_Compiler:
         """
 
         # Merge config files
-        project_cfg = Cfg_Compiler._merge_cfg_files(config_file_name=root_cfg_file.name, socks_dir=socks_dir, project_dir=project_dir)
+        project_cfg = Configuration_Compiler._merge_cfg_files(config_file_name=root_cfg_file.name, socks_dir=socks_dir, project_dir=project_dir)
 
         # Resolve placeholders
-        project_cfg = Cfg_Compiler._resolve_placeholders(project_cfg=project_cfg, search_object=project_cfg)
+        project_cfg = Configuration_Compiler._resolve_placeholders(project_cfg=project_cfg, search_object=project_cfg)
 
         # Validate project configuration
         schema = socks_dir / 'schemas' / f'{project_cfg["project"]["type"]}.schema.json' # ToDo: I think this path should not be hard coded here

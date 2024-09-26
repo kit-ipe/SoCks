@@ -26,18 +26,18 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
             'prepare': [],
             'build': [],
             'clean': [],
-            'start_container': [],
-            'start_vivado_gui': []
+            'start-container': [],
+            'start-vivado-gui': []
         }
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_output, self.rm_temp_block])
         if self._pc_block_source == 'build':
             self.block_cmds['prepare'].extend([self.build_container_image, self.init_repo, self.create_vivado_project])
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
             self.block_cmds['build'].extend([self.build_vivado_project, self.export_block_package])
-            self.block_cmds['start_container'].extend([self.start_container])
-            self.block_cmds['start_vivado_gui'].extend([self.start_vivado_gui])
+            self.block_cmds['start-container'].extend([self.start_container])
+            self.block_cmds['start-vivado-gui'].extend([self.start_vivado_gui])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend([self.import_prebuilt])
-        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_output, self.rm_temp_block])
 
 
     def create_vivado_project(self):

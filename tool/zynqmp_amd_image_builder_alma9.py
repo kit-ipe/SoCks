@@ -52,20 +52,20 @@ class ZynqMP_AMD_Image_Builder_Alma9(amd_builder.AMD_Builder):
         self.block_cmds = {
             'prepare': [],
             'build': [],
-            'build_sd_card': [],
+            'build-sd-card': [],
             'clean': [],
-            'start_container': []
+            'start-container': []
         }
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_dependencies, self.clean_output, self.rm_temp_block])
         if self._pc_block_source == 'build':
             self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies])
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
             self.block_cmds['build'].extend([self.linux_img, self.bootscr_img, self.boot_img])
-            self.block_cmds['build_sd_card'].extend(self.block_cmds['build'])
-            self.block_cmds['build_sd_card'].extend([self.sd_card_img])
-            self.block_cmds['start_container'].extend([self.start_container])
+            self.block_cmds['build-sd-card'].extend(self.block_cmds['build'])
+            self.block_cmds['build-sd-card'].extend([self.sd_card_img])
+            self.block_cmds['start-container'].extend([self.start_container])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend([self.import_prebuilt])
-        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_dependencies, self.clean_output, self.rm_temp_block])
 
 
     def start_container(self):
