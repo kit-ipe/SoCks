@@ -195,7 +195,7 @@ class Cfg_Compiler:
         project_cfg = Cfg_Compiler._resolve_placeholders(project_cfg=project_cfg, search_object=project_cfg)
 
         # Validate project configuration
-        schema = socks_dir / 'schemas' / f'{project_cfg["project"]["type"]}.schema.json'
+        schema = socks_dir / 'schemas' / f'{project_cfg["project"]["type"]}.schema.json' # ToDo: I think this path should not be hard coded here
         if not schema.is_file():
             pretty_print.print_error(f'{project_cfg["project"]["type"]} is not a supported project type (Unable to find suitable schema).')
             sys.exit(1)
