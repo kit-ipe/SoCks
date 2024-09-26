@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import typing
 import sys
 import pathlib
 import importlib
@@ -9,7 +10,26 @@ import pretty_print
 from cfg_compiler import Cfg_Compiler
 
 
-def find_active_blocks(active_blocks, block):
+def add_active_blocks(block: str, active_blocks: typing.List[str], project_cfg: dict):
+    """
+    Adds the provided block and all of its dependencies to the list of active blocks
+
+    Args:
+        block:
+            The block to be added.
+        active_blocks:
+            List of active blocks.
+        project_cfg:
+            Project configuration.
+
+    Returns:
+        List of active blocks.
+
+    Raises:
+        None
+    """
+
+    # Check if the provided block is valid
     if block not in project_cfg['blocks']:
         pretty_print.print_error(f'Block \'{block}\' is not part of the configuration provided.')
         sys.exit(1)
@@ -28,12 +48,28 @@ def find_active_blocks(active_blocks, block):
         if 'project' in project_cfg['blocks'][block_i] and 'dependencies' in project_cfg['blocks'][block_i]['project']:
             for dep, dep_path in project_cfg['blocks'][block_i]['project']['dependencies'].items():
                 if dep not in active_blocks:
-                    active_blocks = find_active_blocks(active_blocks, dep)
+                    active_blocks = add_active_blocks(active_blocks, dep)
     # Remove duplicates
     active_blocks = [i for n, i in enumerate(active_blocks) if i not in active_blocks[:n]]
     return active_blocks
 
-def sort_blocks(blocks):
+def sort_blocks(blocks: typing.List[str], project_cfg: dict):
+    """
+    Sorts blocks in the order in which they are to be built.
+
+    Args:
+        blocks:
+            List of blocks to be sorted.
+        project_cfg:
+            Project configuration.
+
+    Returns:
+        Sorted list of blocks.
+
+    Raises:
+        None
+    """
+
     tmp_block_list = blocks
     for block in blocks:
         # Get a list of this blocks dependencies
@@ -85,15 +121,13 @@ for block0, block_dict0 in project_cfg['blocks'].items():
         pretty_print.print_error(f"No builder class {builder_class_name} available")
         sys.exit(1)
 
-# Create list of all blocks to be operated on
 target_block = 'u-boot'
 block_cmd = 'build'
 
 group_cmds = ['build', 'prepare', 'clean']
-
 if block_cmd in group_cmds:
-    active_blocks = find_active_blocks([], target_block)
-    active_blocks = sort_blocks(active_blocks)
+    active_blocks = add_active_blocks(block=target_block, active_blocks=[], project_cfg=project_cfg)
+    active_blocks = sort_blocks(blocks=active_blocks, project_cfg=project_cfg)
 else:
     active_blocks = [target_block]
 
