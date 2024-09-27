@@ -10,15 +10,17 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
     """
 
     def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
-        block_name = 'vivado'
+        block_id = 'vivado'
+        block_description = 'Build an AMD/Xilinx Vivado Project with HDL on git (Hog)'
 
         super().__init__(project_cfg=project_cfg,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
-                        block_name=block_name)
+                        block_id=block_id,
+                        block_description=block_description)
 
         # Import project configuration
-        self._pc_project_name = project_cfg['blocks'][self._block_name]['project']['name']
+        self._pc_project_name = project_cfg['blocks'][self.block_id]['project']['name']
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.

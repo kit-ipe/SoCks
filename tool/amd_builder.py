@@ -10,12 +10,13 @@ class AMD_Builder(builder.Builder):
     Base class for all builder classes that use AMD Xilinx tools
     """
 
-    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_name: str):
+    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str, block_description: str):
 
         super().__init__(project_cfg=project_cfg,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
-                        block_name=block_name)
+                        block_id=block_id,
+                        block_description=block_description)
 
         # Import project configuration
         self._pc_xilinx_path = project_cfg['externalTools']['xilinx']['path']
@@ -23,7 +24,7 @@ class AMD_Builder(builder.Builder):
         self._pc_xilinx_license = project_cfg["externalTools"]["xilinx"]["license"]
 
         # Project directories
-        self._xsa_dir = self._project_temp_dir / self._block_name / 'source_xsa'
+        self._xsa_dir = self._project_temp_dir / self.block_id / 'source_xsa'
 
         # Project files
         # File for saving the checksum of the XSA-file on which the project is based

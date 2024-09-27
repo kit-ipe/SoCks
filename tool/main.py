@@ -123,6 +123,7 @@ for block0, block_dict0 in project_cfg['blocks'].items():
         pretty_print.print_error(f'No builder class {builder_class_name} available')
         sys.exit(1)
 
+# A complete list of all commands that SoCks supports as an interaction option with blocks, including a description
 supported_block_commands={
     'prepare':          'Performs all the preparatory steps to prepare this block for building, but does not build it.',
     'build':            'Builds this block.',
@@ -135,19 +136,23 @@ supported_block_commands={
     'start-vivado-gui': 'Starts the container image and opens the Vivado GUI in an interactive session.',
     'prep-clean-srcs':  'Cleans this block and creates a new, clean Linux kernel or U-Boot project. After the creation of the project you should create a patch that includes .gitignore and .config.'
 }
+# A list of all commands that can be applied to a group of blocks
 group_cmds = ['build', 'prepare', 'clean']
 
+# Create argument parser
 cli = argparse.ArgumentParser(description='SoCks - SoC image builder')
-
 cli_blocks = cli.add_subparsers(title='blocks', dest='block')
 
 # Add parsers for all blocks
 for block, block_dict in project_cfg['blocks'].items():
-    cli_block = cli_blocks.add_parser(block, help=f'Interact with block {block}')
-    cli_block_cmds = cli_block.add_subparsers(title='commands', dest='command')
     builder_name = project_cfg['blocks'][block]['builder']
     builder = builders[builder_name]
+    # Add this block to the parser
+    cli_block = cli_blocks.add_parser(block, description=builder.block_description, help=f'Interact with block {block}')
+    cli_block_cmds = cli_block.add_subparsers(title='commands', dest='command')
+    # Add all commands that are available for this block to the parser
     for block_cmd in builder.block_cmds:
+        # Check if the command to be added is supported by SoCks
         if block_cmd not in supported_block_commands:
             pretty_print.print_error(f'The command \'{block_cmd}\' is provided by builder \'{builder_name}\', but SoCks does not support this command.')
             sys.exit(1)
@@ -156,7 +161,7 @@ for block, block_dict in project_cfg['blocks'].items():
     cli_block.add_argument("-g", "--group", action='store_true', help="Interact not only with the specified block, but also with all blocks on which this block depends.")
 
 # Add additional parser to interact with all blocks at once
-cli_block = cli_blocks.add_parser('all', help='Interact with all blocks at once')
+cli_block = cli_blocks.add_parser('all', description='Operate on all blocks', help='Interact with all blocks at once')
 cli_block_cmds = cli_block.add_subparsers(title='commands', dest='command')
 for command in group_cmds:
     cli_block_cmd = cli_block_cmds.add_parser(command, help=supported_block_commands[command])
@@ -166,25 +171,32 @@ def main():
     The main method and the entry point to the SoCks command-line interface
     """
 
+    # Initialize argument parser
     args = vars(cli.parse_args())
 
+    # Check whether all required arguments are available
     if 'block' not in args or not args['block'] or 'command' not in args or not args['command']:
         cli.print_usage()
         pretty_print.print_error('The following arguments are required: block command.')
         cli.exit()
 
-    print(args)
-
     target_block = args['block']
     block_cmd = args['command']
-    group_cmd = args['group']
 
-    print(f'target_block = {target_block}')
-    print(f'target_block = {block_cmd}')
-    print(f'target_block = {group_cmd}')
+    if target_block == 'all':
+        group_cmd = True
+    else:
+        group_cmd = args['group']
 
-    if group_cmd and block_cmd in group_cmds:
-        active_blocks = add_active_blocks(block=target_block, active_blocks=[], project_cfg=project_cfg)
+    # Create a list of all blocks to be worked with
+    if group_cmd:
+        if target_block == 'all':
+            active_blocks =  list(project_cfg['blocks'])
+        elif block_cmd in group_cmds:
+            active_blocks = add_active_blocks(block=target_block, active_blocks=[], project_cfg=project_cfg)
+        elif block_cmd not in group_cmds:
+            pretty_print.print_error(f'The following command cannot be executed on a group of blocks: {block_cmd}.')
+            sys.exit(1)
         active_blocks = sort_blocks(blocks=active_blocks, project_cfg=project_cfg)
         # Blocks should be deleted in the reverse order in which they are built
         if block_cmd == 'clean':
@@ -192,6 +204,7 @@ def main():
     else:
         active_blocks = [target_block]
 
+    # Execute the command for all active blocks
     for block in active_blocks:
         builder_name = project_cfg['blocks'][block]['builder']
         builder = builders[builder_name]

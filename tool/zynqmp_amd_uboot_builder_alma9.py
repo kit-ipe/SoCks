@@ -12,12 +12,14 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
     """
 
     def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
-        block_name = 'u-boot'
+        block_id = 'u-boot'
+        block_description = 'Build the official AMD/Xilinx version of U-Boot for ZynqMP devices'
 
         super().__init__(project_cfg=project_cfg,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
-                        block_name=block_name)
+                        block_id=block_id,
+                        block_description=block_description)
 
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain

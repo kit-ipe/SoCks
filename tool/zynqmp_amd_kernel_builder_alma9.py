@@ -10,12 +10,14 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(builder.Builder):
     """
 
     def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
-        block_name = 'kernel'
+        block_id = 'kernel'
+        block_description = 'Build the official AMD/Xilinx version of the Linux Kernel for ZynqMP devices'
 
         super().__init__(project_cfg=project_cfg,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
-                        block_name=block_name)
+                        block_id=block_id,
+                        block_description=block_description)
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.

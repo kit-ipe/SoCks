@@ -23,16 +23,17 @@ class Builder:
     Base class for all builder classes
     """
 
-    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_name: str):
-        self._block_name = block_name
+    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str, block_description: str):
+        self.block_id = block_id
+        self.block_description = block_description
 
         # Import project configuration
         self._pc_prj_name = project_cfg['project']['name']
         self._pc_container_tool = project_cfg['externalTools']['containerTool']
         self._pc_make_threads = project_cfg["externalTools"]["make"]["maxBuildThreads"]
-        self._pc_block_source = project_cfg["blocks"][self._block_name]["source"]
-        self._pc_container_image = project_cfg["blocks"][self._block_name]["container"]["image"]
-        self._pc_container_tag = project_cfg["blocks"][self._block_name]["container"]["tag"]
+        self._pc_block_source = project_cfg["blocks"][self.block_id]["source"]
+        self._pc_container_image = project_cfg["blocks"][self.block_id]["container"]["image"]
+        self._pc_container_tag = project_cfg["blocks"][self.block_id]["container"]["tag"]
 
         self._pc_project = None
         self._pc_project_sources = None
@@ -40,18 +41,18 @@ class Builder:
         self._pc_project_branch = None
         self._pc_project_prebuilt = None
 
-        if 'project' in project_cfg['blocks'][self._block_name]:
-            self._pc_project = project_cfg['blocks'][self._block_name]['project']
+        if 'project' in project_cfg['blocks'][self.block_id]:
+            self._pc_project = project_cfg['blocks'][self.block_id]['project']
 
         if self._pc_project is not None:
             if 'sources' in self._pc_project:
-                self._pc_project_sources = project_cfg['blocks'][self._block_name]['project']['sources']
+                self._pc_project_sources = project_cfg['blocks'][self.block_id]['project']['sources']
             if 'branch' in self._pc_project:
-                self._pc_project_branch = project_cfg['blocks'][self._block_name]['project']['branch']
+                self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['branch']
             if 'pre-built' in self._pc_project:
-                self._pc_project_prebuilt = project_cfg['blocks'][self._block_name]['project']['pre-built']
+                self._pc_project_prebuilt = project_cfg['blocks'][self.block_id]['project']['pre-built']
             if 'dependencies' in self._pc_project:
-                self._pc_project_dependencies = project_cfg['blocks'][self._block_name]['project']['dependencies']
+                self._pc_project_dependencies = project_cfg['blocks'][self.block_id]['project']['dependencies']
 
         # Host user
         self._host_user = os.getlogin()
@@ -94,13 +95,13 @@ class Builder:
         self._project_dir = project_dir
         self._project_src_dir = self._project_dir / 'src'
         self._project_temp_dir = self._project_dir / 'temp'
-        self._patch_dir = self._project_src_dir / self._block_name / 'patches'
-        self._repo_dir = self._project_temp_dir / self._block_name / 'repo'
+        self._patch_dir = self._project_src_dir / self.block_id / 'patches'
+        self._repo_dir = self._project_temp_dir / self.block_id / 'repo'
         self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
-        self._download_dir = self._project_temp_dir / self._block_name / 'download'
-        self._work_dir = self._project_temp_dir / self._block_name / 'work'
-        self._output_dir = self._project_temp_dir / self._block_name / 'output'
-        self._dependencies_dir = self._project_temp_dir / self._block_name / 'dependencies'
+        self._download_dir = self._project_temp_dir / self.block_id / 'download'
+        self._work_dir = self._project_temp_dir / self.block_id / 'work'
+        self._output_dir = self._project_temp_dir / self.block_id / 'output'
+        self._dependencies_dir = self._project_temp_dir / self.block_id / 'dependencies'
 
         # Project files
         # Container file for creating the container to be used for building this block
@@ -108,7 +109,7 @@ class Builder:
         # ASCII file with all patches in the order in which they are to be applied
         self._patch_list_file = self._patch_dir / 'patches.cfg'
         # Flag to remember if patches have already been applied
-        self._patches_applied_flag = self._project_temp_dir / self._block_name / '.patchesapplied'
+        self._patches_applied_flag = self._project_temp_dir / self.block_id / '.patchesapplied'
         # File for saving the checksum of the imported, pre-built block package
         self._source_pb_md5_file = self._work_dir / 'source_pb.md5'
 
@@ -752,7 +753,7 @@ class Builder:
 
         # Get path of the pre-built block package
         if self._pc_project_prebuilt is None:
-            pretty_print.print_error(f'The property blocks/{self._block_name}/project/pre-built is required to import the block, but it is not set.')
+            pretty_print.print_error(f'The property blocks/{self.block_id}/project/pre-built is required to import the block, but it is not set.')
             sys.exit(1)
         elif validators.url(self._pc_project_prebuilt):
             self._download_prebuilt()
@@ -822,7 +823,7 @@ class Builder:
             None
         """
 
-        block_pkg_path = self._output_dir / f'{self._block_name}.tar.gz'
+        block_pkg_path = self._output_dir / f'{self.block_id}.tar.gz'
 
         # Check whether there is something to export
         if not self._output_dir.is_dir() or not any(self._output_dir.iterdir()):
@@ -859,10 +860,10 @@ class Builder:
             None
         """
 
-        for block_name, block_pkg_path_str in self._pc_project_dependencies.items():
+        for block_id, block_pkg_path_str in self._pc_project_dependencies.items():
             block_pkg_path = self._project_dir / block_pkg_path_str
-            import_path = self._dependencies_dir / block_name
-            block_pkg_md5_file = self._dependencies_dir / f'block_pkg_{block_name}.md5'
+            import_path = self._dependencies_dir / block_id
+            block_pkg_md5_file = self._dependencies_dir / f'block_pkg_{block_id}.md5'
 
             # Check whether the file to be imported exists
             if not block_pkg_path.is_file():
@@ -888,7 +889,7 @@ class Builder:
                 continue
 
             # Clean directory of this dependency
-            self.clean_dependencies(dependency=block_name)
+            self.clean_dependencies(dependency=block_id)
 
             # Import block package
             pretty_print.print_build(f'Importing block package {block_pkg_path.name}...')
@@ -897,7 +898,7 @@ class Builder:
             with tarfile.open(block_pkg_path, "r:*") as archive:
                     # Check whether all expected files are included
                     content = archive.getnames()
-                    for pattern in self._block_deps[block_name]:
+                    for pattern in self._block_deps[block_id]:
                         matched_files = [file for file in content if re.fullmatch(pattern=pattern, string=file)]
                         # A file is missing if no file matches the pattern
                         if not matched_files:
@@ -1310,11 +1311,11 @@ class Builder:
             None
         """
 
-        if not (self._project_temp_dir / self._block_name).exists():
-            pretty_print.print_clean(f'No need to clean the temp directory of block {self._block_name}...')
+        if not (self._project_temp_dir / self.block_id).exists():
+            pretty_print.print_clean(f'No need to clean the temp directory of block {self.block_id}...')
             return
 
-        pretty_print.print_clean(f'Cleaning temp directory of block {self._block_name}...')
+        pretty_print.print_clean(f'Cleaning temp directory of block {self.block_id}...')
 
         # Remove empty temp directory
-        (self._project_temp_dir / self._block_name).rmdir()
+        (self._project_temp_dir / self.block_id).rmdir()

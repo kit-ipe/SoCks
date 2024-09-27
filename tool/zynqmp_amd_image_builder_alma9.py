@@ -12,12 +12,14 @@ class ZynqMP_AMD_Image_Builder_Alma9(amd_builder.AMD_Builder):
     """
 
     def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
-        block_name = 'image'
+        block_id = 'image'
+        block_description = 'Build the boot image for ZynqMP devices'
 
         super().__init__(project_cfg=project_cfg,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
-                        block_name=block_name)
+                        block_id=block_id,
+                        block_description=block_description)
 
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
@@ -45,7 +47,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(amd_builder.AMD_Builder):
         self._sdc_image_name = f'{self._pc_prj_name}_sd_card.img'
 
         # Project directories
-        self._misc_dir = self._project_src_dir / self._block_name / 'misc'
+        self._misc_dir = self._project_src_dir / self.block_id / 'misc'
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.

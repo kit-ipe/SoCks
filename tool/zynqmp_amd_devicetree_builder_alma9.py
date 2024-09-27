@@ -12,12 +12,14 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
     """
 
     def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
-        block_name = 'devicetree'
+        block_id = 'devicetree'
+        block_description = 'Build the Devicetree for ZynqMP devices'
 
         super().__init__(project_cfg=project_cfg,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
-                        block_name=block_name)
+                        block_id=block_id,
+                        block_description=block_description)
 
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
@@ -27,8 +29,8 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(amd_builder.AMD_Builder):
         }
 
         # Project directories
-        self._dt_incl_dir = self._project_src_dir / self._block_name / 'dt_includes'
-        self._dt_overlay_dir = self._project_src_dir / self._block_name / 'dt_overlays'
+        self._dt_incl_dir = self._project_src_dir / self.block_id / 'dt_includes'
+        self._dt_overlay_dir = self._project_src_dir / self.block_id / 'dt_overlays'
         self._base_work_dir = self._work_dir / 'base'
         self._overlay_work_dir = self._work_dir / 'overlays'
 
