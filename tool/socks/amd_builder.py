@@ -2,10 +2,10 @@ import pathlib
 import shutil
 import sys
 
-import pretty_print
-import builder
+import socks.pretty_print as pretty_print
+from socks.builder import Builder
 
-class AMD_Builder(builder.Builder):
+class AMD_Builder(Builder):
     """
     Base class for all builder classes that use AMD Xilinx tools
     """

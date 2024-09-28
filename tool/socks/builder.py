@@ -16,7 +16,7 @@ import tarfile
 import re
 import hashlib
 
-import pretty_print
+import socks.pretty_print as pretty_print
 
 class Builder:
     """

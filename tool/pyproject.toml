@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=42.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+version = "0.0.1"
+name = "socks"
+authors = [
+    { name = "Marvin Fuchs", email = "marvin.fuchs@kit.edu" },
+]
+description = "A tool to build images for SoC devices."
+readme = "README.md"
+license = { file = "COPYING" }
+requires-python = ">= 3.10"
+dependencies = [
+    "pyyaml>=5.4.1",
+    "jsonschema>=4.23.0",
+    "python-dateutil>=2.8.1",
+    "requests>=2.25.1",
+    "validators>=0.33.0",
+    "tqdm>=4.57.0"
+]
+
+[tool.setuptools]
+packages = ["socks", "builders"]
+
+[tool.setuptools.package-data]
+socks = ["builders/*.py", "container/*.containerfile", "schemas/*.schema.json", "templates/*"]
+
+[project.scripts]
+socks = "socks.main:main"

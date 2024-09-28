@@ -1,10 +1,10 @@
 import sys
 import pathlib
 
-import pretty_print
-import amd_builder
+import socks.pretty_print as pretty_print
+from socks.amd_builder import AMD_Builder
 
-class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(amd_builder.AMD_Builder):
+class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
     """
     Builder class for AMD Vivado projects utilizing the Hog framework
     """

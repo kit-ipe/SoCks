@@ -3,10 +3,10 @@ import pathlib
 import shutil
 import hashlib
 
-import pretty_print
-import builder
+import socks.pretty_print as pretty_print
+from socks.builder import Builder
 
-class ZynqMP_AMD_UBoot_Builder_Alma9(builder.Builder):
+class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
     """
     AMD U-Boot builder class
     """

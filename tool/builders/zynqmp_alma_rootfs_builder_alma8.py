@@ -10,10 +10,10 @@ import requests
 import validators
 import tqdm
 
-import pretty_print
-import builder
+import socks.pretty_print as pretty_print
+from socks.builder import Builder
 
-class ZynqMP_Alma_RootFS_Builder_Alma8(builder.Builder):
+class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
     """
     AlmaLinux root file system builder class
     """

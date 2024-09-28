@@ -6,7 +6,7 @@ import jsonschema
 import yaml
 import re
 
-import pretty_print
+import socks.pretty_print as pretty_print
 
 class Configuration_Compiler:
     """
@@ -32,6 +32,10 @@ class Configuration_Compiler:
         """
 
         for path in search_list:
+            # Check if the provided path exists
+            if not path.is_dir():
+                pretty_print.print_error(f'The following path does not exist: {path}')
+                sys.exit(1)
             # Iterate over all items in the path
             for item in path.iterdir():
                 if item.is_file() and item.name == file_name:
@@ -95,7 +99,7 @@ class Configuration_Compiler:
         """
 
         try:
-            config_file = Configuration_Compiler._find_file(file_name=config_file_name, search_list=[socks_dir / 'project_templates', project_dir]) # ToDo: I think these paths should not be hard coded here
+            config_file = Configuration_Compiler._find_file(file_name=config_file_name, search_list=[socks_dir / 'templates' / 'project_configuration', project_dir]) # ToDo: I think these paths should not be hard coded here
         except FileNotFoundError as e:
             print(repr(e))
             sys.exit(1)

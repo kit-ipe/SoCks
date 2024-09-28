@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import typing
 import sys
 import pathlib
@@ -7,8 +5,8 @@ import importlib
 import copy
 import argparse
 
-import pretty_print
-from configuration_compiler import Configuration_Compiler
+import socks.pretty_print as pretty_print
+from socks.configuration_compiler import Configuration_Compiler
 
 
 def add_active_blocks(block: str, active_blocks: typing.List[str], project_cfg: dict):
@@ -109,7 +107,7 @@ for block0, block_dict0 in project_cfg['blocks'].items():
     builder_class_name = block_dict0['builder']
     builder_module_name = builder_class_name.lower()
     try:
-        module = importlib.import_module(builder_module_name)
+        module = importlib.import_module('builders.'+builder_module_name)
         # Get access to the builder class
         builder_class = getattr(module, builder_class_name)
         # Create a project configuration object for the builder that only contains information that is intended for this builder, i.e. remove all information for other builders
@@ -215,6 +213,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# ToDos:
-# - I a user uses 'all' instead of a block, everything should be build
