@@ -164,6 +164,15 @@ cli_block_cmds = cli_block.add_subparsers(title='commands', dest='command')
 for command in group_cmds:
     cli_block_cmd = cli_block_cmds.add_parser(command, help=supported_block_commands[command])
 
+# Do tab completion
+try:
+    import argcomplete
+
+    argcomplete.autocomplete(cli, always_complete_options=False)
+except ImportError:
+    pass
+
+
 def main():
     """
     The main method and the entry point to the SoCks command-line interface
