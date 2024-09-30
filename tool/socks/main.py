@@ -5,6 +5,7 @@ import importlib
 import copy
 import argparse
 
+import socks
 import socks.pretty_print as pretty_print
 from socks.configuration_compiler import Configuration_Compiler
 
@@ -87,7 +88,7 @@ def sort_blocks(blocks: typing.List[str], project_cfg: dict):
 
 
 # Set tool and project directory
-socks_dir = pathlib.Path('/home/marvin/Projects/Build_System_Tests/SoCks/tool') # ToDo: I think this path should not be hard coded here
+socks_dir = pathlib.Path(importlib.resources.files(socks)).parent # ToDo: Check if this works if the tool is installed with pip
 project_dir = pathlib.Path.cwd()
 
 # Set root project configuration file

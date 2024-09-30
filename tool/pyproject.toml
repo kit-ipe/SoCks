@@ -26,7 +26,7 @@ dependencies = [
 packages = ["socks", "builders"]
 
 [tool.setuptools.package-data]
-socks = ["builders/*.py", "container/*.containerfile", "schemas/*.schema.json", "templates/*"]
+socks = ["container/*.containerfile", "schemas/*.schema.json", "templates/*"]
 
 [project.scripts]
 socks = "socks.main:main"
