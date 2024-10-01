@@ -63,8 +63,6 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
             None
         """
 
-        pretty_print.print_build('Creating the PMU Firmware project...')
-
         xsa_files = list(self._xsa_dir.glob('*.xsa'))
 
         # Check if there is more than one XSA file in the xsa directory
@@ -95,6 +93,8 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
         self._work_dir.mkdir(parents=True)
         self._repo_dir.mkdir(parents=True)
         self._output_dir.mkdir(parents=True, exist_ok=True)
+
+        pretty_print.print_build('Creating the PMU Firmware project...')
 
         create_pmufw_project_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
                                             f'source {self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/settings64.sh && ' \
@@ -150,12 +150,12 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
             pretty_print.print_build('No need to rebuild the PMU Firmware. No altered source files detected...')
             return
 
-        pretty_print.print_build('Building the PMU Firmware...')
-
         # Check if Xilinx tools are available
         if not pathlib.Path(self._pc_xilinx_path).is_dir():
             pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
             sys.exit(1)
+
+        pretty_print.print_build('Building the PMU Firmware...')
 
         pmufw_build_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
                                 f'source {self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/settings64.sh && ' \

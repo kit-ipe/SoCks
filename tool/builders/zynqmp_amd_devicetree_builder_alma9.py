@@ -73,8 +73,6 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             None
         """
 
-        pretty_print.print_build('Preparing devicetree sources...')
-
         xsa_files = list(self._xsa_dir.glob('*.xsa'))
 
         # Check if there is more than one XSA file in the xsa directory
@@ -102,6 +100,8 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
 
         self.clean_work()
         self._base_work_dir.mkdir(parents=True)
+
+        pretty_print.print_build('Preparing devicetree sources...')
 
         prep_dt_srcs_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
                                 f'source {self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/settings64.sh && ' \
@@ -219,14 +219,14 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             pretty_print.print_build('No need to rebuild devicetree overlays. No altered source files detected...')
             return
 
-        pretty_print.print_build('Building devicetree overlays...')
-
         # Clean overlay work directory
         try:
             shutil.rmtree(self._overlay_work_dir)
         except FileNotFoundError:
             pass  # Ignore if the directory does not exist
         self._overlay_work_dir.mkdir(parents=True)
+
+        pretty_print.print_build('Building devicetree overlays...')
 
         # Copy all overlays to the work directory to make them accessable in the container
         # The overlays are copied before every build to make sure they are up to date

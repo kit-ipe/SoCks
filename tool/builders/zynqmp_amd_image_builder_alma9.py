@@ -109,10 +109,10 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             pretty_print.print_build('No need to rebuild Linux Image. No altered source files detected...')
             return
 
-        pretty_print.print_build('Building Linux Image...')
-
         self._work_dir.mkdir(parents=True, exist_ok=True)
         self._output_dir.mkdir(parents=True, exist_ok=True)
+
+        pretty_print.print_build('Building Linux Image...')
 
         linux_img_build_commands = f'\'cp {self._misc_dir}/image.its.tpl {self._work_dir}/image.its && ' \
                                     f'sed -i "s:<KERNEL_IMG_PATH>:{self._kernel_img_path}:g;" {self._work_dir}/image.its && ' \
@@ -152,9 +152,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             pretty_print.print_build('No need to rebuild boot.scr. No altered source files detected...')
             return
 
-        pretty_print.print_build('Building boot.scr...')
-
         self._output_dir.mkdir(parents=True, exist_ok=True)
+
+        pretty_print.print_build('Building boot.scr...')
 
         bootscr_img_build_commands = f'\'mkimage -c none -A arm -T script -d {self._misc_dir}/boot.cmd {self._output_dir}/boot.scr\''
 
@@ -199,14 +199,14 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             pretty_print.print_build('No need to rebuild BOOT.BIN. No altered source files detected...')
             return
 
-        pretty_print.print_build('Building BOOT.BIN...')
-
         # Check if Xilinx tools are available
         if not pathlib.Path(self._pc_xilinx_path).is_dir():
             pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
             sys.exit(1)
 
         self._work_dir.mkdir(parents=True, exist_ok=True)
+
+        pretty_print.print_build('Building BOOT.BIN...')
 
         # Extract .bit file from XSA archive
         bit_file = None

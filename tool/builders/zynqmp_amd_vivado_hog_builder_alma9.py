@@ -62,12 +62,12 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             pretty_print.print_build('The Vivado Project already exists. It will not be recreated...')
             return
 
-        pretty_print.print_build('Creating the Vivado Project...')
-
         # Check if Xilinx tools are available
         if not pathlib.Path(self._pc_xilinx_path).is_dir():
             pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
             sys.exit(1)
+
+        pretty_print.print_build('Creating the Vivado Project...')
 
         create_vivado_project_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
                                             f'source {self._pc_xilinx_path}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \
@@ -108,8 +108,6 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             pretty_print.print_build('No need to rebuild the Vivado Project. No altered source files detected...')
             return
 
-        pretty_print.print_build('Building the Vivado Project...')
-
         # Check if Xilinx tools are available
         if not pathlib.Path(self._pc_xilinx_path).is_dir():
             pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
@@ -118,6 +116,8 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         # Clean output directory
         self.clean_output()
         self._output_dir.mkdir(parents=True)
+
+        pretty_print.print_build('Building the Vivado Project...')
 
         vivado_build_commands = f'\'rm -rf {self._source_repo_dir}/bin' \
                                 f'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
@@ -161,8 +161,6 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             None
         """
 
-        pretty_print.print_build('Starting container...')
-
         # Check if Xilinx tools are available
         if not pathlib.Path(self._pc_xilinx_path).is_dir():
             pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
@@ -173,6 +171,8 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         if not results.stdout:
             pretty_print.print_error('Command \'x11docker\' not found. Install x11docker (https://github.com/mviereck/x11docker).')
             sys.exit(1)
+
+        pretty_print.print_build('Starting container...')
 
         start_vivado_gui_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
                                     f'source {self._pc_xilinx_path}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \

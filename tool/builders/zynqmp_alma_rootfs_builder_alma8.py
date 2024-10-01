@@ -145,9 +145,9 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             pretty_print.print_build('No need to rebuild the base root file system. No altered source files detected...')
             return
 
-        pretty_print.print_build('Building the base root file system...')
-
         self._work_dir.mkdir(parents=True, exist_ok=True)
+
+        pretty_print.print_build('Building the base root file system...')
 
         # In the last step, the service auditd.service is deactivated because it breaks things
         base_rootfs_build_commands = f'\'cd {self._repo_dir} && ' \
@@ -446,6 +446,9 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             pretty_print.print_build('No need to rebuild tarball. No altered source files detected...')
             return
 
+        self.clean_output()
+        self._output_dir.mkdir(parents=True)
+
         pretty_print.print_build('Building tarball...')
 
         if self._pc_project_build_info_flag == True:
@@ -491,9 +494,6 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             tarball_name = f'almalinux{self._pc_alma_release}_zynqmp_pre-built'
         else:
             tarball_name = self._rootfs_name
-
-        self.clean_output()
-        self._output_dir.mkdir(parents=True)
 
         # Tar was tested with three compression options:
         # Option	Size	Duration

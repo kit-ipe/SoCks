@@ -785,10 +785,10 @@ class Builder:
             pretty_print.print_build('No need to download pre-built files...')
             return
 
-        pretty_print.print_build('Downloading archive with pre-built files...')
-
         self.clean_download()
         self._download_dir.mkdir(parents=True)
+
+        pretty_print.print_build('Downloading archive with pre-built files...')
 
         # Download the file
         download_progress.t = None
@@ -854,11 +854,11 @@ class Builder:
             pretty_print.print_build('No need to import the pre-built block package. No altered source files detected...')
             return
 
-        pretty_print.print_build('Importing pre-built block package...')
-
         self.clean_output()
         self._output_dir.mkdir(parents=True)
         self._work_dir.mkdir(parents=True, exist_ok=True)
+
+        pretty_print.print_build('Importing pre-built block package...')
 
         #Extract pre-built files
         with tarfile.open(prebuilt_block_package, "r:*") as archive:
@@ -896,10 +896,11 @@ class Builder:
             pretty_print.print_build('No need to export block package. No altered source files detected...')
             return
 
-        # Export block package
+        block_pkg_path.unlink(missing_ok=True)
+
         pretty_print.print_build('Exporting block package...')
 
-        block_pkg_path.unlink(missing_ok=True)
+        # Export block package
         with tarfile.open(block_pkg_path, "w:gz") as archive:
             for file in self._output_dir.iterdir():
                 if not file.samefile(block_pkg_path):
@@ -951,11 +952,11 @@ class Builder:
 
             # Clean directory of this dependency
             self.clean_dependencies(dependency=block_id)
+            import_path.mkdir(parents=True, exist_ok=True)
 
-            # Import block package
             pretty_print.print_build(f'Importing block package {block_pkg_path.name}...')
 
-            import_path.mkdir(parents=True, exist_ok=True)
+            # Import block package
             with tarfile.open(block_pkg_path, "r:*") as archive:
                     # Check whether all expected files are included
                     content = archive.getnames()
