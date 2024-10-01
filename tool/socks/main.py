@@ -4,6 +4,7 @@ import pathlib
 import importlib
 import copy
 import argparse
+import yaml
 
 import socks
 import socks.pretty_print as pretty_print
@@ -142,6 +143,9 @@ group_cmds = ['build', 'prepare', 'clean']
 cli = argparse.ArgumentParser(description='SoCks - SoC image builder')
 cli_blocks = cli.add_subparsers(title='blocks', dest='block')
 
+# Add argument to print project configuration to the standard output
+cli.add_argument("--show-configuration", action='store_true', help="Print the complete project configuration to the standard output and exit")
+
 # Add parsers for all blocks
 for block, block_dict in project_cfg['blocks'].items():
     builder_name = project_cfg['blocks'][block]['builder']
@@ -183,6 +187,9 @@ def main():
     args = vars(cli.parse_args())
 
     # Check whether all required arguments are available
+    if 'show_configuration' in args and args['show_configuration'] == True:
+        print(yaml.dump(project_cfg))
+        cli.exit()
     if 'block' not in args or not args['block'] or 'command' not in args or not args['command']:
         cli.print_usage()
         pretty_print.print_error('The following arguments are required: block command.')
