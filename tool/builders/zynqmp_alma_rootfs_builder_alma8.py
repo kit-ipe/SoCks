@@ -18,11 +18,12 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
     AlmaLinux root file system builder class
     """
 
-    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
         block_id = 'rootfs'
         block_description = 'Build an AlmaLinux root file system'
 
         super().__init__(project_cfg=project_cfg,
+                        project_cfg_files=project_cfg_files,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
                         block_id=block_id,
@@ -140,7 +141,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         """
 
         # Check whether the base root file system needs to be built
-        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir], src_ignore_list=[self._repo_dir / 'predefined_fs_layers', self._repo_dir / 'users'], out_search_list=[self._work_dir]):
+        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._repo_dir], src_ignore_list=[self._repo_dir / 'predefined_fs_layers', self._repo_dir / 'users'], out_search_list=[self._work_dir]):
             pretty_print.print_build('No need to rebuild the base root file system. No altered source files detected...')
             return
 
@@ -441,7 +442,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         """
 
         # Check if the tarball needs to be built
-        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._work_dir], out_search_list=[self._output_dir]):
+        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]):
             pretty_print.print_build('No need to rebuild tarball. No altered source files detected...')
             return
 

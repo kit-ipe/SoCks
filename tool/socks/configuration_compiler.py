@@ -79,7 +79,7 @@ class Configuration_Compiler:
 
 
     @staticmethod
-    def _merge_cfg_files(config_file_name: str, socks_dir: pathlib.Path, project_dir: pathlib.Path) -> dict:
+    def _merge_cfg_files(config_file_name: str, socks_dir: pathlib.Path, project_dir: pathlib.Path) -> typing.Tuple[dict, list]:
         """
         Recursively merge project configuration YAML files by tracing the import keys.
         
@@ -107,17 +107,22 @@ class Configuration_Compiler:
         with config_file.open('r') as f:
             cfg_layer = yaml.safe_load(f)
 
+        # Add file to list of read configuration files
+        read_files = [config_file]
+
         # Directly return the cfg layer if it doesn't contain an 'import' key
-        ret = cfg_layer
+        gathered_cfg = cfg_layer
 
         if 'import' in cfg_layer:
             for file_name in cfg_layer['import']:
                 # Recursively merge the so far composed return value with the file to be imported
-                ret = Configuration_Compiler._merge_dicts(target=Configuration_Compiler._merge_cfg_files(config_file_name=file_name, socks_dir=socks_dir, project_dir=project_dir), source=ret)
+                cfg_buffer, files_buffer = Configuration_Compiler._merge_cfg_files(config_file_name=file_name, socks_dir=socks_dir, project_dir=project_dir)
+                gathered_cfg = Configuration_Compiler._merge_dicts(target=cfg_buffer, source=gathered_cfg)
+                read_files = read_files + files_buffer
             # Remove the 'import' key from the so far composed configuration, as it is no longer needed
-            del ret['import']
+            del gathered_cfg['import']
 
-        return ret
+        return gathered_cfg, read_files
 
 
     @staticmethod
@@ -173,7 +178,7 @@ class Configuration_Compiler:
 
 
     @staticmethod
-    def compile(root_cfg_file: pathlib.Path, socks_dir: pathlib.Path, project_dir: pathlib.Path) -> dict:
+    def compile(root_cfg_file: pathlib.Path, socks_dir: pathlib.Path, project_dir: pathlib.Path) -> typing.Tuple[dict, list]:
         """
         Compile and validate the project configuration.
         
@@ -193,7 +198,7 @@ class Configuration_Compiler:
         """
 
         # Merge config files
-        project_cfg = Configuration_Compiler._merge_cfg_files(config_file_name=root_cfg_file.name, socks_dir=socks_dir, project_dir=project_dir)
+        project_cfg, read_cfg_files = Configuration_Compiler._merge_cfg_files(config_file_name=root_cfg_file.name, socks_dir=socks_dir, project_dir=project_dir)
 
         # Resolve placeholders
         project_cfg = Configuration_Compiler._resolve_placeholders(project_cfg=project_cfg, search_object=project_cfg)
@@ -209,4 +214,4 @@ class Configuration_Compiler:
 
         jsonschema.validate(project_cfg, project_cfg_schema)
 
-        return project_cfg
+        return project_cfg, read_cfg_files

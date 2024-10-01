@@ -9,11 +9,12 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
     Builder class for AMD Vivado projects utilizing the Hog framework
     """
 
-    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
         block_id = 'vivado'
         block_description = 'Build an AMD/Xilinx Vivado Project with HDL on git (Hog)'
 
         super().__init__(project_cfg=project_cfg,
+                        project_cfg_files=project_cfg_files,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
                         block_id=block_id,
@@ -103,7 +104,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         """
 
         # Check if the project needs to be build
-        if not ZynqMP_AMD_Vivado_Hog_Builder_Alma9._check_rebuilt_required(src_search_list=[self._source_repo_dir / 'Top', self._source_repo_dir / 'Hog', self._source_repo_dir / f'lib_{self._pc_project_name}'], out_search_list=[self._source_repo_dir / 'bin']):
+        if not ZynqMP_AMD_Vivado_Hog_Builder_Alma9._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._source_repo_dir / 'Top', self._source_repo_dir / 'Hog', self._source_repo_dir / f'lib_{self._pc_project_name}'], out_search_list=[self._source_repo_dir / 'bin']):
             pretty_print.print_build('No need to rebuild the Vivado Project. No altered source files detected...')
             return
 

@@ -11,11 +11,12 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
     AMD Image builder class
     """
 
-    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
         block_id = 'image'
         block_description = 'Build the boot image for ZynqMP devices'
 
         super().__init__(project_cfg=project_cfg,
+                        project_cfg_files=project_cfg_files,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
                         block_id=block_id,
@@ -194,7 +195,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self._vivado_xsa_path = xsa_files[0]
 
         # Check whether the boot script image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuilt_required(src_search_list=[self._misc_dir / 'bootgen.bif.tpl', self._fsbl_img_path, self._pmufw_img_path, self._vivado_xsa_path, self._atf_img_path, self._dt_img_path, self._uboot_img_path, self._output_dir / 'image.ub', self._output_dir / 'boot.scr'], out_search_list=[self._output_dir / 'BOOT.BIN']):
+        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._misc_dir / 'bootgen.bif.tpl', self._fsbl_img_path, self._pmufw_img_path, self._vivado_xsa_path, self._atf_img_path, self._dt_img_path, self._uboot_img_path, self._output_dir / 'image.ub', self._output_dir / 'boot.scr'], out_search_list=[self._output_dir / 'BOOT.BIN']):
             pretty_print.print_build('No need to rebuild BOOT.BIN. No altered source files detected...')
             return
 

@@ -101,7 +101,7 @@ if not project_cfg_root_file.exists():
     sys.exit(1)
 
 # Get project configuration
-project_cfg = Configuration_Compiler.compile(root_cfg_file=project_cfg_root_file, socks_dir=socks_dir, project_dir=project_dir)
+project_cfg, project_cfg_files = Configuration_Compiler.compile(root_cfg_file=project_cfg_root_file, socks_dir=socks_dir, project_dir=project_dir)
 
 # Create builder objects
 builders = {}
@@ -118,7 +118,7 @@ for block0, block_dict0 in project_cfg['blocks'].items():
             if  block1 != block0:
                 builder_project_cfg['blocks'].pop(block1)
         # Add builder object to dict
-        builders[builder_class_name] = builder_class(project_cfg=builder_project_cfg, socks_dir=socks_dir, project_dir=project_dir)
+        builders[builder_class_name] = builder_class(project_cfg=builder_project_cfg, project_cfg_files=project_cfg_files, socks_dir=socks_dir, project_dir=project_dir)
     except ImportError:
         pretty_print.print_error(f'No builder class {builder_class_name} available')
         sys.exit(1)

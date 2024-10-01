@@ -10,9 +10,10 @@ class AMD_Builder(Builder):
     Base class for all builder classes that use AMD Xilinx tools
     """
 
-    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str, block_description: str):
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str, block_description: str):
 
         super().__init__(project_cfg=project_cfg,
+                        project_cfg_files=project_cfg_files,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
                         block_id=block_id,

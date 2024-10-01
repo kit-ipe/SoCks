@@ -24,7 +24,7 @@ class Builder:
     Base class for all builder classes
     """
 
-    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str, block_description: str):
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str, block_description: str):
         self.block_id = block_id
         self.block_description = block_description
 
@@ -108,6 +108,8 @@ class Builder:
         self._dependencies_dir = self._project_temp_dir / self.block_id / 'dependencies'
 
         # Project files
+        # A list of all project configuration files used. These files should only be used to determine whether a rebuild is necessary!
+        self._project_cfg_files = project_cfg_files
         # Container file for creating the container to be used for building this block
         self._container_file = self._container_dir / f'{self._container_image}.containerfile'
         # ASCII file with all patches in the order in which they are to be applied
@@ -890,7 +892,7 @@ class Builder:
             sys.exit(1)
 
         # Check whether a package needs to be created
-        if not Builder._check_rebuilt_required(src_search_list=[self._output_dir], src_ignore_list=[block_pkg_path], out_search_list=[block_pkg_path]):
+        if not Builder._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._output_dir], src_ignore_list=[block_pkg_path], out_search_list=[block_pkg_path]):
             pretty_print.print_build('No need to export block package. No altered source files detected...')
             return
 

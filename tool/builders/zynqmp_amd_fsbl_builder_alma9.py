@@ -11,11 +11,12 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
     AMD FSBL builder class
     """
 
-    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
         block_id = 'fsbl'
         block_description = 'Build the First Stage Boot Loader (FSBL) for ZynqMP devices'
 
         super().__init__(project_cfg=project_cfg,
+                        project_cfg_files=project_cfg_files,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
                         block_id=block_id,
@@ -145,7 +146,7 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
         """
 
         # Check whether the FSBL needs to be built
-        if not ZynqMP_AMD_FSBL_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'executable.elf'], out_search_list=[self._source_repo_dir / 'executable.elf']):
+        if not ZynqMP_AMD_FSBL_Builder_Alma9._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'executable.elf'], out_search_list=[self._source_repo_dir / 'executable.elf']):
             pretty_print.print_build('No need to rebuild the FSBL. No altered source files detected...')
             return
 

@@ -11,11 +11,12 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
     AMD U-Boot builder class
     """
 
-    def __init__(self, project_cfg: dict, socks_dir: pathlib.Path, project_dir: pathlib.Path):
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
         block_id = 'u-boot'
         block_description = 'Build the official AMD/Xilinx version of U-Boot for ZynqMP devices'
 
         super().__init__(project_cfg=project_cfg,
+                        project_cfg_files=project_cfg_files,
                         socks_dir=socks_dir,
                         project_dir=project_dir,
                         block_id=block_id,
@@ -153,7 +154,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
         """
 
         # Check whether das U-Boot needs to be built
-        if not ZynqMP_AMD_UBoot_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd'], out_search_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd']):
+        if not ZynqMP_AMD_UBoot_Builder_Alma9._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd'], out_search_list=[self._source_repo_dir / 'u-boot.elf', self._source_repo_dir / 'spl/.boot.bin.cmd']):
             pretty_print.print_build('No need to rebuild U-Boot. No altered source files detected...')
             return
 
