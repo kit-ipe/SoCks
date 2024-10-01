@@ -89,7 +89,7 @@
               "additionalProperties": false,
               "properties": {
                 "sources": {
-                  "description": "Git clone URL or path to the Vivado project",
+                  "description": "Git clone URL or path to the ATF project",
                   "type": "string"
                 },
                 "branch": {
@@ -138,7 +138,7 @@
               "additionalProperties": false,
               "properties": {
                 "sources": {
-                  "description": "Git clone URL or path to the Vivado project",
+                  "description": "Git clone URL or path to the Devicetree project",
                   "type": "string"
                 },
                 "branch": {
@@ -246,16 +246,20 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources", "branch"],
+              "required": ["sources", "branch", "add-build-info"],
               "additionalProperties": false,
               "properties": {
                 "sources": {
-                  "description": "Git clone URL or path to the Vivado project",
+                  "description": "Git clone URL or path to the Kernel project",
                   "type": "string"
                 },
                 "branch": {
                   "description": "Git repository branch",
                   "type": "string"
+                },
+                "add-build-info": {
+                  "description": "Switch to specify whether or not build information should be included in the block",
+                  "type": "boolean"
                 },
                 "pre-built": {
                   "description": "URL or path to the pre-built files",
@@ -351,9 +355,13 @@
             },
             "project": {
               "type": "object",
-              "required": ["dependencies"],
+              "required": ["add-build-info", "dependencies"],
               "additionalProperties": false,
               "properties": {
+                "add-build-info": {
+                  "description": "Switch to specify whether or not build information should be included in the block",
+                  "type": "boolean"
+                },
                 "pre-built": {
                   "description": "URL or path to the pre-built files",
                   "type": "string"
@@ -411,16 +419,20 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources", "branch", "dependencies"],
+              "required": ["sources", "branch", "add-build-info", "dependencies"],
               "additionalProperties": false,
               "properties": {
                 "sources": {
-                  "description": "Git clone URL or path to the Vivado project",
+                  "description": "Git clone URL or path to the U-Boot project",
                   "type": "string"
                 },
                 "branch": {
                   "description": "Git repository branch",
                   "type": "string"
+                },
+                "add-build-info": {
+                  "description": "Switch to specify whether or not build information should be included in the block",
+                  "type": "boolean"
                 },
                 "pre-built": {
                   "description": "URL or path to the pre-built files",

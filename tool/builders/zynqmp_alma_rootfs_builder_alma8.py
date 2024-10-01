@@ -48,8 +48,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         self._build_dir = self._work_dir / self._rootfs_name
 
         # Project files
-        # Version tracking file that will be deployed to the root file system
-        self._version_file = self._work_dir / 'fs_version'
+        # File for version & build info tracking
+        self._build_info_file = self._work_dir / 'fs_build_info'
         # Flag to remember if predefined file system layers have already been added
         self._pfs_added_flag = self._work_dir / '.pfsladded'
         # Flag to remember if users have already been added
@@ -148,19 +148,9 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         self._work_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create ID file. This file will be added to the RootFS as a read only file
-        with self._version_file.open('w') as f:
-            print("Filesystem version:", file=f)
-            results = ZynqMP_Alma_RootFS_Builder_Alma8._get_sh_results(['git', '-C', str(self._project_dir), '--no-pager', 'show', '-s', '--format="Commit date: %ci  %d"'])
-            print(results.stdout, file=f, end='')
-            results = ZynqMP_Alma_RootFS_Builder_Alma8._get_sh_results(['git', '-C', str(self._project_dir), 'describe', '--dirty', '--always', '--tags', '--abbrev=14'])
-            print(results.stdout, file=f, end='')
-
         # In the last step, the service auditd.service is deactivated because it breaks things
         base_rootfs_build_commands = f'\'cd {self._repo_dir} && ' \
                                     f'python3 mkrootfs.py --root={self._build_dir} --arch={self._target_arch} --extra=extra_rpms.txt --releasever={self._pc_alma_release} && ' \
-                                    f'mv {self._work_dir}/fs_version {self._build_dir}/etc/fs_version && ' \
-                                    f'chmod 0444 {self._build_dir}/etc/fs_version && ' \
                                     f'rm -f {self._build_dir}/etc/systemd/system/multi-user.target.wants/auditd.service\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
@@ -456,6 +446,45 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             return
 
         pretty_print.print_build('Building tarball...')
+
+        if self._pc_project_build_info_flag == True:
+            # Add build information file
+            with self._build_info_file.open('w') as f:
+                print(self._compose_build_info(), file=f, end='')
+
+            add_build_info_commands = f'\'mv {self._build_info_file} {self._build_dir}/etc/fs_build_info && ' \
+                                        f'chmod 0444 {self._build_dir}/etc/fs_build_info\''
+
+            if self._pc_container_tool  in ('docker', 'podman'):
+                try:
+                    # Run commands in container
+                    # The root user is used in this container. This is necessary in order to build a RootFS image.
+                    ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_build_info_commands])
+                except Exception as e:
+                    pretty_print.print_error(f'An error occurred while building the base root file system: {e}')
+                    sys.exit(1)
+            elif self._pc_container_tool  == 'none':
+                # Run commands without using a container
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_build_info_commands])
+            else:
+                self._err_unsup_container_tool()
+        else:
+            # Remove existing build information file
+            clean_build_info_commands = f'\'rm -f {self._build_dir}/etc/fs_build_info\''
+
+            if self._pc_container_tool  in ('docker', 'podman'):
+                try:
+                    # Run commands in container
+                    # The root user is used in this container. This is necessary in order to build a RootFS image.
+                    ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', clean_build_info_commands])
+                except Exception as e:
+                    pretty_print.print_error(f'An error occurred while building the base root file system: {e}')
+                    sys.exit(1)
+            elif self._pc_container_tool  == 'none':
+                # Run commands without using a container
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', clean_build_info_commands])
+            else:
+                self._err_unsup_container_tool()
 
         if prebuilt:
             tarball_name = f'almalinux{self._pc_alma_release}_zynqmp_pre-built'

@@ -15,6 +15,7 @@ import tqdm
 import tarfile
 import re
 import hashlib
+import time
 
 import socks.pretty_print as pretty_print
 
@@ -39,6 +40,7 @@ class Builder:
         self._pc_project_sources = None
         self._pc_project_dependencies = None
         self._pc_project_branch = None
+        self._pc_project_build_info_flag = None
         self._pc_project_prebuilt = None
 
         if 'project' in project_cfg['blocks'][self.block_id]:
@@ -49,6 +51,8 @@ class Builder:
                 self._pc_project_sources = project_cfg['blocks'][self.block_id]['project']['sources']
             if 'branch' in self._pc_project:
                 self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['branch']
+            if 'add-build-info' in self._pc_project:
+                self._pc_project_build_info_flag = project_cfg['blocks'][self.block_id]['project']['add-build-info']
             if 'pre-built' in self._pc_project:
                 self._pc_project_prebuilt = project_cfg['blocks'][self.block_id]['project']['pre-built']
             if 'dependencies' in self._pc_project:
@@ -483,6 +487,61 @@ class Builder:
 
         pretty_print.print_error(f'Containerization tool {self._pc_container_tool } is not supported. Options are \'docker\', \'podman\' and \'none\'.')
         sys.exit(1)
+
+
+    def _compose_build_info(self) -> str:
+        """
+        Compose a string with build information.
+
+        Args:
+            None
+
+        Returns:
+            String containing the build information.
+
+        Raises:
+            None
+        """
+
+        build_info = ''
+
+        results = Builder._get_sh_results(['git', '-C', str(self._project_dir), 'rev-parse', 'HEAD'])
+        build_info = build_info + f'GIT_COMMIT_SHA: {results.stdout.splitlines()[0]}\n'
+
+        results = Builder._get_sh_results(['git', '-C', str(self._project_dir), 'rev-parse', '--abbrev-ref', 'HEAD'])
+        git_ref_name = results.stdout.splitlines()[0]
+        if git_ref_name == 'HEAD':
+            results = Builder._get_sh_results(['git', '-C', str(self._project_dir), 'describe', '--exact-match', git_ref_name])
+            git_tag_name = results.stdout.splitlines()[0]
+            if results.returncode == 0:
+                build_info = build_info + f'GIT_TAG_NAME: {git_tag_name}\n'
+        else:
+            build_info = build_info + f'GIT_BRANCH_NAME: {git_ref_name}\n'
+
+        results = Builder._get_sh_results(['git', '-C', str(self._project_dir), 'status', '--porcelain'])
+        if results.stdout:
+            build_info = build_info + 'GIT_IS_REPO_CLEAN: false\n\n'
+        else:
+            build_info = build_info + 'GIT_IS_REPO_CLEAN: true\n\n'
+
+        current_time = time.time()
+        if os.environ.get('GITLAB_CI') == 'true':
+            build_info = build_info + 'BUILD_TYPE: gitlab\n'
+            build_info = build_info + f'BUILD_TIMESTAMP: {int(current_time)}   # {time.strftime("%Y-%m-%d %H:%M:%S (UTC)", time.gmtime(current_time))}\n'
+            build_info = build_info + f'GITLAB_CI_SERVER_URL: {os.environ.get("CI_SERVER_URL")}\n'
+            build_info = build_info + f'GITLAB_CI_PROJECT_PATH: {os.environ.get("CI_PROJECT_PATH")}\n'
+            build_info = build_info + f'GITLAB_CI_PROJECT_ID: {os.environ.get("CI_PROJECT_ID")}\n'
+            build_info = build_info + f'GITLAB_CI_PIPELINE_ID: {os.environ.get("CI_PIPELINE_ID")}\n'
+            build_info = build_info + f'GITLAB_CI_JOB_ID: {os.environ.get("CI_JOB_ID")}\n'
+        else:
+            build_info = build_info + 'BUILD_TYPE: manual\n'
+            build_info = build_info + f'BUILD_TIMESTAMP: {int(current_time)}   # {time.strftime("%Y-%m-%d %H:%M:%S (UTC)", time.gmtime(current_time))}\n'
+            results = Builder._get_sh_results(['hostname'])
+            build_info = build_info + f'MANUAL_BUILD_HOST: {results.stdout.splitlines()[0]}\n'
+            results = Builder._get_sh_results(['id', '-un'])
+            build_info = build_info + f'MANUAL_BUILD_USER: {results.stdout.splitlines()[0]}\n'
+
+        return build_info
 
 
     def build_container_image(self):

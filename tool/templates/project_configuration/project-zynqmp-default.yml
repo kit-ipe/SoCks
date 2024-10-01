@@ -47,6 +47,7 @@ blocks:
     project:
       sources: "https://github.com/Xilinx/linux-xlnx.git"
       branch: "xilinx-v{{externalTools/xilinx/version}}"
+      add-build-info: false
       # If no 'pre-built' property is specified, the block must be built locally
     container:
       image: "kernel-builder-alma9"
@@ -66,6 +67,7 @@ blocks:
     builder: "ZynqMP_Alma_RootFS_Builder_Alma8"
     release: "8"
     project:
+      add-build-info: false
       # If no 'pre-built' property is specified, the block must be built locally
       dependencies:
         kernel: "temp/kernel/output/kernel.tar.gz"
@@ -80,6 +82,7 @@ blocks:
     project:
       sources: "https://github.com/Xilinx/u-boot-xlnx.git"
       branch: "xilinx-v{{externalTools/xilinx/version}}"
+      add-build-info: false
       # If no 'pre-built' property is specified, the block must be built locally
       dependencies:
         atf: "temp/atf/output/atf.tar.gz"

@@ -19,6 +19,10 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
                         block_id=block_id,
                         block_description=block_description)
 
+        # Project files
+        # File for version & build info tracking
+        self._build_info_file = self._source_repo_dir / 'include' / 'build_info.h'
+
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
         self.block_cmds = {
@@ -107,6 +111,16 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             return
 
         pretty_print.print_build('Building Linux Kernel...')
+
+        if self._pc_project_build_info_flag == True:
+            # Add build information file
+            with self._build_info_file.open('w') as f:
+                print('const char *build_info = "', file=f, end='')
+                print(self._compose_build_info().replace('\n', '\\n'), file=f, end='')
+                print('";', file=f, end='')
+        else:
+            # Remove existing build information file
+            self._build_info_file.unlink(missing_ok=True)
 
         kernel_build_commands = f'\'cd {self._source_repo_dir} && ' \
                                 'export CROSS_COMPILE=aarch64-linux-gnu- && ' \
