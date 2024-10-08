@@ -18,3 +18,20 @@ blocks:
       sources: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
       branch: "test"
       name: "serenity-s1-kria"
+  rootfs:
+    project:
+      add-build-info: True
+#  rootfs:
+#    source: "build"
+#    builder: "ZynqMP_Alma_RootFS_Builder_Alma8"
+#    release: "8"
+#    project:
+#      add-build-info: false
+#      # If no 'pre-built' property is specified, the block must be built locally
+#      dependencies:
+#        kernel: "temp/kernel/output/kernel.tar.gz"
+#        devicetree: "temp/devicetree/output/devicetree.tar.gz"
+#        vivado: "temp/vivado/output/vivado.tar.gz"
+#    container:
+#      image: "alma8-rootfs-builder-alma8"
+#      tag: "xilinx-v{{externalTools/xilinx/version}}"

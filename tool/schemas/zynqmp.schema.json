@@ -338,7 +338,7 @@
         },
         "rootfs": {
           "type": "object",
-          "required": ["source", "builder", "release", "container"],
+          "required": ["source", "builder", "container"],
           "additionalProperties": false,
           "properties": {
             "source": {
@@ -358,6 +358,14 @@
               "required": ["add-build-info", "dependencies"],
               "additionalProperties": false,
               "properties": {
+                "sources": {
+                  "description": "Git clone URL or path to the root file system project",
+                  "type": "string"
+                },
+                "branch": {
+                  "description": "Git repository branch",
+                  "type": "string"
+                },
                 "add-build-info": {
                   "description": "Switch to specify whether or not build information should be included in the block",
                   "type": "boolean"
@@ -368,7 +376,7 @@
                 },
                 "dependencies": {
                   "type": "object",
-                  "required": ["kernel", "devicetree", "vivado"],
+                  "required": ["kernel"],
                   "additionalProperties": false,
                   "properties": {
                     "kernel": {

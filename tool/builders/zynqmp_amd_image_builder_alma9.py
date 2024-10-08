@@ -48,7 +48,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self._sdc_image_name = f'{self._pc_prj_name}_sd_card.img'
 
         # Project directories
-        self._misc_dir = self._project_src_dir / self.block_id / 'misc'
+        self._misc_dir = self._block_src_dir / 'misc'
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.

@@ -64,17 +64,16 @@ blocks:
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   rootfs:
     source: "build"
-    builder: "ZynqMP_Alma_RootFS_Builder_Alma8"
-    release: "8"
+    builder: "ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8"
     project:
+      sources: "https://github.com/Xilinx/yocto-manifests.git"
+      branch: "rel-v{{externalTools/xilinx/version}}"
       add-build-info: false
       # If no 'pre-built' property is specified, the block must be built locally
       dependencies:
         kernel: "temp/kernel/output/kernel.tar.gz"
-        devicetree: "temp/devicetree/output/devicetree.tar.gz"
-        vivado: "temp/vivado/output/vivado.tar.gz"
     container:
-      image: "alma8-rootfs-builder-alma8"
+      image: "petalinux-rootfs-builder-alma8"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   u-boot:
     source: "build"

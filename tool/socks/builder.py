@@ -80,7 +80,7 @@ class Builder:
                 # The sources for this block are downloaded from git
                 self._source_repo_url = self._pc_project_sources
                 self._source_repo_branch = self._pc_project_branch
-                source_repo_name = pathlib.Path(urllib.parse.urlparse(self._source_repo_url).path).stem
+                source_repo_name = pathlib.Path(urllib.parse.urlparse(url=self._source_repo_url).path).stem
             else:
                 try:
                     # The sources for this block are provided locally
@@ -99,13 +99,15 @@ class Builder:
         self._project_dir = project_dir
         self._project_src_dir = self._project_dir / 'src'
         self._project_temp_dir = self._project_dir / 'temp'
-        self._patch_dir = self._project_src_dir / self.block_id / 'patches'
-        self._repo_dir = self._project_temp_dir / self.block_id / 'repo'
+        self._block_src_dir = self._project_src_dir / self.block_id
+        self._block_temp_dir = self._project_temp_dir / self.block_id
+        self._patch_dir = self._block_src_dir / 'patches'
+        self._repo_dir = self._block_temp_dir / 'repo'
         self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
-        self._download_dir = self._project_temp_dir / self.block_id / 'download'
-        self._work_dir = self._project_temp_dir / self.block_id / 'work'
-        self._output_dir = self._project_temp_dir / self.block_id / 'output'
-        self._dependencies_dir = self._project_temp_dir / self.block_id / 'dependencies'
+        self._download_dir = self._block_temp_dir / 'download'
+        self._work_dir = self._block_temp_dir / 'work'
+        self._output_dir = self._block_temp_dir / 'output'
+        self._dependencies_dir = self._block_temp_dir / 'dependencies'
 
         # Project files
         # A list of all project configuration files used. These files should only be used to determine whether a rebuild is necessary!
@@ -115,13 +117,13 @@ class Builder:
         # ASCII file with all patches in the order in which they are to be applied
         self._patch_list_file = self._patch_dir / 'patches.cfg'
         # Flag to remember if patches have already been applied
-        self._patches_applied_flag = self._project_temp_dir / self.block_id / '.patchesapplied'
+        self._patches_applied_flag = self._block_temp_dir / '.patchesapplied'
         # File for saving the checksum of the imported, pre-built block package
         self._source_pb_md5_file = self._work_dir / 'source_pb.md5'
 
 
     @staticmethod
-    def _run_sh_command(command: typing.List[str], logfile: pathlib.Path = None, scrolling_output: bool = False, visible_lines: int = 20):
+    def _run_sh_command(command: typing.List[str], cwd: pathlib.Path = None, logfile: pathlib.Path = None, scrolling_output: bool = False, visible_lines: int = 20):
         """ (Google documentation style: https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
         Runs a sh command. If the srolling view is enabled or the output is to be logged,
         this function loses some output of commands that display a progress bar or
@@ -132,6 +134,9 @@ class Builder:
                 The command to execute as a list of strings. Example: ['/usr/bin/ping', 'www.google.com'].
                 The executable should be given with the full path, as mentioned
                 here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
+            cwd:
+                If cwd is not None, the working directory is changed to cwd before the
+                commands are executed.
             logfile:
                 Logfile as pathlib.Path object. None if no log file is to be used.
             scrolling_output:
@@ -151,7 +156,7 @@ class Builder:
 
         # If scolling output is disabled and the output should not be hidden or logged, subprocess.run can be used to run the subprocess
         if scrolling_output == False and visible_lines != 0 and logfile == None:
-            subprocess.run(' '.join(command), shell=True, check=True)
+            subprocess.run(' '.join(command), shell=True, cwd=cwd, check=True)
             return
 
         # Prepare to process the command line output of the command
@@ -166,7 +171,7 @@ class Builder:
             last_lines.append(line)
         
         # Start the subprocess
-        process = subprocess.Popen(' '.join(command), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(' '.join(command), shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         # Continuously read from the process output
         while True:
@@ -199,25 +204,24 @@ class Builder:
                     if stderr_line:
                         print(stderr_line, file=f, end='')
 
-            # If enabled, show output of the command
-            if visible:
-                if stdout_line:
-                    update_last_lines(stdout_line)
-                if stderr_line:
-                    update_last_lines(stderr_line)
+            # Show output of the command
+            if stdout_line:
+                update_last_lines(stdout_line)
+            if stderr_line:
+                update_last_lines(stderr_line)
 
-                # Clear previous output
-                for _ in range(printed_lines):
-                    # Move the cursor up one line
-                    print('\033[F', end='')
-                    # Clear the line
-                    print('\033[K', end='')
+            # Clear previous output
+            for _ in range(printed_lines):
+                # Move the cursor up one line
+                print('\033[F', end='')
+                # Clear the line
+                print('\033[K', end='')
 
-                # Print output
-                printed_lines = 0
-                for line in last_lines:
-                    print(line, end='', flush=True)
-                    printed_lines += 1
+            # Print output
+            printed_lines = 0
+            for line in last_lines:
+                print(line, end='', flush=True)
+                printed_lines += 1
 
         # Close the streams
         process.stdout.close()
@@ -230,7 +234,7 @@ class Builder:
 
 
     @staticmethod
-    def _get_sh_results(command: typing.List[str]) -> subprocess.CompletedProcess:
+    def _get_sh_results(command: typing.List[str], cwd: pathlib.Path = None) -> subprocess.CompletedProcess:
         """ (Google documentation style: https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
         Runs a sh command and get all output.
 
@@ -239,6 +243,9 @@ class Builder:
                 The command to execute as a list of strings. Example: ['/usr/bin/ping', 'www.google.com'].
                 The executable should be given with the full path, as mentioned
                 here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
+            cwd:
+                If cwd is not None, the working directory is changed to cwd before the
+                commands are executed.
 
         Returns:
             An object that contains stdout (str), stderr (str) and returncode (int).
@@ -247,7 +254,7 @@ class Builder:
             None
         """
 
-        result = subprocess.run(' '.join(command), shell=True, capture_output=True, text=True, check=False)
+        result = subprocess.run(' '.join(command), shell=True, cwd=cwd, capture_output=True, text=True, check=False)
 
         return result
 
@@ -649,7 +656,7 @@ class Builder:
 
     def create_patches(self):
         """
-        Created patches from from commits on self._git_local_dev_branch.
+        Creates patches from commits on self._git_local_dev_branch.
 
         Args:
             None
@@ -679,9 +686,9 @@ class Builder:
                 with self._patch_list_file.open('a') as f:
                     print(new_patch, file=f, end='\n')
             # Synchronize the branches ref and dev to be able to detect new commits in the future
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch])
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch])
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch])
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch], visible_lines=0)
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch], visible_lines=0)
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch], visible_lines=0)
         except Exception as e:
             pretty_print.print_error(f'An error occurred while creating new patches: {e}')
             sys.exit(1)
@@ -713,14 +720,14 @@ class Builder:
             if self._patch_list_file.is_file():
                 with self._patch_list_file.open('r') as f:
                     for patch in f:
-                        if patch:
+                        if patch: # If this line in the file is not empty
                             # Apply patch
                             Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'am', str(self._patch_dir / patch)])
 
             # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch])
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch])
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch])
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch], visible_lines=0)
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch], visible_lines=0)
+            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch], visible_lines=0)
 
             # Create the flag if it doesn't exist and update the timestamps
             self._patches_applied_flag.touch()
@@ -793,7 +800,7 @@ class Builder:
         # Download the file
         download_progress.t = None
         filename = self._pc_project_prebuilt.rpartition('/')[2]
-        urllib.request.urlretrieve(self._pc_project_prebuilt, self._download_dir / filename, reporthook=download_progress)
+        urllib.request.urlretrieve(url=self._pc_project_prebuilt, filename=self._download_dir / filename, reporthook=download_progress)
         if download_progress.t:
             download_progress.t.close()
 
@@ -988,7 +995,7 @@ class Builder:
             None
         """
 
-        potential_mounts = [f'{self._repo_dir}:Z', f'{self._work_dir}:Z', f'{self._output_dir}:Z']
+        potential_mounts = [f'{self._dependencies_dir}:Z', f'{self._repo_dir}:Z', f'{self._block_src_dir}:Z', f'{self._work_dir}:Z', f'{self._output_dir}:Z']
 
         Builder._start_container(self, potential_mounts=potential_mounts)
 
@@ -1373,11 +1380,11 @@ class Builder:
             None
         """
 
-        if not (self._project_temp_dir / self.block_id).exists():
+        if not self._block_temp_dir.exists():
             pretty_print.print_clean(f'No need to clean the temp directory of block {self.block_id}...')
             return
 
         pretty_print.print_clean(f'Cleaning temp directory of block {self.block_id}...')
 
         # Remove empty temp directory
-        (self._project_temp_dir / self.block_id).rmdir()
+        self._block_temp_dir.rmdir()

@@ -1,0 +1,34 @@
+
+######## CUSTOM FROM HERE ON ########
+
+# Build for generic zynqmp device
+MACHINE = "zynqmp-generic"
+
+# Do not build a Linux Kernel with yocto
+PREFERRED_PROVIDER_virtual/kernel = "linux-dummy"
+
+# Do not build a WIC image
+IMAGE_FSTYPES:remove = "wic.qemu-sd"
+
+# Build initramfs image
+INITRAMFS_IMAGE = "core-image-minimal"
+
+# Create user 'petalinux' with password 'petalinux'
+PASSWD = "\$6\$xx\$12fBVQgrrkB6ZmS6DSUIeVLW3Cot/hC4g8ZhbcwLZtKG93spibFJ/.0rF688RnsqMrgIbnHFkZnJu0Tk9.7F41"
+EXTRA_USERS_PARAMS = "\
+    groupadd -r aie; \
+    useradd -p '${PASSWD}' petalinux; \
+    usermod -a -G audio petalinux; \
+    usermod -a -G video petalinux; \
+    usermod -a -G aie petalinux; \
+"
+EXTRA_USERS_SUDOERS = "petalinux ALL=(ALL) ALL;"
+
+# Set hostname
+hostname:pn-base-files = "split-boot-recovery"
+
+# Install additional features
+EXTRA_IMAGE_FEATURES = "ssh-server-dropbear"
+
+# Install additional recipes
+IMAGE_INSTALL:append = " buildinfo"

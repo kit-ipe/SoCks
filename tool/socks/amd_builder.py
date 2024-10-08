@@ -25,7 +25,7 @@ class AMD_Builder(Builder):
         self._pc_xilinx_license = project_cfg["externalTools"]["xilinx"]["license"]
 
         # Project directories
-        self._xsa_dir = self._project_temp_dir / self.block_id / 'source_xsa'
+        self._xsa_dir = self._block_temp_dir / 'source_xsa'
 
         # Project files
         # File for saving the checksum of the XSA-file on which the project is based

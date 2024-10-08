@@ -30,8 +30,8 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         }
 
         # Project directories
-        self._dt_incl_dir = self._project_src_dir / self.block_id / 'dt_includes'
-        self._dt_overlay_dir = self._project_src_dir / self.block_id / 'dt_overlays'
+        self._dt_incl_dir = self._block_src_dir / 'dt_includes'
+        self._dt_overlay_dir = self._block_src_dir / 'dt_overlays'
         self._base_work_dir = self._work_dir / 'base'
         self._overlay_work_dir = self._work_dir / 'overlays'
 

@@ -1,0 +1,380 @@
+import sys
+import pathlib
+import shutil
+import hashlib
+import stat
+import urllib
+
+import socks.pretty_print as pretty_print
+from socks.builder import Builder
+
+class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
+    """
+    AMD PetaLinux root file system builder class
+    """
+
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
+        block_id = 'rootfs'
+        block_description = 'Build an AMD PetaLinux root file system'
+
+        super().__init__(project_cfg=project_cfg,
+                        project_cfg_files=project_cfg_files,
+                        socks_dir=socks_dir,
+                        project_dir=project_dir,
+                        block_id=block_id,
+                        block_description=block_description)
+
+        # Check if the project configuration contains all optional settings that are required for this block. This only covers settings that cannot be checked with the schema because they are not required by all builders for this block_id.
+        if self._pc_project_sources is None:
+            pretty_print.print_error(f'The property blocks/{self.block_id}/project/sources is required by this builder, but it is not set.')
+            sys.exit(1)
+        if self._pc_project_branch is None:
+            pretty_print.print_error(f'The property blocks/{self.block_id}/project/branch is required by this builder, but it is not set.')
+            sys.exit(1)
+
+        # Products of other blocks on which this block depends
+        # This dict is used to check whether the imported block packages contain
+        # all the required files. Regex can be used to describe the expected files.
+        self._block_deps = {
+            'kernel': ['kernel_modules.tar.gz']
+        }
+
+        self._output_rootfs_cpio_gz = self._output_dir / 'petalinux-rootfs.cpio.gz'
+        self._output_rootfs_tar_gz = self._output_dir / 'petalinux-rootfs.tar.gz'
+        self._output_rootfs_complete_cpio_gz = self._output_dir / 'petalinux-rootfs-complete.cpio.gz'
+
+        # Project files
+        # File for version & build info tracking
+        self._build_info_file = self._source_repo_dir / 'fs_build_info'
+        # File for saving the checksum of the Kernel module archive used
+        self._source_kmods_md5_file = self._work_dir / 'source_kmodules.md5'
+        # Repo tool
+        self._repo_script=self._repo_dir / 'repo'
+
+        # The user can use block commands to interact with the block.
+        # Each command represents a list of member functions of the builder class.
+        self.block_cmds = {
+            'prepare': [],
+            'build': [],
+            'prebuild': [],
+            'clean': [],
+            'create-patches': [],
+            'start-container': []
+        }
+        self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies])
+        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_dependencies, self.clean_output, self.rm_temp_block])
+        if self._pc_block_source == 'build':
+            self.block_cmds['prepare'].extend([self.init_repo, self.apply_patches, self.yocto_init])
+            self.block_cmds['build'].extend(self.block_cmds['prepare'])
+            self.block_cmds['build'].extend([self.build_base_rootfs, self.add_kmodules, self.export_block_package])
+            self.block_cmds['prebuild'].extend(self.block_cmds['prepare'])
+            self.block_cmds['prebuild'].extend([self.build_base_rootfs, self.export_block_package])
+            self.block_cmds['create-patches'].extend([self.create_patches])
+            self.block_cmds['start-container'].extend([self.start_container])
+        elif self._pc_block_source == 'import':
+            self.block_cmds['build'].extend(self.block_cmds['prepare'])
+            self.block_cmds['build'].extend([self.import_prebuilt, self.add_kmodules, self.export_block_package])
+
+
+    def init_repo(self):
+        """
+        Clones and initializes the yocto environment utilizing the Google 'repo'
+        script as suggested by AMD.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Skip all operations if the repo already exists
+        if self._source_repo_dir.exists():
+            pretty_print.print_build('No need to initialize the local repos...')
+            return
+
+        self._output_dir.mkdir(parents=True, exist_ok=True)
+        self._source_repo_dir.mkdir(parents=True, exist_ok=True)
+
+        pretty_print.print_build('Initializing local repos...')
+
+        # Download the google repo tool
+        urllib.request.urlretrieve(url='https://storage.googleapis.com/git-repo-downloads/repo', filename=self._repo_script)
+        # Make repo executable
+        self._repo_script.chmod(self._repo_script.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+        # Initialize repo in the current directory
+        ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['printf', '"y"', '|', str(self._repo_script), 'init', '-u', self._source_repo_url, '-b', self._source_repo_branch], cwd=self._source_repo_dir)
+        # Clone git repos
+        ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([str(self._repo_script), 'sync'], cwd=self._source_repo_dir)
+        # Initialize local branches in all repos
+        results = ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._get_sh_results([str(self._repo_script), 'list'], cwd=self._source_repo_dir)
+        for line in results.stdout.splitlines():
+            path, colon, project = line.split(' ', 2)
+            # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
+            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([str(self._repo_script), 'start', self._git_local_ref_branch, project], cwd=self._source_repo_dir)
+            # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
+            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([str(self._repo_script), 'start', self._git_local_dev_branch, project], cwd=self._source_repo_dir)
+
+
+    def create_patches(self):
+        """
+        Creates patches from commits on self._git_local_dev_branch.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        pretty_print.print_build('Creating patches...')
+
+        # Iterate over all repos and check for new commits
+        repos_with_commits = []
+        results = ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._get_sh_results([str(self._repo_script), 'list'], cwd=self._source_repo_dir)
+        for line in results.stdout.splitlines():
+            path, colon, project = line.split(' ', 2)
+            # Check if this repo contains new commits
+            result_new_commits = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'log', '--cherry-pick', '--oneline', self._git_local_dev_branch, f'^{self._git_local_ref_branch}'])
+            if result_new_commits.stdout:
+                # This repo contains one or more new commits
+                repos_with_commits.append(project)
+                try:
+                    # Create patches
+                    result_new_patches = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
+                    # Add newly created patches to self._patch_list_file
+                    for line in result_new_patches.stdout.splitlines():
+                        new_patch = line.rpartition('/')[2]
+                        print(f'Patch {new_patch} was created')
+                        with self._patch_list_file.open('a') as f:
+                            print(f'{project} {new_patch}', file=f, end='\n')
+                    # Synchronize the branches ref and dev to be able to detect new commits in the future
+                    Builder._run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'checkout', self._git_local_ref_branch], visible_lines=0)
+                    Builder._run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'merge', self._git_local_dev_branch], visible_lines=0)
+                    Builder._run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'checkout', self._git_local_dev_branch], visible_lines=0)
+                except Exception as e:
+                    pretty_print.print_error(f'An error occurred while creating new patches: {e}')
+                    sys.exit(1)
+
+        if not repos_with_commits:
+            pretty_print.print_warning('No commits found that can be used as sources for patches.')
+
+
+    def apply_patches(self):
+        """
+        This function iterates over all patches listed in self._patch_list_file and
+        applies them.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Skip all operations if the patches have already been applied
+        if self._patches_applied_flag.exists():
+            pretty_print.print_build('No need to apply patches...')
+            return
+
+        pretty_print.print_build('Applying patches...')
+        
+        try:
+            if self._patch_list_file.is_file():
+                with self._patch_list_file.open('r') as f:
+                    for line in f:
+                        if line: # If this line in the file is not empty
+                            project, patch = line.split(' ', 1)
+                            # Get path of this project
+                            results = ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._get_sh_results([str(self._repo_script), 'list', '-r', project, '-p'], cwd=self._source_repo_dir)
+                            path = results.stdout.splitlines()[0]
+                            # Apply patch
+                            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'am', str(self._patch_dir / patch)])
+
+                            # Update the branch self._git_local_ref_branch so that it contains the applied patch and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
+                            Builder._run_sh_command([str(self._repo_script), 'checkout', self._git_local_ref_branch, project], cwd=self._source_repo_dir, visible_lines=0)
+                            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'merge', self._git_local_dev_branch], visible_lines=0)
+                            Builder._run_sh_command([str(self._repo_script), 'checkout', self._git_local_dev_branch, project], cwd=self._source_repo_dir, visible_lines=0)
+
+            # Create the flag if it doesn't exist and update the timestamps
+            self._patches_applied_flag.touch()
+        except Exception as e:
+            pretty_print.print_error(f'An error occurred while applying patches: {e}')
+            sys.exit(1)
+
+
+    def yocto_init(self):
+        """
+        Initializes the yocto project.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Skip all operations if the yocto project is already initialized
+        if (self._source_repo_dir / 'build').exists():
+            pretty_print.print_build('No need to initialize yocto...')
+            return
+
+        local_conf_append = self._block_src_dir / 'src' / 'local.conf.append'
+
+        pretty_print.print_build('Initializing yocto...')
+
+        yocto_init_commands = f'\'cd {self._source_repo_dir} && ' \
+                            f'source ./setupsdk && ' \
+                            f'cat {local_conf_append} >> {self._source_repo_dir}/build/conf/local.conf\''
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Run commands in container
+                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._block_src_dir}:{self._block_src_dir}:Z', self._container_image, 'sh', '-c', yocto_init_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while initializing yocto: {e}')
+                sys.exit(1)
+        elif self._pc_container_tool  == 'none':
+            # Run commands without using a container
+            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', yocto_init_commands])
+        else:
+            self._err_unsup_container_tool()
+
+
+    def build_base_rootfs(self):
+        """
+        Builds the base root file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check whether the base root file system needs to be built
+        if self._output_rootfs_cpio_gz.is_file() and not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._block_src_dir / 'src', self._patch_dir, self._source_repo_dir / 'sources', self._source_repo_dir / 'build' / 'conf', self._source_repo_dir / 'build' / 'workspace'], src_ignore_list=[self._source_repo_dir / 'sources' / 'core' / 'bitbake' / 'lib' / 'bb' / 'pysh' / 'pyshtables.py'], out_search_list=[self._source_repo_dir / 'build' / 'tmp' / 'deploy' / 'images', self._source_repo_dir / 'sources' / 'core' / 'bitbake' / 'lib' / 'bb' / 'pysh' / 'pyshtables.py']):
+            pretty_print.print_build('No need to rebuild the base root file system. No altered source files detected...')
+            return
+
+        # Remove flags and checksums
+        self._source_kmods_md5_file.unlink(missing_ok=True)
+
+        pretty_print.print_build('Building the base root file system...')
+
+        if self._pc_project_build_info_flag == True:
+            # Add build information file
+            with self._build_info_file.open('w') as f:
+                print('# Filesystem build info (autogenerated)\n\n', file=f, end='')
+                print(self._compose_build_info(), file=f, end='')
+        else:
+            # Remove existing build information file
+            # ToDo: Implement this. Not sure how to do this while beeing independend of the build_info recipe
+            pass
+
+        base_rootfs_build_commands = f'\'cd {self._source_repo_dir} && ' \
+                                    f'source ./setupsdk && ' \
+                                    'bitbake core-image-minimal\''
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Run commands in container
+                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', self._container_image, 'sh', '-c', base_rootfs_build_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while building the base root file system: {e}')
+                sys.exit(1)
+        elif self._pc_container_tool  == 'none':
+            # Run commands without using a container
+            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', base_rootfs_build_commands])
+        else:
+            self._err_unsup_container_tool()
+
+        # Create symlink to the output files
+        (self._output_rootfs_cpio_gz).unlink(missing_ok=True)
+        (self._output_rootfs_cpio_gz).symlink_to(self._source_repo_dir / 'build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.cpio.gz')
+        (self._output_rootfs_tar_gz).unlink(missing_ok=True)
+        (self._output_rootfs_tar_gz).symlink_to(self._source_repo_dir / 'build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.tar.gz')
+
+
+    def add_kmodules(self):
+        """
+        Adds kernel modules to the root file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check whether a RootFS is present
+        if not self._output_rootfs_cpio_gz.is_file():
+            pretty_print.print_error(f'RootFS at {self._output_rootfs_cpio_gz} not found.')
+            sys.exit(1)
+
+        kmods_archive = self._dependencies_dir / 'kernel' / 'kernel_modules.tar.gz'
+        
+        # Calculate md5 of the provided file
+        md5_new_file = hashlib.md5(kmods_archive.read_bytes()).hexdigest()
+        # Read md5 of previously used Kernel module archive, if any
+        md5_existsing_file = 0
+        if self._source_kmods_md5_file.is_file():
+            with self._source_kmods_md5_file.open('r') as f:
+                md5_existsing_file = f.read()
+
+        # Check whether the Kernel modules need to be added
+        if md5_existsing_file == md5_new_file:
+            pretty_print.print_build('No need to add Kernel Modules. No altered source files detected...')
+            return
+
+        self._work_dir.mkdir(parents=True, exist_ok=True)
+
+        pretty_print.print_build('Adding Kernel Modules...')
+
+        add_kmodules_commands = f'\'cd {self._work_dir} && ' \
+                                f'tar -xzf {kmods_archive} && ' \
+                                f'chown -R root:root lib && ' \
+                                f'chmod -R 000 lib && ' \
+                                f'chmod -R u=rwX,go=rX lib && ' \
+                                f'mkdir tmp_mnt && ' \
+                                f'gunzip -c {self._output_rootfs_cpio_gz} | sh -c "cd tmp_mnt/ && cpio -i" && ' \
+                                f'cp -r lib tmp_mnt/ && ' \
+                                f'sh -c "cd tmp_mnt/ && find . | cpio -H newc -o" | gzip -9 > {self._output_rootfs_complete_cpio_gz} && ' \
+                                f'rm -rf {self._work_dir}/lib {self._work_dir}/tmp_mnt 2> /dev/null || true\''
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Run commands in container
+                # The root user is used in this container. This is necessary in order to modify a RootFS image.
+                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._dependencies_dir}:{self._dependencies_dir}:Z', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_kmodules_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while adding Kernel Modules: {e}')
+                sys.exit(1)
+        elif self._pc_container_tool  == 'none':
+            # Run commands without using a container
+            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_kmodules_commands])
+        else:
+            self._err_unsup_container_tool()
+
+        # Save checksum in file
+        with self._source_kmods_md5_file.open('w') as f:
+            print(md5_new_file, file=f, end='')
