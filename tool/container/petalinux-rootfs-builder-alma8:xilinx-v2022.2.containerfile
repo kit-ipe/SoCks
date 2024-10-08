@@ -28,6 +28,9 @@ RUN dnf -y install perl-open.noarch
 RUN curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/local/bin/repo
 RUN chmod a+x /usr/local/bin/repo
 
+# Install required packages to package the RootFS
+RUN dnf -y install pigz pxz
+
 # Install sudo and allow all users to use sudo without a password
 RUN dnf -y install sudo
 RUN echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers

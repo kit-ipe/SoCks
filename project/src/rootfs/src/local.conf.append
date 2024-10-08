@@ -29,6 +29,3 @@ hostname:pn-base-files = "split-boot-recovery"
 
 # Install additional features
 EXTRA_IMAGE_FEATURES = "ssh-server-dropbear"
-
-# Install additional recipes
-IMAGE_INSTALL:append = " buildinfo"

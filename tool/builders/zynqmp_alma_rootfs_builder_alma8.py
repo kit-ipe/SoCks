@@ -216,8 +216,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_fs_layers_commands])
+                # The root user is used in this container. This is necessary in order to modify a RootFS image.
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_fs_layers_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while adding predefined file system layers: {e}')
                 sys.exit(1)
@@ -264,8 +264,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_users_commands])
+                # The root user is used in this container. This is necessary in order to modify a RootFS image.
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_users_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while adding users: {e}')
                 sys.exit(1)
@@ -327,8 +327,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._dependencies_dir}:{self._dependencies_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_kmodules_commands])
+                # The root user is used in this container. This is necessary in order to modify a RootFS image.
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._dependencies_dir}:{self._dependencies_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_kmodules_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while adding Kernel Modules: {e}')
                 sys.exit(1)
@@ -413,8 +413,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_pl_commands])
+                # The root user is used in this container. This is necessary in order to modify a RootFS image.
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_pl_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while adding files for the programmable logic (PL): {e}')
                 sys.exit(1)
@@ -470,7 +470,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                     # The root user is used in this container. This is necessary in order to build a RootFS image.
                     ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_build_info_commands])
                 except Exception as e:
-                    pretty_print.print_error(f'An error occurred while building the base root file system: {e}')
+                    pretty_print.print_error(f'An error occurred while adding the build info file to the root file system: {e}')
                     sys.exit(1)
             elif self._pc_container_tool  == 'none':
                 # Run commands without using a container
@@ -487,7 +487,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                     # The root user is used in this container. This is necessary in order to build a RootFS image.
                     ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', clean_build_info_commands])
                 except Exception as e:
-                    pretty_print.print_error(f'An error occurred while building the base root file system: {e}')
+                    pretty_print.print_error(f'An error occurred while cleaning the build info file from the root file system: {e}')
                     sys.exit(1)
             elif self._pc_container_tool  == 'none':
                 # Run commands without using a container
@@ -602,12 +602,14 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         #Extract pre-built files
         with tarfile.open(prebuilt_block_package, "r:*") as archive:
             content = archive.getnames()
-            if len(content) != 1:
-                pretty_print.print_error(f'There are {len(content)} files in archive {prebuilt_block_package}. Expected was 1.')
+            # Filter the list to get only .tar.xz and .tar.gz files
+            tar_files = [f for f in content if f.endswith(('.tar.xz', '.tar.gz'))]
+            if len(tar_files) != 1:
+                pretty_print.print_error(f'There are {len(tar_files)} *.tar.xz and *.tar.gz files in archive {prebuilt_block_package}. Expected was 1.')
                 sys.exit(1)
-            prebuilt_rootfs_archive = content[0]
-            # Extract all contents to the work directory
-            archive.extractall(path=self._work_dir)
+            prebuilt_rootfs_archive = tar_files[0]
+            # Extract rootfs archive to the work directory
+            archive.extract(member=prebuilt_rootfs_archive, path=self._work_dir)
 
         extract_pb_rootfs_commands = f'\'mkdir -p {self._build_dir} && ' \
                                     f'tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._build_dir}\''

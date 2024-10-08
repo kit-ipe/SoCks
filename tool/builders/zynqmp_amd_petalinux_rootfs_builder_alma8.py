@@ -2,8 +2,10 @@ import sys
 import pathlib
 import shutil
 import hashlib
+import tarfile
 import stat
 import urllib
+import validators
 
 import socks.pretty_print as pretty_print
 from socks.builder import Builder
@@ -39,13 +41,14 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             'kernel': ['kernel_modules.tar.gz']
         }
 
-        self._output_rootfs_cpio_gz = self._output_dir / 'petalinux-rootfs.cpio.gz'
-        self._output_rootfs_tar_gz = self._output_dir / 'petalinux-rootfs.tar.gz'
-        self._output_rootfs_complete_cpio_gz = self._output_dir / 'petalinux-rootfs-complete.cpio.gz'
+        self._rootfs_name = f'petalinux_zynqmp_{self._pc_prj_name}'
+
+        # Project directories
+        self._mod_dir = self._work_dir / self._rootfs_name
 
         # Project files
         # File for version & build info tracking
-        self._build_info_file = self._source_repo_dir / 'fs_build_info'
+        self._build_info_file = self._work_dir / 'fs_build_info'
         # File for saving the checksum of the Kernel module archive used
         self._source_kmods_md5_file = self._work_dir / 'source_kmodules.md5'
         # Repo tool
@@ -66,14 +69,14 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         if self._pc_block_source == 'build':
             self.block_cmds['prepare'].extend([self.init_repo, self.apply_patches, self.yocto_init])
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
-            self.block_cmds['build'].extend([self.build_base_rootfs, self.add_kmodules, self.export_block_package])
+            self.block_cmds['build'].extend([self.build_base_rootfs, self.add_kmodules, self.build_tarball, self.export_block_package])
             self.block_cmds['prebuild'].extend(self.block_cmds['prepare'])
-            self.block_cmds['prebuild'].extend([self.build_base_rootfs, self.export_block_package])
+            self.block_cmds['prebuild'].extend([self.build_base_rootfs, self.build_tarball_prebuilt, self.export_block_package])
             self.block_cmds['create-patches'].extend([self.create_patches])
             self.block_cmds['start-container'].extend([self.start_container])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
-            self.block_cmds['build'].extend([self.import_prebuilt, self.add_kmodules, self.export_block_package])
+            self.block_cmds['build'].extend([self.import_prebuilt, self.add_kmodules, self.build_tarball, self.export_block_package])
 
 
     def init_repo(self):
@@ -96,7 +99,6 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             pretty_print.print_build('No need to initialize the local repos...')
             return
 
-        self._output_dir.mkdir(parents=True, exist_ok=True)
         self._source_repo_dir.mkdir(parents=True, exist_ok=True)
 
         pretty_print.print_build('Initializing local repos...')
@@ -269,47 +271,36 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         """
 
         # Check whether the base root file system needs to be built
-        if self._output_rootfs_cpio_gz.is_file() and not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._block_src_dir / 'src', self._patch_dir, self._source_repo_dir / 'sources', self._source_repo_dir / 'build' / 'conf', self._source_repo_dir / 'build' / 'workspace'], src_ignore_list=[self._source_repo_dir / 'sources' / 'core' / 'bitbake' / 'lib' / 'bb' / 'pysh' / 'pyshtables.py'], out_search_list=[self._source_repo_dir / 'build' / 'tmp' / 'deploy' / 'images', self._source_repo_dir / 'sources' / 'core' / 'bitbake' / 'lib' / 'bb' / 'pysh' / 'pyshtables.py']):
+        if not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._block_src_dir / 'src', self._patch_dir, self._source_repo_dir / 'sources', self._source_repo_dir / 'build' / 'conf', self._source_repo_dir / 'build' / 'workspace'], src_ignore_list=[self._source_repo_dir / 'sources' / 'core' / 'bitbake' / 'lib' / 'bb' / 'pysh' / 'pyshtables.py'], out_search_list=[self._source_repo_dir / 'build' / 'tmp' / 'deploy' / 'images', self._source_repo_dir / 'build' / 'tmp' / 'deploy' / 'images' / 'zynqmp-generic' / 'core-image-minimal-zynqmp-generic.cpio.gz', self._source_repo_dir / 'sources' / 'core' / 'bitbake' / 'lib' / 'bb' / 'pysh' / 'pyshtables.py']):
             pretty_print.print_build('No need to rebuild the base root file system. No altered source files detected...')
             return
 
-        # Remove flags and checksums
-        self._source_kmods_md5_file.unlink(missing_ok=True)
+        self.clean_work()
+        self._mod_dir.mkdir(parents=True)
 
         pretty_print.print_build('Building the base root file system...')
-
-        if self._pc_project_build_info_flag == True:
-            # Add build information file
-            with self._build_info_file.open('w') as f:
-                print('# Filesystem build info (autogenerated)\n\n', file=f, end='')
-                print(self._compose_build_info(), file=f, end='')
-        else:
-            # Remove existing build information file
-            # ToDo: Implement this. Not sure how to do this while beeing independend of the build_info recipe
-            pass
 
         base_rootfs_build_commands = f'\'cd {self._source_repo_dir} && ' \
                                     f'source ./setupsdk && ' \
                                     'bitbake core-image-minimal\''
 
+        extract_rootfs_commands = f'\'gunzip -c {self._source_repo_dir}/build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.cpio.gz | sh -c "cd {self._mod_dir}/ && cpio -i"\''
+
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
                 ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', self._container_image, 'sh', '-c', base_rootfs_build_commands])
+                # The root user is used in this container. This is necessary in order to modify a RootFS image.
+                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', extract_rootfs_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while building the base root file system: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
             ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', base_rootfs_build_commands])
+            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', extract_rootfs_commands])
         else:
             self._err_unsup_container_tool()
-
-        # Create symlink to the output files
-        (self._output_rootfs_cpio_gz).unlink(missing_ok=True)
-        (self._output_rootfs_cpio_gz).symlink_to(self._source_repo_dir / 'build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.cpio.gz')
-        (self._output_rootfs_tar_gz).unlink(missing_ok=True)
-        (self._output_rootfs_tar_gz).symlink_to(self._source_repo_dir / 'build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.tar.gz')
 
 
     def add_kmodules(self):
@@ -327,8 +318,8 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         """
 
         # Check whether a RootFS is present
-        if not self._output_rootfs_cpio_gz.is_file():
-            pretty_print.print_error(f'RootFS at {self._output_rootfs_cpio_gz} not found.')
+        if not self._mod_dir.is_dir():
+            pretty_print.print_error(f'RootFS at {self._mod_dir} not found.')
             sys.exit(1)
 
         kmods_archive = self._dependencies_dir / 'kernel' / 'kernel_modules.tar.gz'
@@ -346,8 +337,6 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             pretty_print.print_build('No need to add Kernel Modules. No altered source files detected...')
             return
 
-        self._work_dir.mkdir(parents=True, exist_ok=True)
-
         pretty_print.print_build('Adding Kernel Modules...')
 
         add_kmodules_commands = f'\'cd {self._work_dir} && ' \
@@ -355,17 +344,15 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                                 f'chown -R root:root lib && ' \
                                 f'chmod -R 000 lib && ' \
                                 f'chmod -R u=rwX,go=rX lib && ' \
-                                f'mkdir tmp_mnt && ' \
-                                f'gunzip -c {self._output_rootfs_cpio_gz} | sh -c "cd tmp_mnt/ && cpio -i" && ' \
-                                f'cp -r lib tmp_mnt/ && ' \
-                                f'sh -c "cd tmp_mnt/ && find . | cpio -H newc -o" | gzip -9 > {self._output_rootfs_complete_cpio_gz} && ' \
-                                f'rm -rf {self._work_dir}/lib {self._work_dir}/tmp_mnt 2> /dev/null || true\''
+                                f'rm -rf {self._mod_dir}/lib/modules/* && ' \
+                                f'mv lib/modules/* {self._mod_dir}/lib/modules/ && ' \
+                                f'rm -rf lib\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
                 # The root user is used in this container. This is necessary in order to modify a RootFS image.
-                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._dependencies_dir}:{self._dependencies_dir}:Z', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', add_kmodules_commands])
+                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._dependencies_dir}:{self._dependencies_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_kmodules_commands])
             except Exception as e:
                 pretty_print.print_error(f'An error occurred while adding Kernel Modules: {e}')
                 sys.exit(1)
@@ -378,3 +365,228 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         # Save checksum in file
         with self._source_kmods_md5_file.open('w') as f:
             print(md5_new_file, file=f, end='')
+
+
+    def build_tarball(self, prebuilt: bool = False):
+        """
+        Packs the entire rootfs in a tarball.
+
+        Args:
+            prebuilt:
+                Set to True if the tarball will contain pre-built files
+                instead of a complete project file system.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check if the tarball needs to be built
+        if not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]):
+            pretty_print.print_build('No need to rebuild tarball. No altered source files detected...')
+            return
+
+        self.clean_output()
+        self._output_dir.mkdir(parents=True)
+
+        pretty_print.print_build('Building tarball...')
+
+        if self._pc_project_build_info_flag == True:
+            # Add build information file
+            with self._build_info_file.open('w') as f:
+                print('# Filesystem build info (autogenerated)\n\n', file=f, end='')
+                print(self._compose_build_info(), file=f, end='')
+
+            add_build_info_commands = f'\'mv {self._build_info_file} {self._mod_dir}/etc/fs_build_info && ' \
+                                        f'chmod 0444 {self._mod_dir}/etc/fs_build_info\''
+
+            if self._pc_container_tool  in ('docker', 'podman'):
+                try:
+                    # Run commands in container
+                    # The root user is used in this container. This is necessary in order to build a RootFS image.
+                    ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_build_info_commands])
+                except Exception as e:
+                    pretty_print.print_error(f'An error occurred while adding the build info file to the root file system: {e}')
+                    sys.exit(1)
+            elif self._pc_container_tool  == 'none':
+                # Run commands without using a container
+                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_build_info_commands])
+            else:
+                self._err_unsup_container_tool()
+        else:
+            # Remove existing build information file
+            clean_build_info_commands = f'\'rm -f {self._build_dir}/etc/fs_build_info\''
+
+            if self._pc_container_tool  in ('docker', 'podman'):
+                try:
+                    # Run commands in container
+                    # The root user is used in this container. This is necessary in order to build a RootFS image.
+                    ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', clean_build_info_commands])
+                except Exception as e:
+                    pretty_print.print_error(f'An error occurred while cleaning the build info file from the root file system: {e}')
+                    sys.exit(1)
+            elif self._pc_container_tool  == 'none':
+                # Run commands without using a container
+                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', clean_build_info_commands])
+            else:
+                self._err_unsup_container_tool()
+
+        if prebuilt:
+            tarball_name = f'petalinux_zynqmp_pre-built'
+        else:
+            tarball_name = self._rootfs_name
+
+        # Tar was tested with three compression options:
+        # Option	Size	Duration
+        # --xz	872M	real	17m59.080s
+        # -I pxz	887M	real	3m43.987s
+        # -I pigz	1.3G	real	0m20.747s
+        tarball_build_commands = f'\'cd {self._mod_dir} && ' \
+                                f'tar -I pxz --numeric-owner -p -cf  {self._output_dir / f"{tarball_name}.tar.xz"} ./ && ' \
+                                f'find . | cpio -H newc -o | gzip -9 > {self._output_dir / f"{tarball_name}.cpio.gz"} && ' \
+                                f'if id {self._host_user} >/dev/null 2>&1; then ' \
+                                f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{tarball_name}.tar.xz"}; ' \
+                                f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{tarball_name}.cpio.gz"}; ' \
+                                f'fi\''
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Run commands in container
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', tarball_build_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while building the tarball: {e}')
+                sys.exit(1)
+        elif self._pc_container_tool  == 'none':
+            # Run commands without using a container
+            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', tarball_build_commands])
+        else:
+            self._err_unsup_container_tool()
+
+
+    def build_tarball_prebuilt(self):
+        """
+        Packs the entire pre-built rootfs in a tarball.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self.build_tarball(prebuilt = True)
+
+
+    def import_prebuilt(self):
+        """
+        Imports a pre-built root file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Get path of the pre-built root file system
+        if self._pc_project_prebuilt is None:
+            pretty_print.print_error(f'The property blocks/{self.block_id}/project/pre-built is required to import the block, but it is not set.')
+            sys.exit(1)
+        elif validators.url(self._pc_project_prebuilt):
+            self._download_prebuilt()
+            downloads = list(self._download_dir.glob('*'))
+            # Check if there is more than one file in the download directory
+            if len(downloads) != 1:
+                pretty_print.print_error(f'Not exactly one file in {self._download_dir}.')
+                sys.exit(1)
+            prebuilt_block_package = downloads[0]
+        else:
+            try:
+                prebuilt_block_package = pathlib.Path(self._pc_project_prebuilt)
+            except ValueError:
+                pretty_print.print_error(f'{self._pc_project_prebuilt} is not a valid URL and not a valid path')
+                sys.exit(1)
+
+        # Check whether the file is a supported archive
+        if prebuilt_block_package.name.partition('.')[2] not in ['tar.gz', 'tgz', 'tar.xz', 'txz']:
+            pretty_print.print_error(f'Unable to import block package. The following archive type is not supported: {prebuilt_block_package.name.partition(".")[2]}')
+            sys.exit(1)
+
+        # Calculate md5 of the provided file
+        md5_new_file = hashlib.md5(prebuilt_block_package.read_bytes()).hexdigest()
+        # Read md5 of previously used file, if any
+        md5_existsing_file = 0
+        if self._source_pb_md5_file.is_file():
+            with self._source_pb_md5_file.open('r') as f:
+                md5_existsing_file = f.read()
+
+        # Check if the pre-built root file system needs to be imported
+        if md5_existsing_file == md5_new_file:
+            pretty_print.print_build('No need to import the pre-built root file system. No altered source files detected...')
+            return
+
+        self.clean_work()
+        self._mod_dir.mkdir(parents=True)
+
+        pretty_print.print_build('Importing pre-built root file system...')
+
+        #Extract pre-built files
+        with tarfile.open(prebuilt_block_package, "r:*") as archive:
+            content = archive.getnames()
+            # Filter the list to get only .tar.xz and .tar.gz files
+            tar_files = [f for f in content if f.endswith(('.tar.xz', '.tar.gz'))]
+            if len(tar_files) != 1:
+                pretty_print.print_error(f'There are {len(tar_files)} *.tar.xz and *.tar.gz files in archive {prebuilt_block_package}. Expected was 1.')
+                sys.exit(1)
+            prebuilt_rootfs_archive = tar_files[0]
+            # Extract rootfs archive to the work directory
+            archive.extract(member=prebuilt_rootfs_archive, path=self._work_dir)
+
+        extract_pb_rootfs_commands = f'\'tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._mod_dir}\''
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Run commands in container
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', extract_pb_rootfs_commands])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while importing the pre-built root file system: {e}')
+                sys.exit(1)
+        elif self._pc_container_tool  == 'none':
+            # Run commands without using a container
+            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', extract_pb_rootfs_commands])
+        else:
+            self._err_unsup_container_tool()
+
+        # Save checksum in file
+        with self._source_pb_md5_file.open('w') as f:
+            print(md5_new_file, file=f, end='')
+
+        # Delete imported, pre-built rootfs archive
+        (self._work_dir / prebuilt_rootfs_archive).unlink()
+
+
+    def clean_work(self):
+            """
+            This function cleans the work directory.
+
+            Args:
+                None
+
+            Returns:
+                None
+
+            Raises:
+                None
+            """
+
+            super().clean_work(as_root=True)
