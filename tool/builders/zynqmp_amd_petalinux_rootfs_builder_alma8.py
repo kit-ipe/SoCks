@@ -596,3 +596,57 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             """
 
             super().clean_work(as_root=True)
+
+
+    def clean_repo(self):
+        """
+        This function cleans the git repo directory.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if not self._repo_dir.exists():
+            pretty_print.print_clean('No need to clean the repo directory...')
+            return
+
+        # Iterate over all repos and check if there are uncommited changes in the git repo
+        results = ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._get_sh_results([str(self._repo_script), 'list'], cwd=self._source_repo_dir)
+        for line in results.stdout.splitlines():
+            path, colon, project = line.split(' ', 2)
+            # Check if this repo contains uncommited changes
+            results = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'status', '--porcelain'])
+            if results.stdout:
+                pretty_print.print_warning(f'There are uncommited changes in {self._source_repo_dir / path}. Do you really want to clean this repo? (y/n) ', end='')
+                answer = input('')
+                if answer.lower() not in ['y', 'Y', 'yes', 'Yes']:
+                    pretty_print.print_clean('Cleaning abborted...')
+                    sys.exit(1)
+
+        pretty_print.print_clean('Cleaning repo directory...')
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Clean up the repo directory from the container
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while cleaning the repo directory: {e}')
+                sys.exit(1)
+
+        elif self._pc_container_tool  == 'none':
+            # Clean up the repo directory without using a container
+            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true\"'])
+        else:
+            self._err_unsup_container_tool()
+
+        # Remove flag
+        self._patches_applied_flag.unlink(missing_ok=True)
+
+        # Remove empty repo directory
+        self._repo_dir.rmdir()
