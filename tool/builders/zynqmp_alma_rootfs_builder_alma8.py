@@ -175,7 +175,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', base_rootfs_build_commands])
+            # The use of sudo is necessary in order to build a RootFS image.
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', base_rootfs_build_commands])
         else:
             self._err_unsup_container_tool()
 
@@ -223,7 +224,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_fs_layers_commands])
+            # The use of sudo is necessary in order to modify a RootFS image.
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_fs_layers_commands])
         else:
             self._err_unsup_container_tool()
 
@@ -271,7 +273,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_users_commands])
+            # The use of sudo is necessary in order to modify a RootFS image.
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_users_commands])
         else:
             self._err_unsup_container_tool()
 
@@ -334,7 +337,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_kmodules_commands])
+            # The use of sudo is necessary in order to modify a RootFS image.
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_kmodules_commands])
         else:
             self._err_unsup_container_tool()
 
@@ -420,7 +424,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_pl_commands])
+            # The use of sudo is necessary in order to modify a RootFS image.
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_pl_commands])
         else:
             self._err_unsup_container_tool()
 
@@ -474,7 +479,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                     sys.exit(1)
             elif self._pc_container_tool  == 'none':
                 # Run commands without using a container
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', add_build_info_commands])
+                # The use of sudo is necessary in order to build a RootFS image.
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_build_info_commands])
             else:
                 self._err_unsup_container_tool()
         else:
@@ -491,7 +497,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                     sys.exit(1)
             elif self._pc_container_tool  == 'none':
                 # Run commands without using a container
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', clean_build_info_commands])
+                # The use of sudo is necessary in order to build a RootFS image.
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', clean_build_info_commands])
             else:
                 self._err_unsup_container_tool()
 
@@ -521,7 +528,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', tarball_build_commands])
+            # The use of sudo is necessary in order to build a RootFS image.
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', tarball_build_commands])
         else:
             self._err_unsup_container_tool()
 
@@ -624,7 +632,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', extract_pb_rootfs_commands])
+            # The use of sudo is necessary in order to build a RootFS image.
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', extract_pb_rootfs_commands])
         else:
             self._err_unsup_container_tool()
 
