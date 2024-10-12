@@ -26,14 +26,6 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                         block_id=block_id,
                         block_description=block_description)
 
-        # Check if the project configuration contains all optional settings that are required for this block. This only covers settings that cannot be checked with the schema because they are not required by all builders for this block_id.
-        if self._pc_project_source is None:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/project/build-srcs/source is required by builder {self.__class__.__name__}, but it is not set.')
-            sys.exit(1)
-        if self._pc_project_branch is None:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/project/build-srcs/branch is required by builder {self.__class__.__name__}, but it is not set.')
-            sys.exit(1)
-
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.

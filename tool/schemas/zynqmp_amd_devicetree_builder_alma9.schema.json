@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/zynqmp.schema.json",
+  "title": "ZynqMP AMD Devicetree Block",
+  "description": "Configuration of the AMD devicetree block for ZynqMP devices",
+  "type": "object",
+  "required": ["source", "builder", "project", "container"],
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "description": "Source for obtaining the block",
+      "enum": ["build", "import"]
+    },
+    "builder": {
+      "description": "Builder class to be used",
+      "type": "string"
+    },
+    "project": {
+      "type": "object",
+      "required": ["build-srcs", "dependencies"],
+      "additionalProperties": false,
+      "properties": {
+        "build-srcs": {
+          "type": "object",
+          "required": ["source"],
+          "properties": {
+            "source": {
+              "description": "Git clone URL or path to the Devicetree project",
+              "type": "string"
+            },
+            "branch": {
+              "description": "Git repository branch",
+              "type": "string"
+            }
+          }
+        },
+        "import-src": {
+          "description": "URL or path to the pre-built files",
+          "type": "string"
+        },
+        "dependencies": {
+          "type": "object",
+          "required": ["vivado"],
+          "additionalProperties": false,
+          "properties": {
+            "vivado": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "container": {
+      "type": "object",
+      "required": ["image", "tag"],
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "description": "Container image to build the block",
+          "type": "string"
+        },
+        "tag": {
+          "description": "Container image tag",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

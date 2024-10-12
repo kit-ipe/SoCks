@@ -203,22 +203,44 @@ class Configuration_Compiler:
         # Resolve placeholders
         project_cfg = Configuration_Compiler._resolve_placeholders(project_cfg=project_cfg, search_object=project_cfg)
 
+        schema_dir = socks_dir / 'schemas'
+
         # Validate project configuration
-        schema = socks_dir / 'schemas' / f'{project_cfg["project"]["type"]}.schema.json' # ToDo: I think this path should not be hard coded here
-        if not schema.is_file():
+        project_schema_file = schema_dir / f'{project_cfg["project"]["type"]}-project.schema.json'
+        if not project_schema_file.is_file():
             pretty_print.print_error(f'{project_cfg["project"]["type"]} is not a supported project type (Unable to find suitable schema).')
             sys.exit(1)
 
-        with schema.open('r') as f:
-            project_cfg_schema = json.load(f)
+        with project_schema_file.open('r') as f:
+            project_schema = json.load(f)
 
         try:
-            jsonschema.validate(project_cfg, project_cfg_schema)
+            jsonschema.validate(project_cfg, project_schema)
         except jsonschema.exceptions.ValidationError as e:
             pretty_print.print_error(f'Validation of project configuration failed\n\n{str(e)}')
             sys.exit(1)
         except jsonschema.exceptions.SchemaError as e:
-            pretty_print.print_error(f"Schema definition error\n\n{str(e)}")
+            pretty_print.print_error(f'Schema definition error in {project_schema_file}\n\n{str(e)}')
             sys.exit(1)
+
+        # Validate configuration of all blocks
+        for block, block_dict in project_cfg['blocks'].items():
+            builder_name = project_cfg['blocks'][block]['builder']
+            block_schema_file = schema_dir / f'{builder_name.lower()}.schema.json'
+            if not block_schema_file.is_file():
+                pretty_print.print_error(f'No schema for builder \'{builder_name}\' in {schema_dir}.')
+                sys.exit(1)
+
+            with block_schema_file.open('r') as f:
+                block_schema = json.load(f)
+
+            try:
+                jsonschema.validate(block_dict, block_schema)
+            except jsonschema.exceptions.ValidationError as e:
+                pretty_print.print_error(f'Validation of the configuration of block \'{block}\' failed\n\n{str(e)}')
+                sys.exit(1)
+            except jsonschema.exceptions.SchemaError as e:
+                pretty_print.print_error(f'Schema definition error in {block_schema_file}\n\n{str(e)}')
+                sys.exit(1)
 
         return project_cfg, read_cfg_files

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/zynqmp.schema.json",
+  "title": "ZynqMP AMD Linux Kernel Block",
+  "description": "Configuration of the AMD Linux Kernel block for ZynqMP devices",
+  "type": "object",
+  "required": ["source", "builder", "project", "container"],
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "description": "Source for obtaining the block",
+      "enum": ["build", "import"]
+    },
+    "builder": {
+      "description": "Builder class to be used",
+      "type": "string"
+    },
+    "project": {
+      "type": "object",
+      "required": ["build-srcs", "add-build-info"],
+      "additionalProperties": false,
+      "properties": {
+        "build-srcs": {
+          "type": "object",
+          "required": ["source"],
+          "properties": {
+            "source": {
+              "description": "Git clone URL or path to the Kernel project",
+              "type": "string"
+            },
+            "branch": {
+              "description": "Git repository branch",
+              "type": "string"
+            }
+          }
+        },
+        "import-src": {
+          "description": "URL or path to the pre-built files",
+          "type": "string"
+        },
+        "add-build-info": {
+          "description": "Switch to specify whether or not build information should be included in the block",
+          "type": "boolean"
+        }
+      }
+    },
+    "container": {
+      "type": "object",
+      "required": ["image", "tag"],
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "description": "Container image to build the block",
+          "type": "string"
+        },
+        "tag": {
+          "description": "Container image tag",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

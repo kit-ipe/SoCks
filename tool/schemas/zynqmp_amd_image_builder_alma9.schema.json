@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/zynqmp.schema.json",
+  "title": "ZynqMP AMD Boot Image Block",
+  "description": "Configuration of the AMD boot image block for ZynqMP devices",
+  "type": "object",
+  "required": ["source", "builder", "project", "container"],
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "description": "Source for obtaining the block",
+      "enum": ["build", "import"]
+    },
+    "builder": {
+      "description": "Builder class to be used",
+      "type": "string"
+    },
+    "project": {
+      "type": "object",
+      "required": ["dependencies"],
+      "additionalProperties": false,
+      "properties": {
+        "import-src": {
+          "description": "URL or path to the pre-built files",
+          "type": "string"
+        },
+        "dependencies": {
+          "type": "object",
+          "required": ["atf", "devicetree", "fsbl", "kernel", "pmu-fw", "rootfs", "u-boot", "vivado"],
+          "additionalProperties": false,
+          "properties": {
+            "atf": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            },
+            "devicetree": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            },
+            "fsbl": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            },
+            "kernel": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            },
+            "pmu-fw": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            },
+            "rootfs": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            },
+            "u-boot": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            },
+            "vivado": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "container": {
+      "type": "object",
+      "required": ["image", "tag"],
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "description": "Container image to build the block",
+          "type": "string"
+        },
+        "tag": {
+          "description": "Container image tag",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

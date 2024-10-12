@@ -29,17 +29,6 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                         block_id=block_id,
                         block_description=block_description)
 
-        # Check if the project configuration contains all optional settings that are required for this block. This only covers settings that cannot be checked with the schema because they are not required by all builders for this block_id.
-        if 'release' not in project_cfg['blocks'][self.block_id]:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/release is required by builder {self.__class__.__name__}, but it is not set.')
-            sys.exit(1)
-        if 'devicetree' not in self._pc_project_dependencies:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/project/dependencies/devicetree is required by builder {self.__class__.__name__}, but it is not set.')
-            sys.exit(1)
-        if 'vivado' not in self._pc_project_dependencies:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/project/dependencies/vivado is required by builder {self.__class__.__name__}, but it is not set.')
-            sys.exit(1)
-
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.

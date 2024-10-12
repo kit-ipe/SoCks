@@ -20,11 +20,6 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
                         block_id=block_id,
                         block_description=block_description)
 
-        # Check if the project configuration contains all optional settings that are required for this block. This only covers settings that cannot be checked with the schema because they are not required by all builders for this block_id.
-        if self._pc_project_source is None:
-            pretty_print.print_error(f'Builder {self.__class__.__name__} expects a single object and not an array in blocks/{self.block_id}/project/build-srcs.')
-            sys.exit(1)
-
         # Import project configuration
         self._pc_project_name = project_cfg['blocks'][self.block_id]['project']['name']
 

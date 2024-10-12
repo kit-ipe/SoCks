@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/zynqmp.schema.json",
+  "title": "ZynqMP SoCks Project",
+  "description": "Description of a ZynqMP SoCks project",
+  "type": "object",
+  "required": ["project", "externalTools", "blocks"],
+  "additionalProperties": false,
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["type", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "description": "The unique identifier of the project type",
+          "type": "string",
+          "const": "zynqmp"
+        },
+        "name": {
+          "description": "The name of the project",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]*$"
+        }
+      }
+    },
+    "externalTools": {
+      "type": "object",
+      "required": ["xilinx", "make", "containerTool"],
+      "additionalProperties": false,
+      "properties": {
+        "containerTool": {
+          "description": "Container tool to be used [docker, podman]",
+          "type": "string"
+        },
+        "make": {
+          "type": "object",
+          "required": ["maxBuildThreads"],
+          "additionalProperties": false,
+          "properties": {
+            "maxBuildThreads": {
+              "description": "Number of Makefile recipes to be execute simultaneously",
+              "type": "number"
+            }
+          }
+        },
+        "xilinx": {
+          "type": "object",
+          "required": ["path", "version", "license"],
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "description": "Path to the AMD Xilinx tool (Vivado, Vitis, ...)",
+              "type": "string"
+            },
+            "version": {
+              "description": "Version of the toolset to use",
+              "type": "number"
+            },
+            "license": {
+              "description": "License file",
+              "type": "string"
+            },
+            "maxThreadsVivado": {
+              "description": "Maximum number of jobs to be execute simultaneously by Vivado",
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "blocks": {
+      "type": "object",
+      "required": ["atf", "devicetree", "fsbl", "kernel", "pmu-fw", "rootfs", "u-boot", "vivado"],
+      "additionalProperties": false,
+      "properties": {
+        "atf": {
+          "type": "object",
+          "required": ["builder"],
+          "additionalProperties": true,
+          "properties": {
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            }
+          }
+        },
+        "devicetree": {
+          "type": "object",
+          "required": ["builder"],
+          "additionalProperties": true,
+          "properties": {
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            }
+          }
+        },
+        "fsbl": {
+          "type": "object",
+          "required": ["builder"],
+          "additionalProperties": true,
+          "properties": {
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            }
+          }
+        },
+        "kernel": {
+          "type": "object",
+          "required": ["builder"],
+          "additionalProperties": true,
+          "properties": {
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            }
+          }
+        },
+        "pmu-fw": {
+          "type": "object",
+          "required": ["builder"],
+          "additionalProperties": true,
+          "properties": {
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            }
+          }
+        },
+        "rootfs": {
+          "type": "object",
+          "required": ["builder"],
+          "additionalProperties": true,
+          "properties": {
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            }
+          }
+        },
+        "u-boot": {
+          "type": "object",
+          "required": ["builder"],
+          "additionalProperties": true,
+          "properties": {
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            }
+          }
+        },
+        "vivado": {
+          "type": "object",
+          "required": ["builder"],
+          "additionalProperties": true,
+          "properties": {
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            }
+          }
+        },
+        "image": {
+          "type": "object",
+          "required": ["builder"],
+          "additionalProperties": true,
+          "properties": {
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

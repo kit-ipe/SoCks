@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/zynqmp.schema.json",
+  "title": "ZynqMP AMD Vivado with IPbus Builder (IPBB) Block",
+  "description": "Configuration of the AMD Vivado with IPbus Builder (IPBB) block for ZynqMP devices",
+  "type": "object",
+  "required": ["source", "builder", "project", "container"],
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "description": "Source for obtaining the block",
+      "enum": ["build", "import"]
+    },
+    "builder": {
+      "description": "Builder class to be used",
+      "type": "string"
+    },
+    "project": {
+      "type": "object",
+      "required": ["build-srcs"],
+      "additionalProperties": false,
+      "properties": {
+        "build-srcs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source"],
+            "properties": {
+              "source": {
+                "description": "Git clone URL or path to the Vivado project",
+                "type": "string"
+              },
+              "branch": {
+                "description": "Git repository branch",
+                "type": "string"
+              }
+            }
+          }
+        },
+        "import-src": {
+          "description": "URL or path to the pre-built files",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the project, required by IPBB",
+          "type": "string"
+        }
+      }
+    },
+    "container": {
+      "type": "object",
+      "required": ["image", "tag"],
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "description": "Container image to build the block",
+          "type": "string"
+        },
+        "tag": {
+          "description": "Container image tag",
+          "type": "string"
+        }
+      }
+    }
+  }
+}
