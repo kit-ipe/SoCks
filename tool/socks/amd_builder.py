@@ -23,6 +23,7 @@ class AMD_Builder(Builder):
         self._pc_xilinx_path = project_cfg['externalTools']['xilinx']['path']
         self._pc_xilinx_version = project_cfg["externalTools"]["xilinx"]["version"]
         self._pc_xilinx_license = project_cfg["externalTools"]["xilinx"]["license"]
+        self._pc_vivado_threads = project_cfg["externalTools"]["xilinx"]["maxThreadsVivado"]
 
         # Project directories
         self._xsa_dir = self._block_temp_dir / 'source_xsa'

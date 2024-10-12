@@ -37,24 +37,37 @@ class Builder:
         self._pc_container_tag = project_cfg["blocks"][self.block_id]["container"]["tag"]
 
         self._pc_project = None
-        self._pc_project_sources = None
-        self._pc_project_dependencies = None
+        self._pc_project_source = None
         self._pc_project_branch = None
-        self._pc_project_build_info_flag = None
+        self._pc_project_sources = None
+        self._pc_project_branches = None
         self._pc_project_prebuilt = None
+        self._pc_project_build_info_flag = None
+        self._pc_project_dependencies = None
 
         if 'project' in project_cfg['blocks'][self.block_id]:
             self._pc_project = project_cfg['blocks'][self.block_id]['project']
 
         if self._pc_project is not None:
-            if 'sources' in self._pc_project:
-                self._pc_project_sources = project_cfg['blocks'][self.block_id]['project']['sources']
-            if 'branch' in self._pc_project:
-                self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['branch']
+            if 'build-srcs' in self._pc_project:
+                project_build_srcs = project_cfg['blocks'][self.block_id]['project']['build-srcs']
+                if isinstance(project_build_srcs, dict):
+                    self._pc_project_source = project_cfg['blocks'][self.block_id]['project']['build-srcs']['source']
+                    if 'branch' in project_build_srcs:
+                        self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['build-srcs']['branch']
+                if isinstance(project_build_srcs, list):
+                    self._pc_project_sources = []
+                    self._pc_project_branches = []
+                    for item in project_build_srcs:
+                        self._pc_project_sources.append(item['source'])
+                        if 'branch' in item:
+                            self._pc_project_branches.append(item['branch'])
+                        else:
+                            self._pc_project_branches.append(None)
+            if 'import-src' in self._pc_project:
+                self._pc_project_prebuilt = project_cfg['blocks'][self.block_id]['project']['import-src']
             if 'add-build-info' in self._pc_project:
                 self._pc_project_build_info_flag = project_cfg['blocks'][self.block_id]['project']['add-build-info']
-            if 'pre-built' in self._pc_project:
-                self._pc_project_prebuilt = project_cfg['blocks'][self.block_id]['project']['pre-built']
             if 'dependencies' in self._pc_project:
                 self._pc_project_dependencies = project_cfg['blocks'][self.block_id]['project']['dependencies']
 
@@ -69,27 +82,55 @@ class Builder:
         self._git_local_ref_branch = '__ref'
         self._git_local_dev_branch = '__temp'
         
-        # Sources for this block
-        if self._pc_project_sources is None:
+        # Validate sources for this block
+        self._source_repo_url = None
+        self._source_repo_branch = None
+        self._source_repo_urls = None
+        self._source_repo_branches = None
+        source_repo_name = None
+        if self._pc_project_source is None and self._pc_project_sources is None:
             # The sources for this block are generated at runtime
-            self._source_repo_url = None
-            self._source_repo_branch = 'temp'
-            source_repo_name = 'generated'
-        else:
-            if validators.url(self._pc_project_sources):
+            source_repo_name = 'generated-temp'
+        elif self._pc_project_source is not None:
+            if validators.url(self._pc_project_source):
                 # The sources for this block are downloaded from git
-                self._source_repo_url = self._pc_project_sources
-                self._source_repo_branch = self._pc_project_branch
-                source_repo_name = pathlib.Path(urllib.parse.urlparse(url=self._source_repo_url).path).stem
+                self._source_repo_url = self._pc_project_source
+                if self._pc_project_branch is None:
+                    pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {self._source_repo_url}')
+                    sys.exit(1)
+                else:
+                    self._source_repo_branch = self._pc_project_branch
+                source_repo_name = f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo_url).path).stem}-{self._source_repo_branch}'
             else:
                 try:
                     # The sources for this block are provided locally
-                    pathlib.Path(self._pc_project_sources)
-                    pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {self._pc_project_sources}')
+                    pathlib.Path(self._pc_project_source)
+                    pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {self._pc_project_source}')
                     sys.exit(1)
                 except ValueError:
-                    pretty_print.print_error(f'{self._pc_project_sources} is not a valid URL and not a valid path')
+                    pretty_print.print_error(f'{self._pc_project_source} is not a valid URL and not a valid path')
                     sys.exit(1)
+        elif self._pc_project_sources is not None:
+            self._source_repo_urls = []
+            self._source_repo_branches = []
+            for index in range(len(self._pc_project_sources)):
+                if validators.url(self._pc_project_sources[index]):
+                    # This source is downloaded from git
+                    self._source_repo_urls.append(self._pc_project_sources[index])
+                    if self._pc_project_branches[index] is None:
+                        pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_sources[index]}')
+                        sys.exit(1)
+                    else:
+                        self._source_repo_branches.append(self._pc_project_branches[index])
+                else:
+                    try:
+                        # The sources for this block are provided locally
+                        pathlib.Path(self._pc_project_sources[index])
+                        pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {self._pc_project_sources[index]}')
+                        sys.exit(1)
+                    except ValueError:
+                        pretty_print.print_error(f'{self._pc_project_sources[index]} is not a valid URL and not a valid path')
+                        sys.exit(1)
 
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = socks_dir
@@ -103,7 +144,9 @@ class Builder:
         self._block_temp_dir = self._project_temp_dir / self.block_id
         self._patch_dir = self._block_src_dir / 'patches'
         self._repo_dir = self._block_temp_dir / 'repo'
-        self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
+        self._source_repo_dir = None
+        if source_repo_name is not None:
+            self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
         self._download_dir = self._block_temp_dir / 'download'
         self._work_dir = self._block_temp_dir / 'work'
         self._output_dir = self._block_temp_dir / 'output'
@@ -636,6 +679,11 @@ class Builder:
         if self._source_repo_dir.exists():
             pretty_print.print_build('No need to initialize the local repo...')
             return
+
+        if self._source_repo_url is None:
+            # ToDo: Maybe at some point this function should support initializing multiple repos as well, but I am not sure yet if this is really needed
+            pretty_print.print_error(f'This function expects a single object and not an array in blocks/{self.block_id}/project/build-srcs.')
+            sys.exit(1)
 
         pretty_print.print_build('Initializing local repo...')
 
@@ -1366,9 +1414,9 @@ class Builder:
             self._dependencies_dir.rmdir()
 
 
-    def rm_temp_block(self):
+    def clean_block_temp(self):
         """
-        This function deletes the empty temp directory of a block.
+        This function cleans the temp directory of a block.
 
         Args:
             None
@@ -1385,6 +1433,20 @@ class Builder:
             return
 
         pretty_print.print_clean(f'Cleaning temp directory of block {self.block_id}...')
+
+        if self._pc_container_tool  in ('docker', 'podman'):
+            try:
+                # Clean up the temp directory of this block from the container
+                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._block_temp_dir}:/app/temp:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/temp/* /app/temp/.* 2> /dev/null || true\"'])
+            except Exception as e:
+                pretty_print.print_error(f'An error occurred while cleaning the temp directory of block {self.block_id}: {e}')
+                sys.exit(1)
+
+        elif self._pc_container_tool  == 'none':
+            # Clean up the temp directory of this block without using a container
+            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._block_temp_dir}/* {self._block_temp_dir}/.* 2> /dev/null || true\"'])
+        else:
+            self._err_unsup_container_tool()
 
         # Remove empty temp directory
         self._block_temp_dir.rmdir()

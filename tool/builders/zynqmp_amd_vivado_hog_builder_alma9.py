@@ -20,6 +20,11 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
                         block_id=block_id,
                         block_description=block_description)
 
+        # Check if the project configuration contains all optional settings that are required for this block. This only covers settings that cannot be checked with the schema because they are not required by all builders for this block_id.
+        if self._pc_project_source is None:
+            pretty_print.print_error(f'Builder {self.__class__.__name__} expects a single object and not an array in blocks/{self.block_id}/project/build-srcs.')
+            sys.exit(1)
+
         # Import project configuration
         self._pc_project_name = project_cfg['blocks'][self.block_id]['project']['name']
 
@@ -32,13 +37,13 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             'start-container': [],
             'start-vivado-gui': []
         }
-        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_output, self.rm_temp_block])
+        self.block_cmds['clean'].extend([self.build_container_image, self.clean_download, self.clean_work, self.clean_repo, self.clean_output, self.clean_block_temp])
         if self._pc_block_source == 'build':
             self.block_cmds['prepare'].extend([self.build_container_image, self.init_repo, self.create_vivado_project])
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
             self.block_cmds['build'].extend([self.build_vivado_project, self.export_block_package])
-            self.block_cmds['start-container'].extend([self.start_container])
-            self.block_cmds['start-vivado-gui'].extend([self.start_vivado_gui])
+            self.block_cmds['start-container'].extend([self.build_container_image, self.start_container])
+            self.block_cmds['start-vivado-gui'].extend([self.build_container_image, self.start_vivado_gui])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend([self.import_prebuilt])
 

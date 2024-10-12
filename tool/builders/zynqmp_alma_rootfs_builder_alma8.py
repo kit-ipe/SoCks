@@ -31,13 +31,13 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         # Check if the project configuration contains all optional settings that are required for this block. This only covers settings that cannot be checked with the schema because they are not required by all builders for this block_id.
         if 'release' not in project_cfg['blocks'][self.block_id]:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/release is required by this builder, but it is not set.')
+            pretty_print.print_error(f'The property blocks/{self.block_id}/release is required by builder {self.__class__.__name__}, but it is not set.')
             sys.exit(1)
         if 'devicetree' not in self._pc_project_dependencies:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/project/dependencies/devicetree is required by this builder, but it is not set.')
+            pretty_print.print_error(f'The property blocks/{self.block_id}/project/dependencies/devicetree is required by builder {self.__class__.__name__}, but it is not set.')
             sys.exit(1)
         if 'vivado' not in self._pc_project_dependencies:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/project/dependencies/vivado is required by this builder, but it is not set.')
+            pretty_print.print_error(f'The property blocks/{self.block_id}/project/dependencies/vivado is required by builder {self.__class__.__name__}, but it is not set.')
             sys.exit(1)
 
         # Products of other blocks on which this block depends
@@ -81,13 +81,13 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             'start-container': []
         }
         self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies, self.enable_multiarch])
-        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_dependencies, self.clean_output, self.rm_temp_block])
+        self.block_cmds['clean'].extend([self.build_container_image, self.clean_download, self.clean_work, self.clean_dependencies, self.clean_output, self.clean_block_temp])
         if self._pc_block_source == 'build':
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
             self.block_cmds['build'].extend([self.build_base_rootfs, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_tarball, self.export_block_package])
             self.block_cmds['prebuild'].extend(self.block_cmds['prepare'])
             self.block_cmds['prebuild'].extend([self.build_base_rootfs, self.build_tarball_prebuilt, self.export_block_package])
-            self.block_cmds['start-container'].extend([self.start_container])
+            self.block_cmds['start-container'].extend([self.build_container_image, self.start_container])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
             self.block_cmds['build'].extend([self.import_prebuilt, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_tarball, self.export_block_package])

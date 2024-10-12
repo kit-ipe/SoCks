@@ -60,6 +60,10 @@
             "license": {
               "description": "License file",
               "type": "string"
+            },
+            "maxThreadsVivado": {
+              "description": "Maximum number of jobs to be execute simultaneously by Vivado",
+              "type": "number"
             }
           }
         }
@@ -85,18 +89,24 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources", "branch"],
+              "required": ["build-srcs"],
               "additionalProperties": false,
               "properties": {
-                "sources": {
-                  "description": "Git clone URL or path to the ATF project",
-                  "type": "string"
+                "build-srcs": {
+                  "type": "object",
+                  "required": ["source"],
+                  "properties": {
+                    "source": {
+                      "description": "Git clone URL or path to the ATF project",
+                      "type": "string"
+                    },
+                    "branch": {
+                      "description": "Git repository branch",
+                      "type": "string"
+                    }
+                  }
                 },
-                "branch": {
-                  "description": "Git repository branch",
-                  "type": "string"
-                },
-                "pre-built": {
+                "import-src": {
                   "description": "URL or path to the pre-built files",
                   "type": "string"
                 }
@@ -134,18 +144,24 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources", "branch", "dependencies"],
+              "required": ["build-srcs", "dependencies"],
               "additionalProperties": false,
               "properties": {
-                "sources": {
-                  "description": "Git clone URL or path to the Devicetree project",
-                  "type": "string"
+                "build-srcs": {
+                  "type": "object",
+                  "required": ["source"],
+                  "properties": {
+                    "source": {
+                      "description": "Git clone URL or path to the Devicetree project",
+                      "type": "string"
+                    },
+                    "branch": {
+                      "description": "Git repository branch",
+                      "type": "string"
+                    }
+                  }
                 },
-                "branch": {
-                  "description": "Git repository branch",
-                  "type": "string"
-                },
-                "pre-built": {
+                "import-src": {
                   "description": "URL or path to the pre-built files",
                   "type": "string"
                 },
@@ -197,7 +213,7 @@
               "required": ["dependencies"],
               "additionalProperties": false,
               "properties": {
-                "pre-built": {
+                "import-src": {
                   "description": "URL or path to the pre-built files",
                   "type": "string"
                 },
@@ -246,24 +262,30 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources", "branch", "add-build-info"],
+              "required": ["build-srcs", "add-build-info"],
               "additionalProperties": false,
               "properties": {
-                "sources": {
-                  "description": "Git clone URL or path to the Kernel project",
-                  "type": "string"
+                "build-srcs": {
+                  "type": "object",
+                  "required": ["source"],
+                  "properties": {
+                    "source": {
+                      "description": "Git clone URL or path to the Kernel project",
+                      "type": "string"
+                    },
+                    "branch": {
+                      "description": "Git repository branch",
+                      "type": "string"
+                    }
+                  }
                 },
-                "branch": {
-                  "description": "Git repository branch",
+                "import-src": {
+                  "description": "URL or path to the pre-built files",
                   "type": "string"
                 },
                 "add-build-info": {
                   "description": "Switch to specify whether or not build information should be included in the block",
                   "type": "boolean"
-                },
-                "pre-built": {
-                  "description": "URL or path to the pre-built files",
-                  "type": "string"
                 }
               }
             },
@@ -302,7 +324,7 @@
               "required": ["dependencies"],
               "additionalProperties": false,
               "properties": {
-                "pre-built": {
+                "import-src": {
                   "description": "URL or path to the pre-built files",
                   "type": "string"
                 },
@@ -358,21 +380,27 @@
               "required": ["add-build-info", "dependencies"],
               "additionalProperties": false,
               "properties": {
-                "sources": {
-                  "description": "Git clone URL or path to the root file system project",
-                  "type": "string"
+                "build-srcs": {
+                  "type": "object",
+                  "required": ["source"],
+                  "properties": {
+                    "source": {
+                      "description": "Git clone URL or path to the root file system project",
+                      "type": "string"
+                    },
+                    "branch": {
+                      "description": "Git repository branch",
+                      "type": "string"
+                    }
+                  }
                 },
-                "branch": {
-                  "description": "Git repository branch",
+                "import-src": {
+                  "description": "URL or path to the pre-built files",
                   "type": "string"
                 },
                 "add-build-info": {
                   "description": "Switch to specify whether or not build information should be included in the block",
                   "type": "boolean"
-                },
-                "pre-built": {
-                  "description": "URL or path to the pre-built files",
-                  "type": "string"
                 },
                 "dependencies": {
                   "type": "object",
@@ -427,24 +455,30 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources", "branch", "add-build-info", "dependencies"],
+              "required": ["build-srcs", "add-build-info", "dependencies"],
               "additionalProperties": false,
               "properties": {
-                "sources": {
-                  "description": "Git clone URL or path to the U-Boot project",
-                  "type": "string"
+                "build-srcs": {
+                  "type": "object",
+                  "required": ["source"],
+                  "properties": {
+                    "source": {
+                      "description": "Git clone URL or path to the U-Boot project",
+                      "type": "string"
+                    },
+                    "branch": {
+                      "description": "Git repository branch",
+                      "type": "string"
+                    }
+                  }
                 },
-                "branch": {
-                  "description": "Git repository branch",
+                "import-src": {
+                  "description": "URL or path to the pre-built files",
                   "type": "string"
                 },
                 "add-build-info": {
                   "description": "Switch to specify whether or not build information should be included in the block",
                   "type": "boolean"
-                },
-                "pre-built": {
-                  "description": "URL or path to the pre-built files",
-                  "type": "string"
                 },
                 "dependencies": {
                   "type": "object",
@@ -491,23 +525,50 @@
             },
             "project": {
               "type": "object",
-              "required": ["sources", "branch"],
+              "required": ["build-srcs"],
               "additionalProperties": false,
               "properties": {
-                "sources": {
-                  "description": "Git clone URL or path to the Vivado project",
-                  "type": "string"
+                "build-srcs": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": ["source"],
+                      "properties": {
+                        "source": {
+                          "description": "Git clone URL or path to the Vivado project",
+                          "type": "string"
+                        },
+                        "branch": {
+                          "description": "Git repository branch",
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["source"],
+                        "properties": {
+                          "source": {
+                            "description": "Git clone URL or path to the Vivado project",
+                            "type": "string"
+                          },
+                          "branch": {
+                            "description": "Git repository branch",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  ]
                 },
-                "branch": {
-                  "description": "Git repository branch",
+                "import-src": {
+                  "description": "URL or path to the pre-built files",
                   "type": "string"
                 },
                 "name": {
-                  "description": "Name of the project, required by Hog",
-                  "type": "string"
-                },
-                "pre-built": {
-                  "description": "URL or path to the pre-built files",
+                  "description": "Name of the project, required by Hog and IPBB",
                   "type": "string"
                 }
               }
@@ -547,7 +608,7 @@
               "required": ["dependencies"],
               "additionalProperties": false,
               "properties": {
-                "pre-built": {
+                "import-src": {
                   "description": "URL or path to the pre-built files",
                   "type": "string"
                 },

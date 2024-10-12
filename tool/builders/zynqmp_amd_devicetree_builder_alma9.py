@@ -48,13 +48,13 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             'create-patches': [],
             'start-container': []
         }
-        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_source_xsa, self.clean_dependencies, self.clean_output, self.rm_temp_block])
+        self.block_cmds['clean'].extend([self.build_container_image, self.clean_download, self.clean_work, self.clean_repo, self.clean_source_xsa, self.clean_dependencies, self.clean_output, self.clean_block_temp])
         if self._pc_block_source == 'build':
             self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies, self.init_repo, self.apply_patches, self.import_xsa, self.prepare_dt_sources, self.apply_patches])
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
             self.block_cmds['build'].extend([self.build_base_devicetree, self.build_dt_overlays, self.export_block_package])
             self.block_cmds['create-patches'].extend([self.create_patches])
-            self.block_cmds['start-container'].extend([self.start_container])
+            self.block_cmds['start-container'].extend([self.build_container_image, self.start_container])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend([self.import_prebuilt])
 

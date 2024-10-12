@@ -212,6 +212,13 @@ class Configuration_Compiler:
         with schema.open('r') as f:
             project_cfg_schema = json.load(f)
 
-        jsonschema.validate(project_cfg, project_cfg_schema)
+        try:
+            jsonschema.validate(project_cfg, project_cfg_schema)
+        except jsonschema.exceptions.ValidationError as e:
+            pretty_print.print_error(f'Validation of project configuration failed\n\n{str(e)}')
+            sys.exit(1)
+        except jsonschema.exceptions.SchemaError as e:
+            pretty_print.print_error(f"Schema definition error\n\n{str(e)}")
+            sys.exit(1)
 
         return project_cfg, read_cfg_files

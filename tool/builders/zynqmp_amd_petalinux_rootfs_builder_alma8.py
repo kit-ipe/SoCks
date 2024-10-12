@@ -27,11 +27,11 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                         block_description=block_description)
 
         # Check if the project configuration contains all optional settings that are required for this block. This only covers settings that cannot be checked with the schema because they are not required by all builders for this block_id.
-        if self._pc_project_sources is None:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/project/sources is required by this builder, but it is not set.')
+        if self._pc_project_source is None:
+            pretty_print.print_error(f'The property blocks/{self.block_id}/project/build-srcs/source is required by builder {self.__class__.__name__}, but it is not set.')
             sys.exit(1)
         if self._pc_project_branch is None:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/project/branch is required by this builder, but it is not set.')
+            pretty_print.print_error(f'The property blocks/{self.block_id}/project/build-srcs/branch is required by builder {self.__class__.__name__}, but it is not set.')
             sys.exit(1)
 
         # Products of other blocks on which this block depends
@@ -65,7 +65,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             'start-container': []
         }
         self.block_cmds['prepare'].extend([self.build_container_image, self.import_dependencies])
-        self.block_cmds['clean'].extend([self.clean_download, self.clean_work, self.clean_repo, self.clean_dependencies, self.clean_output, self.rm_temp_block])
+        self.block_cmds['clean'].extend([self.build_container_image, self.clean_download, self.clean_work, self.clean_repo, self.clean_dependencies, self.clean_output, self.clean_block_temp])
         if self._pc_block_source == 'build':
             self.block_cmds['prepare'].extend([self.init_repo, self.apply_patches, self.yocto_init])
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
@@ -73,7 +73,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             self.block_cmds['prebuild'].extend(self.block_cmds['prepare'])
             self.block_cmds['prebuild'].extend([self.build_base_rootfs, self.build_tarball_prebuilt, self.export_block_package])
             self.block_cmds['create-patches'].extend([self.create_patches])
-            self.block_cmds['start-container'].extend([self.start_container])
+            self.block_cmds['start-container'].extend([self.build_container_image, self.start_container])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
             self.block_cmds['build'].extend([self.import_prebuilt, self.add_kmodules, self.build_tarball, self.export_block_package])

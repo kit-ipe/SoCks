@@ -11,13 +11,20 @@ externalTools:
 blocks:
   atf:
     project:
-      pre-built: "https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/serenity-s1-kria-atf.tar.gz"
+      import-src: "https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/serenity-s1-kria-atf.tar.gz"
   vivado:
-    builder: "ZynqMP_AMD_Vivado_Hog_Builder_Alma9"
+    builder: "ZynqMP_AMD_Vivado_IPBB_Builder_Alma9"
     project:
-      sources: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
-      branch: "test"
-      name: "serenity-s1-kria"
+      build-srcs:
+        - source: "https://github.com/ipbus/ipbus-firmware.git"
+          branch: "-r 60d7efed3ddba10e551790de7505bfea5bfc738b"
+        - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/firmware/serenity-service.git"
+          branch: "-b v0.4.4"
+        - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw"
+          branch: "-b main"
+      name: "s1-kria"
+    container:
+      image: "ipbb-builder-alma9"
   rootfs:
     project:
       add-build-info: True
@@ -27,11 +34,11 @@ blocks:
 #    release: "8"
 #    project:
 #      add-build-info: false
-#      # If no 'pre-built' property is specified, the block must be built locally
+#      # If no 'import-src' property is specified, the block must be built locally
 #      dependencies:
 #        kernel: "temp/kernel/output/kernel.tar.gz"
 #        devicetree: "temp/devicetree/output/devicetree.tar.gz"
 #        vivado: "temp/vivado/output/vivado.tar.gz"
 #    container:
 #      image: "alma8-rootfs-builder-alma8"
-#      tag: "xilinx-v{{externalTools/xilinx/version}}"
+#      tag: "v1.0"
