@@ -22,20 +22,6 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                         block_id=block_id,
                         block_description=block_description)
 
-        # Products of other blocks on which this block depends
-        # This dict is used to check whether the imported block packages contain
-        # all the required files. Regex can be used to describe the expected files.
-        self._block_deps = {
-            'atf': ['bl31.elf'],
-            'devicetree': ['system.dtb'],
-            'fsbl': ['fsbl.elf'],
-            'kernel': ['Image.gz'],
-            'pmu-fw': ['pmufw.elf'],
-            'rootfs': ['.*.tar...'],
-            'u-boot': ['u-boot.elf'],
-            'vivado': ['.*.xsa']
-        }
-
         # Source images to be used in this block
         self._atf_img_path = self._dependencies_dir / 'atf/bl31.elf'
         self._dt_img_path = self._dependencies_dir / 'devicetree/system.dtb'
@@ -49,6 +35,20 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
 
         # Project directories
         self._misc_dir = self._block_src_dir / 'misc'
+
+        # Products of other blocks on which this block depends
+        # This dict is used to check whether the imported block packages contain
+        # all the required files. Regex can be used to describe the expected files.
+        self._block_deps = {
+            'atf': ['bl31.elf'],
+            'devicetree': ['system.dtb'],
+            'fsbl': ['fsbl.elf'],
+            'kernel': ['Image.gz'],
+            'pmu-fw': ['pmufw.elf'],
+            'rootfs': ['.*.tar...'],
+            'u-boot': ['u-boot.elf'],
+            'vivado': ['.*.xsa']
+        }
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.

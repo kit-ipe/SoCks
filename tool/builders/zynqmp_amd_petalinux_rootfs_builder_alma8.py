@@ -26,16 +26,18 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                         block_id=block_id,
                         block_description=block_description)
 
-        # Products of other blocks on which this block depends
-        # This dict is used to check whether the imported block packages contain
-        # all the required files. Regex can be used to describe the expected files.
-        self._block_deps = {
-            'kernel': ['kernel_modules.tar.gz']
-        }
+        # Import project configuration
+        self._pc_project_source = project_cfg['blocks'][self.block_id]['project']['build-srcs']['source']
+        if 'branch' in project_cfg['blocks'][self.block_id]['project']['build-srcs']:
+            self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['build-srcs']['branch']
+
+        # Find sources for this block
+        self._source_repo_url, self._source_repo_branch, self._local_source_dir = self._get_single_source()
 
         self._rootfs_name = f'petalinux_zynqmp_{self._pc_prj_name}'
 
         # Project directories
+        self._source_repo_dir = self._repo_dir / f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo_url).path).stem}-{self._source_repo_branch}'
         self._mod_dir = self._work_dir / self._rootfs_name
 
         # Project files
@@ -45,6 +47,13 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         self._source_kmods_md5_file = self._work_dir / 'source_kmodules.md5'
         # Repo tool
         self._repo_script=self._repo_dir / 'repo'
+
+        # Products of other blocks on which this block depends
+        # This dict is used to check whether the imported block packages contain
+        # all the required files. Regex can be used to describe the expected files.
+        self._block_deps = {
+            'kernel': ['kernel_modules.tar.gz']
+        }
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.

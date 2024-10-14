@@ -21,7 +21,18 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
                         block_description=block_description)
 
         # Import project configuration
+        self._pc_project_sources = []
+        self._pc_project_branches = []
+        for item in project_cfg['blocks'][self.block_id]['project']['build-srcs']:
+            self._pc_project_sources.append(item['source'])
+            if 'branch' in item:
+                self._pc_project_branches.append(item['branch'])
+            else:
+                self._pc_project_branches.append(None)
         self._pc_project_name = project_cfg['blocks'][self.block_id]['project']['name']
+
+        # Find sources for this block
+        self._source_repo_urls, self._source_repo_branches, self._local_source_dirs = self._get_multiple_sources()
 
         self._ipbb_work_dir_name = 'ipbb-work'
 

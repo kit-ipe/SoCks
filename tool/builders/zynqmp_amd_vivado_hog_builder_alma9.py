@@ -1,5 +1,6 @@
 import sys
 import pathlib
+import urllib
 
 import socks.pretty_print as pretty_print
 from socks.amd_builder import AMD_Builder
@@ -21,7 +22,16 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
                         block_description=block_description)
 
         # Import project configuration
+        self._pc_project_source = project_cfg['blocks'][self.block_id]['project']['build-srcs']['source']
+        if 'branch' in project_cfg['blocks'][self.block_id]['project']['build-srcs']:
+            self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['build-srcs']['branch']
         self._pc_project_name = project_cfg['blocks'][self.block_id]['project']['name']
+
+        # Find sources for this block
+        self._source_repo_url, self._source_repo_branch, self._local_source_dir = self._get_single_source()
+
+        # Project directories
+        self._source_repo_dir = self._repo_dir / f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo_url).path).stem}-{self._source_repo_branch}'
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.

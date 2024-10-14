@@ -29,15 +29,6 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                         block_id=block_id,
                         block_description=block_description)
 
-        # Products of other blocks on which this block depends
-        # This dict is used to check whether the imported block packages contain
-        # all the required files. Regex can be used to describe the expected files.
-        self._block_deps = {
-            'kernel': ['kernel_modules.tar.gz'],
-            'devicetree': ['system.dtb', 'system.dts'],
-            'vivado': ['.*.xsa']
-        }
-
         # Import project configuration
         self._pc_alma_release = project_cfg['blocks'][self.block_id]['release']
 
@@ -59,6 +50,15 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         self._source_kmods_md5_file = self._work_dir / 'source_kmodules.md5'
         # File for saving the checksum of the XSA archive used
         self._source_xsa_md5_file = self._work_dir / 'source_xsa.md5'
+
+        # Products of other blocks on which this block depends
+        # This dict is used to check whether the imported block packages contain
+        # all the required files. Regex can be used to describe the expected files.
+        self._block_deps = {
+            'kernel': ['kernel_modules.tar.gz'],
+            'devicetree': ['system.dtb', 'system.dts'],
+            'vivado': ['.*.xsa']
+        }
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.

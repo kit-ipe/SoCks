@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import shutil
+import urllib
 import hashlib
 
 import socks.pretty_print as pretty_print
@@ -22,14 +23,16 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
                         block_id=block_id,
                         block_description=block_description)
 
-        # Products of other blocks on which this block depends
-        # This dict is used to check whether the imported block packages contain
-        # all the required files. Regex can be used to describe the expected files.
-        self._block_deps = {
-            'vivado': ['.*.xsa']
-        }
+        # Import project configuration
+        self._pc_project_source = project_cfg['blocks'][self.block_id]['project']['build-srcs']['source']
+        if 'branch' in project_cfg['blocks'][self.block_id]['project']['build-srcs']:
+            self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['build-srcs']['branch']
+
+        # Find sources for this block
+        self._source_repo_url, self._source_repo_branch, self._local_source_dir = self._get_single_source()
 
         # Project directories
+        self._source_repo_dir = self._repo_dir / f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo_url).path).stem}-{self._source_repo_branch}'
         self._dt_incl_dir = self._block_src_dir / 'dt_includes'
         self._dt_overlay_dir = self._block_src_dir / 'dt_overlays'
         self._base_work_dir = self._work_dir / 'base'
@@ -38,6 +41,13 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         # Project files
         # ASCII file with all devicetree includes for the base devicetree
         self._dt_incl_list_file = self._dt_incl_dir / 'includes.cfg'
+
+        # Products of other blocks on which this block depends
+        # This dict is used to check whether the imported block packages contain
+        # all the required files. Regex can be used to describe the expected files.
+        self._block_deps = {
+            'vivado': ['.*.xsa']
+        }
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.

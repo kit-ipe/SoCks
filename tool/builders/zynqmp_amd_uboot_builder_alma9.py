@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import shutil
+import urllib
 import hashlib
 
 import socks.pretty_print as pretty_print
@@ -22,16 +23,27 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
                         block_id=block_id,
                         block_description=block_description)
 
+        # Import project configuration
+        self._pc_project_source = project_cfg['blocks'][self.block_id]['project']['build-srcs']['source']
+        if 'branch' in project_cfg['blocks'][self.block_id]['project']['build-srcs']:
+            self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['build-srcs']['branch']
+
+        # Find sources for this block
+        self._source_repo_url, self._source_repo_branch, self._local_source_dir = self._get_single_source()
+
+        # Project directories
+        self._source_repo_dir = self._repo_dir / f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo_url).path).stem}-{self._source_repo_branch}'
+
+        # Project files
+        # File for version & build info tracking
+        self._build_info_file = self._source_repo_dir / 'include' / 'build_info.h'
+
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.
         self._block_deps = {
             'atf': ['bl31.bin']
         }
-
-        # Project files
-        # File for version & build info tracking
-        self._build_info_file = self._source_repo_dir / 'include' / 'build_info.h'
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.

@@ -35,41 +35,19 @@ class Builder:
         self._pc_block_source = project_cfg["blocks"][self.block_id]["source"]
         self._pc_container_image = project_cfg["blocks"][self.block_id]["container"]["image"]
         self._pc_container_tag = project_cfg["blocks"][self.block_id]["container"]["tag"]
+        self._pc_project = project_cfg['blocks'][self.block_id]['project']
 
-        self._pc_project = None
-        self._pc_project_source = None
-        self._pc_project_branch = None
-        self._pc_project_sources = None
-        self._pc_project_branches = None
         self._pc_project_prebuilt = None
+        if 'import-src' in self._pc_project:
+            self._pc_project_prebuilt = project_cfg['blocks'][self.block_id]['project']['import-src']
+
         self._pc_project_build_info_flag = None
+        if 'add-build-info' in self._pc_project:
+            self._pc_project_build_info_flag = project_cfg['blocks'][self.block_id]['project']['add-build-info']
+
         self._pc_project_dependencies = None
-
-        if 'project' in project_cfg['blocks'][self.block_id]:
-            self._pc_project = project_cfg['blocks'][self.block_id]['project']
-
-        if self._pc_project is not None:
-            if 'build-srcs' in self._pc_project:
-                project_build_srcs = project_cfg['blocks'][self.block_id]['project']['build-srcs']
-                if isinstance(project_build_srcs, dict):
-                    self._pc_project_source = project_cfg['blocks'][self.block_id]['project']['build-srcs']['source']
-                    if 'branch' in project_build_srcs:
-                        self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['build-srcs']['branch']
-                if isinstance(project_build_srcs, list):
-                    self._pc_project_sources = []
-                    self._pc_project_branches = []
-                    for item in project_build_srcs:
-                        self._pc_project_sources.append(item['source'])
-                        if 'branch' in item:
-                            self._pc_project_branches.append(item['branch'])
-                        else:
-                            self._pc_project_branches.append(None)
-            if 'import-src' in self._pc_project:
-                self._pc_project_prebuilt = project_cfg['blocks'][self.block_id]['project']['import-src']
-            if 'add-build-info' in self._pc_project:
-                self._pc_project_build_info_flag = project_cfg['blocks'][self.block_id]['project']['add-build-info']
-            if 'dependencies' in self._pc_project:
-                self._pc_project_dependencies = project_cfg['blocks'][self.block_id]['project']['dependencies']
+        if 'dependencies' in self._pc_project:
+            self._pc_project_dependencies = project_cfg['blocks'][self.block_id]['project']['dependencies']
 
         # Host user
         self._host_user = os.getlogin()
@@ -81,56 +59,6 @@ class Builder:
         # Local git branches
         self._git_local_ref_branch = '__ref'
         self._git_local_dev_branch = '__temp'
-        
-        # Validate sources for this block
-        self._source_repo_url = None
-        self._source_repo_branch = None
-        self._source_repo_urls = None
-        self._source_repo_branches = None
-        source_repo_name = None
-        if self._pc_project_source is None and self._pc_project_sources is None:
-            # The sources for this block are generated at runtime
-            source_repo_name = 'generated-temp'
-        elif self._pc_project_source is not None:
-            if validators.url(self._pc_project_source):
-                # The sources for this block are downloaded from git
-                self._source_repo_url = self._pc_project_source
-                if self._pc_project_branch is None:
-                    pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {self._source_repo_url}')
-                    sys.exit(1)
-                else:
-                    self._source_repo_branch = self._pc_project_branch
-                source_repo_name = f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo_url).path).stem}-{self._source_repo_branch}'
-            else:
-                try:
-                    # The sources for this block are provided locally
-                    pathlib.Path(self._pc_project_source)
-                    pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {self._pc_project_source}')
-                    sys.exit(1)
-                except ValueError:
-                    pretty_print.print_error(f'{self._pc_project_source} is not a valid URL and not a valid path')
-                    sys.exit(1)
-        elif self._pc_project_sources is not None:
-            self._source_repo_urls = []
-            self._source_repo_branches = []
-            for index in range(len(self._pc_project_sources)):
-                if validators.url(self._pc_project_sources[index]):
-                    # This source is downloaded from git
-                    self._source_repo_urls.append(self._pc_project_sources[index])
-                    if self._pc_project_branches[index] is None:
-                        pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_sources[index]}')
-                        sys.exit(1)
-                    else:
-                        self._source_repo_branches.append(self._pc_project_branches[index])
-                else:
-                    try:
-                        # The sources for this block are provided locally
-                        pathlib.Path(self._pc_project_sources[index])
-                        pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {self._pc_project_sources[index]}')
-                        sys.exit(1)
-                    except ValueError:
-                        pretty_print.print_error(f'{self._pc_project_sources[index]} is not a valid URL and not a valid path')
-                        sys.exit(1)
 
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = socks_dir
@@ -145,8 +73,6 @@ class Builder:
         self._patch_dir = self._block_src_dir / 'patches'
         self._repo_dir = self._block_temp_dir / 'repo'
         self._source_repo_dir = None
-        if source_repo_name is not None:
-            self._source_repo_dir = self._repo_dir / f'{source_repo_name}-{self._source_repo_branch}'
         self._download_dir = self._block_temp_dir / 'download'
         self._work_dir = self._block_temp_dir / 'work'
         self._output_dir = self._block_temp_dir / 'output'
@@ -345,7 +271,7 @@ class Builder:
                     continue
 
                 # Get the modification time of the file
-                file_mtime = file_path.stat().st_mtime
+                file_mtime = file_path.stat(follow_symlinks=False).st_mtime
 
                 # Update if this file is more recently modified
                 if file_mtime > latest_mtime:
@@ -381,7 +307,7 @@ class Builder:
                         continue
 
                     # Get the modification time of the file
-                    file_mtime = file_path.stat().st_mtime
+                    file_mtime = file_path.stat(follow_symlinks=False).st_mtime
 
                     # Update if this file is more recently modified
                     if file_mtime > latest_mtime:
@@ -440,7 +366,7 @@ class Builder:
 
         # If there are source and output files, check whether a rebuild is required
         if latest_src_file and latest_out_file:
-            return latest_src_file.stat().st_mtime > latest_out_file.stat().st_mtime
+            return latest_src_file.stat(follow_symlinks=False).st_mtime > latest_out_file.stat(follow_symlinks=False).st_mtime
 
         # A rebuild is required if source or output files are missing
         else:
@@ -539,6 +465,95 @@ class Builder:
 
         pretty_print.print_error(f'Containerization tool {self._pc_container_tool } is not supported. Options are \'docker\', \'podman\' and \'none\'.')
         sys.exit(1)
+
+
+    def _get_single_source(self) -> typing.Tuple[str, str, pathlib.Path]:
+        """
+        Process the source section of a block with a single source.
+
+        Args:
+            None
+
+        Returns:
+            source_repo_url:
+                The URL of the source repo. None if the source section in the block configuration does not contain a URL.
+            source_repo_branch:
+                The branch of the source repo to be used. None if the source section in the block configuration does not contain a URL.
+            local_source_dir:
+                The path to the local source folder. None if the source section in the block configuration contains a URL.
+
+        Raises:
+            None
+        """
+
+        source_repo_url = None
+        source_repo_branch = None
+        local_source_dir = None
+
+        if validators.url(self._pc_project_source):
+            # The sources are downloaded from git
+            source_repo_url = self._pc_project_source
+            if self._pc_project_branch is None:
+                pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {source_repo_url}')
+                sys.exit(1)
+            else:
+                source_repo_branch = self._pc_project_branch
+        else:
+            try:
+                # The sources are provided locally
+                local_source_dir = pathlib.Path(self._pc_project_source)
+                pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {self._pc_project_source}')
+                sys.exit(1)
+            except ValueError:
+                pretty_print.print_error(f'{self._pc_project_source} is not a valid URL and not a valid path')
+                sys.exit(1)
+
+        return source_repo_url, source_repo_branch, local_source_dir
+
+
+    def _get_multiple_sources(self) -> typing.Tuple[typing.List[str], typing.List[str], typing.List[pathlib.Path]]:
+        """
+        Process the source section of a block with a multiple sources.
+
+        Args:
+            None
+
+        Returns:
+            source_repo_url:
+                A list of all URLs of source repos for this block. The list is empty if no URL has been provided.
+            source_repo_branch:
+                A list of the branches of the source repos to be used. The list of branches is in the same order as the list of URLs. The list is empty if no URL has been provided.
+            local_source_dir:
+                A list of paths to the local source folders. The list is empty if no path has been provided.
+
+        Raises:
+            None
+        """
+
+        source_repo_urls = []
+        source_repo_branches = []
+        local_source_dirs = []
+
+        for index in range(len(self._pc_project_sources)):
+            if validators.url(self._pc_project_sources[index]):
+                # This source is downloaded from git
+                source_repo_urls.append(self._pc_project_sources[index])
+                if self._pc_project_branches[index] is None:
+                    pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_sources[index]}')
+                    sys.exit(1)
+                else:
+                    source_repo_branches.append(self._pc_project_branches[index])
+            else:
+                try:
+                    # This source is provided locally
+                    local_source_dirs.append(pathlib.Path(self._pc_project_sources[index]))
+                    pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {self._pc_project_sources[index]}')
+                    sys.exit(1)
+                except ValueError:
+                    pretty_print.print_error(f'{self._pc_project_sources[index]} is not a valid URL and not a valid path')
+                    sys.exit(1)
+
+        return source_repo_urls, source_repo_branches, local_source_dirs
 
 
     def _compose_build_info(self) -> str:
