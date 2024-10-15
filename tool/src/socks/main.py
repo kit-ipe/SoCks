@@ -89,7 +89,7 @@ def sort_blocks(blocks: typing.List[str], project_cfg: dict):
 
 
 # Set tool and project directory
-socks_dir = pathlib.Path(importlib.resources.files(socks)).parent # ToDo: Check if this works if the tool is installed with pip
+socks_dir = pathlib.Path(importlib.resources.files(socks)) # ToDo: Check if this works if the tool is installed with pip
 project_dir = pathlib.Path.cwd()
 
 # Set root project configuration file

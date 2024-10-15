@@ -22,11 +22,8 @@ dependencies = [
     "argcomplete>=3.5.0"
 ]
 
-[tool.setuptools]
-packages = ["socks", "builders"]
-
 [tool.setuptools.package-data]
-socks = ["container/*.containerfile", "schemas/*.schema.json", "templates/*"]
+socks = ["container/*.containerfile", "schemas/*.schema.json", "templates/**/*"]
 
 [project.scripts]
 socks = "socks.main:main"
