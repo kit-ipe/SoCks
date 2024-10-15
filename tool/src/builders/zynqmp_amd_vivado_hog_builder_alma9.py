@@ -114,7 +114,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         """
 
         # Check if the project needs to be build
-        if not ZynqMP_AMD_Vivado_Hog_Builder_Alma9._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._source_repo_dir / 'Top', self._source_repo_dir / 'Hog', self._source_repo_dir / f'lib_{self._pc_project_name}'], out_search_list=[self._source_repo_dir / 'bin']):
+        if not ZynqMP_AMD_Vivado_Hog_Builder_Alma9._check_rebuild_required(src_search_list=self._project_cfg_files + [self._source_repo_dir / 'Top', self._source_repo_dir / 'Hog', self._source_repo_dir / f'lib_{self._pc_project_name}'], out_search_list=[self._source_repo_dir / 'bin']):
             pretty_print.print_build('No need to rebuild the Vivado Project. No altered source files detected...')
             return
 

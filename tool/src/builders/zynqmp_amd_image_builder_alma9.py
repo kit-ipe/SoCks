@@ -105,7 +105,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         """
 
         # Check whether the Linux image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuilt_required(src_search_list=[self._misc_dir / 'image.its.tpl', self._dependencies_dir / 'kernel', self._dependencies_dir / 'devicetree'], out_search_list=[self._output_dir / 'image.ub']):
+        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(src_search_list=[self._misc_dir / 'image.its.tpl', self._dependencies_dir / 'kernel', self._dependencies_dir / 'devicetree'], out_search_list=[self._output_dir / 'image.ub']):
             pretty_print.print_build('No need to rebuild Linux Image. No altered source files detected...')
             return
 
@@ -148,7 +148,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         """
 
         # Check whether the boot script image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuilt_required(src_search_list=[self._misc_dir / 'boot.cmd'], out_search_list=[self._output_dir / 'boot.scr']):
+        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(src_search_list=[self._misc_dir / 'boot.cmd'], out_search_list=[self._output_dir / 'boot.scr']):
             pretty_print.print_build('No need to rebuild boot.scr. No altered source files detected...')
             return
 
@@ -195,7 +195,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self._vivado_xsa_path = xsa_files[0]
 
         # Check whether the boot script image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._misc_dir / 'bootgen.bif.tpl', self._fsbl_img_path, self._pmufw_img_path, self._vivado_xsa_path, self._atf_img_path, self._dt_img_path, self._uboot_img_path, self._output_dir / 'image.ub', self._output_dir / 'boot.scr'], out_search_list=[self._output_dir / 'BOOT.BIN']):
+        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(src_search_list=self._project_cfg_files + [self._misc_dir / 'bootgen.bif.tpl', self._fsbl_img_path, self._pmufw_img_path, self._vivado_xsa_path, self._atf_img_path, self._dt_img_path, self._uboot_img_path, self._output_dir / 'image.ub', self._output_dir / 'boot.scr'], out_search_list=[self._output_dir / 'BOOT.BIN']):
             pretty_print.print_build('No need to rebuild BOOT.BIN. No altered source files detected...')
             return
 
@@ -274,7 +274,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         rootfs_archive = archives[0]
 
         # Check whether the sd card image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuilt_required(src_search_list=[self._output_dir / 'BOOT.BIN', self._output_dir / 'boot.scr', self._output_dir / 'image.ub', rootfs_archive], out_search_list=[self._output_dir / self._sdc_image_name]):
+        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(src_search_list=[self._output_dir / 'BOOT.BIN', self._output_dir / 'boot.scr', self._output_dir / 'image.ub', rootfs_archive], out_search_list=[self._output_dir / self._sdc_image_name]):
             pretty_print.print_build('No need to rebuild the SD card image. No altered source files detected...')
             return
 

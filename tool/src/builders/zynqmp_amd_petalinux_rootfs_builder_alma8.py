@@ -272,7 +272,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         """
 
         # Check whether the base root file system needs to be built
-        if not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._block_src_dir / 'src', self._patch_dir, self._source_repo_dir / 'sources', self._source_repo_dir / 'build' / 'conf', self._source_repo_dir / 'build' / 'workspace'], src_ignore_list=[self._source_repo_dir / 'sources' / 'core' / 'bitbake' / 'lib' / 'bb' / 'pysh' / 'pyshtables.py'], out_search_list=[self._source_repo_dir / 'build' / 'tmp' / 'deploy' / 'images', self._source_repo_dir / 'build' / 'tmp' / 'deploy' / 'images' / 'zynqmp-generic' / 'core-image-minimal-zynqmp-generic.cpio.gz', self._source_repo_dir / 'sources' / 'core' / 'bitbake' / 'lib' / 'bb' / 'pysh' / 'pyshtables.py']):
+        if not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuild_required(src_search_list=self._project_cfg_files + [self._block_src_dir / 'src', self._patch_dir, self._source_repo_dir / 'sources', self._source_repo_dir / 'build' / 'conf', self._source_repo_dir / 'build' / 'workspace'], src_ignore_list=[self._source_repo_dir / 'sources' / 'core' / 'bitbake' / 'lib' / 'bb' / 'pysh' / 'pyshtables.py'], out_search_list=[self._source_repo_dir / 'build' / 'tmp' / 'deploy' / 'images', self._source_repo_dir / 'build' / 'tmp' / 'deploy' / 'images' / 'zynqmp-generic' / 'core-image-minimal-zynqmp-generic.cpio.gz', self._source_repo_dir / 'sources' / 'core' / 'bitbake' / 'lib' / 'bb' / 'pysh' / 'pyshtables.py']):
             pretty_print.print_build('No need to rebuild the base root file system. No altered source files detected...')
             return
 
@@ -387,7 +387,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         """
 
         # Check if the tarball needs to be built
-        if not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]):
+        if not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuild_required(src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]):
             pretty_print.print_build('No need to rebuild tarball. No altered source files detected...')
             return
 

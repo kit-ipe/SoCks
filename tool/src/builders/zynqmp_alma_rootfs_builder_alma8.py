@@ -141,7 +141,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         """
 
         # Check whether the base root file system needs to be built
-        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._repo_dir], src_ignore_list=[self._repo_dir / 'predefined_fs_layers', self._repo_dir / 'users'], out_search_list=[self._work_dir]):
+        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(src_search_list=self._project_cfg_files + [self._repo_dir], src_ignore_list=[self._repo_dir / 'predefined_fs_layers', self._repo_dir / 'users'], out_search_list=[self._work_dir]):
             pretty_print.print_build('No need to rebuild the base root file system. No altered source files detected...')
             return
 
@@ -194,7 +194,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             sys.exit(1)
 
         # Check whether the predefined file system layers need to be added
-        if self._pfs_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir / 'predefined_fs_layers'], out_search_list=[self._work_dir]):
+        if self._pfs_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(src_search_list=[self._repo_dir / 'predefined_fs_layers'], out_search_list=[self._work_dir]):
             pretty_print.print_build('No need to add predefined file system layers. No altered source files detected...')
             return
 
@@ -242,7 +242,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             sys.exit(1)
 
         # Check whether users need to be added
-        if self._users_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._repo_dir / 'users'], out_search_list=[self._work_dir]):
+        if self._users_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(src_search_list=[self._repo_dir / 'users'], out_search_list=[self._work_dir]):
             pretty_print.print_build('No need to add users. No altered source files detected...')
             return
 
@@ -371,7 +371,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 md5_existsing_xsa_file = f.read()
 
         # Check if the PL files need to be added
-        if md5_existsing_xsa_file == md5_new_xsa_file and (self._build_dir / 'etc/dt-overlays').is_dir() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=[self._dependencies_dir / 'devicetree'], out_search_list=[self._build_dir / 'etc/dt-overlays']):
+        if md5_existsing_xsa_file == md5_new_xsa_file and (self._build_dir / 'etc/dt-overlays').is_dir() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(src_search_list=[self._dependencies_dir / 'devicetree'], out_search_list=[self._build_dir / 'etc/dt-overlays']):
             pretty_print.print_build('No need to add files for the programmable logic (PL). No altered source files detected...')
             return
 
@@ -440,7 +440,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         """
 
         # Check if the tarball needs to be built
-        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]):
+        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]):
             pretty_print.print_build('No need to rebuild tarball. No altered source files detected...')
             return
 

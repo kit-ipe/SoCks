@@ -184,7 +184,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         """
 
         # Check if the project needs to be build
-        if not ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._ipbb_work_dir / 'src', self._ipbb_work_dir / 'var', self._ipbb_work_dir / 'proj' / self._pc_project_name / 'decoders', self._ipbb_work_dir / 'proj' / self._pc_project_name / self._pc_project_name], src_ignore_list=[self._ipbb_work_dir / 'proj' / self._pc_project_name / self._pc_project_name / f'{self._pc_project_name}.runs', self._ipbb_work_dir / 'proj' / self._pc_project_name / self._pc_project_name / f'{self._pc_project_name}.cache'], out_search_list=[self._ipbb_work_dir / 'proj' / self._pc_project_name / 'package']):
+        if not ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._check_rebuild_required(src_search_list=self._project_cfg_files + [self._ipbb_work_dir / 'src', self._ipbb_work_dir / 'var', self._ipbb_work_dir / 'proj' / self._pc_project_name / 'decoders', self._ipbb_work_dir / 'proj' / self._pc_project_name / self._pc_project_name], src_ignore_list=[self._ipbb_work_dir / 'proj' / self._pc_project_name / self._pc_project_name / f'{self._pc_project_name}.runs', self._ipbb_work_dir / 'proj' / self._pc_project_name / self._pc_project_name / f'{self._pc_project_name}.cache'], out_search_list=[self._ipbb_work_dir / 'proj' / self._pc_project_name / 'package']):
             pretty_print.print_build('No need to rebuild the Vivado Project. No altered source files detected...')
             return
 

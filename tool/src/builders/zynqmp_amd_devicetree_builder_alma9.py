@@ -156,7 +156,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         """
 
         # Check whether the devicetree needs to be built
-        if not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuilt_required(src_search_list=[self._dt_incl_dir, self._patch_dir, self._source_repo_dir], out_search_list=[self._base_work_dir / 'system.dtb']):
+        if not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuild_required(src_search_list=[self._dt_incl_dir, self._patch_dir, self._source_repo_dir], out_search_list=[self._base_work_dir / 'system.dtb']):
             pretty_print.print_build('No need to rebuild the devicetree. No altered source files detected...')
             return
 
@@ -225,7 +225,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         """
 
         # Check whether the devicetree overlays need to be built
-        if not self._dt_overlay_dir.is_dir() or not any(self._dt_overlay_dir.iterdir()) or not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuilt_required(src_search_list=[self._dt_overlay_dir], out_search_list=list(self._overlay_work_dir.glob('*.dtbo'))):
+        if not self._dt_overlay_dir.is_dir() or not any(self._dt_overlay_dir.iterdir()) or not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuild_required(src_search_list=[self._dt_overlay_dir], out_search_list=list(self._overlay_work_dir.glob('*.dtbo'))):
             pretty_print.print_build('No need to rebuild devicetree overlays. No altered source files detected...')
             return
 

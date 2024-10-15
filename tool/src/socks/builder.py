@@ -318,7 +318,7 @@ class Builder:
 
 
     @staticmethod
-    def _check_rebuilt_required(src_search_list: typing.List[pathlib.Path], src_ignore_list: typing.List[pathlib.Path] = None, out_search_list: typing.List[pathlib.Path] = None, out_ignore_list: typing.List[pathlib.Path] = None) -> bool:
+    def _check_rebuild_required(src_search_list: typing.List[pathlib.Path], src_ignore_list: typing.List[pathlib.Path] = None, out_search_list: typing.List[pathlib.Path] = None, out_ignore_list: typing.List[pathlib.Path] = None) -> bool:
         """
         Check whether some file(s) needs to be rebuilt.
 
@@ -374,7 +374,7 @@ class Builder:
 
 
     @staticmethod
-    def _check_rebuilt_required_faster(src_search_list: typing.List[pathlib.Path], src_ignore_list: typing.List[pathlib.Path] = None, out_search_list: typing.List[pathlib.Path] = None, out_ignore_list: typing.List[pathlib.Path] = None) -> bool:
+    def _check_rebuild_required_faster(src_search_list: typing.List[pathlib.Path], src_ignore_list: typing.List[pathlib.Path] = None, out_search_list: typing.List[pathlib.Path] = None, out_ignore_list: typing.List[pathlib.Path] = None) -> bool:
         """
         Check whether some file(s) needs to be rebuilt.
 
@@ -962,7 +962,7 @@ class Builder:
             sys.exit(1)
 
         # Check whether a package needs to be created
-        if not Builder._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._output_dir], src_ignore_list=[block_pkg_path], out_search_list=[block_pkg_path]):
+        if not Builder._check_rebuild_required(src_search_list=self._project_cfg_files + [self._output_dir], src_ignore_list=[block_pkg_path], out_search_list=[block_pkg_path]):
             pretty_print.print_build('No need to export block package. No altered source files detected...')
             return
 

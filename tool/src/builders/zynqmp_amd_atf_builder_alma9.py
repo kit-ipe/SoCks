@@ -67,7 +67,7 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
         """
 
         # Check whether the ATF needs to be built
-        if not ZynqMP_AMD_ATF_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'build'], out_search_list=[self._source_repo_dir / 'build/zynqmp/release/bl31/bl31.elf', self._source_repo_dir / 'build/zynqmp/release/bl31.bin']):
+        if not ZynqMP_AMD_ATF_Builder_Alma9._check_rebuild_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'build'], out_search_list=[self._source_repo_dir / 'build/zynqmp/release/bl31/bl31.elf', self._source_repo_dir / 'build/zynqmp/release/bl31.bin']):
             pretty_print.print_build('No need to rebuild the ATF. No altered source files detected...')
             return
 

@@ -119,7 +119,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         """
 
         # Check whether the Kernel needs to be built
-        if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'arch/arm64/boot'], out_search_list=[self._source_repo_dir / 'arch/arm64/boot']):
+        if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuild_required(src_search_list=self._project_cfg_files + [self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'arch/arm64/boot'], out_search_list=[self._source_repo_dir / 'arch/arm64/boot']):
             pretty_print.print_build('No need to rebuild the Linux Kernel. No altered source files detected...')
             return
 
@@ -180,7 +180,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             return
 
         # Check whether the Kernel modules need to be exported
-        if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuilt_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'arch/arm64/boot'], out_search_list=[self._output_dir / 'kernel_modules.tar.gz']):
+        if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuild_required(src_search_list=[self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'arch/arm64/boot'], out_search_list=[self._output_dir / 'kernel_modules.tar.gz']):
             pretty_print.print_build('No need to export Kernel modules. No altered source files detected...')
             return
 

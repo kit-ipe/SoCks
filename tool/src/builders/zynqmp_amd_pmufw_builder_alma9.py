@@ -149,7 +149,7 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
         """
 
         # Check whether the PMU Firmware needs to be built
-        if not ZynqMP_AMD_PMUFW_Builder_Alma9._check_rebuilt_required(src_search_list=self._project_cfg_files + [self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'executable.elf'], out_search_list=[self._source_repo_dir / 'executable.elf']):
+        if not ZynqMP_AMD_PMUFW_Builder_Alma9._check_rebuild_required(src_search_list=self._project_cfg_files + [self._patch_dir, self._source_repo_dir], src_ignore_list=[self._source_repo_dir / 'executable.elf'], out_search_list=[self._source_repo_dir / 'executable.elf']):
             pretty_print.print_build('No need to rebuild the PMU Firmware. No altered source files detected...')
             return
 
