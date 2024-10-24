@@ -66,20 +66,6 @@ blocks:
     container:
       image: "amd-xilinx-tools-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
-  rootfs:
-    source: "build"
-    builder: "ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8"
-    project:
-      build-srcs:
-        source: "https://github.com/Xilinx/yocto-manifests.git"
-        branch: "rel-v{{externalTools/xilinx/version}}"
-      add-build-info: false
-      # If no 'import-src' property is specified, the block must be built locally
-      dependencies:
-        kernel: "temp/kernel/output/kernel.tar.gz"
-    container:
-      image: "petalinux-rootfs-builder-alma8"
-      tag: "xilinx-v{{externalTools/xilinx/version}}"
   u-boot:
     source: "build"
     builder: "ZynqMP_AMD_UBoot_Builder_Alma9"
@@ -114,7 +100,6 @@ blocks:
         fsbl: "temp/fsbl/output/fsbl.tar.gz"
         kernel: "temp/kernel/output/kernel.tar.gz"
         pmu-fw: "temp/pmu-fw/output/pmu-fw.tar.gz"
-        rootfs: "temp/rootfs/output/rootfs.tar.gz"
         u-boot: "temp/u-boot/output/u-boot.tar.gz"
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:

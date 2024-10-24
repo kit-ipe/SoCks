@@ -13,7 +13,8 @@
     },
     "builder": {
       "description": "Builder class to be used",
-      "type": "string"
+      "type": "string",
+      "const": "ZynqMP_AMD_Kernel_Builder_Alma9"
     },
     "project": {
       "type": "object",

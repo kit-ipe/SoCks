@@ -11,9 +11,7 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
     AMD PMU firmware builder class
     """
 
-    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
-        block_id = 'pmu-fw'
-        block_description = 'Build the Platform Management Unit (PMU) Firmware for ZynqMP devices'
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str = 'pmu-fw', block_description: str = 'Build the Platform Management Unit (PMU) Firmware for ZynqMP devices'):
 
         super().__init__(project_cfg=project_cfg,
                         project_cfg_files=project_cfg_files,
@@ -28,6 +26,8 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.
+        # Optional dependencies can also be listed here. They will be ignored if
+        # they are not listed in the project configuration.
         self._block_deps = {
             'vivado': ['.*.xsa']
         }

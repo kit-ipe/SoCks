@@ -9,9 +9,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
     Builder class for AMD Vivado projects utilizing the IPbus Builder (IPBB) framework
     """
 
-    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
-        block_id = 'vivado'
-        block_description = 'Build an AMD/Xilinx Vivado Project with IPbus Builder (IPBB)'
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str = 'vivado', block_description: str = 'Build an AMD/Xilinx Vivado Project with IPbus Builder (IPBB)'):
 
         super().__init__(project_cfg=project_cfg,
                         project_cfg_files=project_cfg_files,

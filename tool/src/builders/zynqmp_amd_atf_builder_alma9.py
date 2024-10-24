@@ -10,9 +10,7 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
     AMD ATF builder class
     """
 
-    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
-        block_id = 'atf'
-        block_description = 'Build the ARM Trusted Firmware for ZynqMP devices'
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str = 'atf', block_description: str = 'Build the ARM Trusted Firmware for ZynqMP devices'):
 
         super().__init__(project_cfg=project_cfg,
                         project_cfg_files=project_cfg_files,

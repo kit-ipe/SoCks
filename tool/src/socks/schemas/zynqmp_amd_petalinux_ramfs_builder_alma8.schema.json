@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/zynqmp.schema.json",
-  "title": "ZynqMP AMD Vivado with IPbus Builder (IPBB) Block",
-  "description": "Configuration of the AMD Vivado with IPbus Builder (IPBB) block for ZynqMP devices",
+  "title": "ZynqMP AMD PetaLinux RAM File System Block",
+  "description": "Configuration of the AMD PetaLinux RAM file system block for ZynqMP devices",
   "type": "object",
   "required": ["source", "builder", "project", "container"],
   "additionalProperties": false,
@@ -14,27 +14,24 @@
     "builder": {
       "description": "Builder class to be used",
       "type": "string",
-      "const": "ZynqMP_AMD_Vivado_IPBB_Builder_Alma9"
+      "const": "ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8"
     },
     "project": {
       "type": "object",
-      "required": ["build-srcs"],
+      "required": ["build-srcs", "add-build-info", "dependencies"],
       "additionalProperties": false,
       "properties": {
         "build-srcs": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["source"],
-            "properties": {
-              "source": {
-                "description": "Git clone URL or path to the Vivado project",
-                "type": "string"
-              },
-              "branch": {
-                "description": "Git repository branch",
-                "type": "string"
-              }
+          "type": "object",
+          "required": ["source"],
+          "properties": {
+            "source": {
+              "description": "Git clone URL or path to the RAM file system project",
+              "type": "string"
+            },
+            "branch": {
+              "description": "Git repository branch",
+              "type": "string"
             }
           }
         },
@@ -42,9 +39,20 @@
           "description": "URL or path to the pre-built files",
           "type": "string"
         },
-        "name": {
-          "description": "Name of the project, required by IPBB",
-          "type": "string"
+        "add-build-info": {
+          "description": "Switch to specify whether or not build information should be included in the block",
+          "type": "boolean"
+        },
+        "dependencies": {
+          "type": "object",
+          "required": ["kernel"],
+          "additionalProperties": false,
+          "properties": {
+            "kernel": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            }
+          }
         }
       }
     },

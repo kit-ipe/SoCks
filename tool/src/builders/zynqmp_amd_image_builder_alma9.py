@@ -11,9 +11,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
     AMD Image builder class
     """
 
-    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
-        block_id = 'image'
-        block_description = 'Build the boot image for ZynqMP devices'
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str = 'image', block_description: str = 'Build the boot image for ZynqMP devices'):
 
         super().__init__(project_cfg=project_cfg,
                         project_cfg_files=project_cfg_files,
@@ -39,13 +37,16 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.
+        # Optional dependencies can also be listed here. They will be ignored if
+        # they are not listed in the project configuration.
         self._block_deps = {
             'atf': ['bl31.elf'],
             'devicetree': ['system.dtb'],
             'fsbl': ['fsbl.elf'],
             'kernel': ['Image.gz'],
             'pmu-fw': ['pmufw.elf'],
-            'rootfs': ['.*.tar...'],
+            'ramfs': ['.*.cpio.gz'],
+            'rootfs': ['.*.tar.xz'],
             'u-boot': ['u-boot.elf'],
             'vivado': ['.*.xsa']
         }
@@ -104,8 +105,24 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             None
         """
 
+        # Get path of the RAM file system, if any
+        ramfs_archives = []
+        if (self._dependencies_dir / 'ramfs').is_dir():
+            ramfs_archives = list((self._dependencies_dir / 'ramfs').glob('*.cpio.gz'))
+
+        # Check if there is more than one archive in the dependencie directory
+        if len(ramfs_archives) > 1:
+            pretty_print.print_error(f'More than one .cpio.gz archive in {self._dependencies_dir / "ramfs"}.')
+            sys.exit(1)
+        elif not ramfs_archives:
+            # Check if a ramfs archive is needed
+            with open(self._misc_dir / 'image.its.tpl', 'r') as file:
+                if '<RAMFS_IMG_PATH>' in file.read():
+                    pretty_print.print_error(f'Block \'{self.block_id}\' needs input from block \'ramfs\', but it was not found in {self._dependencies_dir / "ramfs"}.')
+                    sys.exit(1)
+
         # Check whether the Linux image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(src_search_list=[self._misc_dir / 'image.its.tpl', self._dependencies_dir / 'kernel', self._dependencies_dir / 'devicetree'], out_search_list=[self._output_dir / 'image.ub']):
+        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(src_search_list=[self._misc_dir / 'image.its.tpl', self._dependencies_dir / 'kernel', self._dependencies_dir / 'devicetree', self._dependencies_dir / 'ramfs'], out_search_list=[self._output_dir / 'image.ub']):
             pretty_print.print_build('No need to rebuild Linux Image. No altered source files detected...')
             return
 
@@ -116,7 +133,11 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
 
         linux_img_build_commands = f'\'cp {self._misc_dir}/image.its.tpl {self._work_dir}/image.its && ' \
                                     f'sed -i "s:<KERNEL_IMG_PATH>:{self._kernel_img_path}:g;" {self._work_dir}/image.its && ' \
-                                    f'sed -i "s:<DT_IMG_PATH>:{self._dt_img_path}:g;" {self._work_dir}/image.its && ' \
+                                    f'sed -i "s:<DT_IMG_PATH>:{self._dt_img_path}:g;" {self._work_dir}/image.its && '
+        if ramfs_archives:
+            linux_img_build_commands = linux_img_build_commands + \
+                                    f'sed -i "s:<RAMFS_IMG_PATH>:{ramfs_archives[0]}:g;" {self._work_dir}/image.its && '
+        linux_img_build_commands = linux_img_build_commands + \
                                     f'mkimage -f {self._work_dir}/image.its {self._output_dir}/image.ub\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
@@ -263,18 +284,18 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             None
         """
 
-        # Get path of the root file system
-        archives = list((self._dependencies_dir / 'rootfs').glob('*.tar.??'))
+        # Get path of the root file system, if any
+        rootfs_archives = []
+        if (self._dependencies_dir / 'rootfs').is_dir():
+            rootfs_archives = list((self._dependencies_dir / 'rootfs').glob('*.tar.xz'))
 
         # Check if there is more than one archive in the dependencie directory
-        if len(archives) != 1:
-            pretty_print.print_error(f'Not exactly one archive in {self._dependencies_dir / "rootfs"}.')
+        if len(rootfs_archives) > 1:
+            pretty_print.print_error(f'More than one .tar.xz archive in {self._dependencies_dir / "rootfs"}.')
             sys.exit(1)
 
-        rootfs_archive = archives[0]
-
         # Check whether the sd card image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(src_search_list=[self._output_dir / 'BOOT.BIN', self._output_dir / 'boot.scr', self._output_dir / 'image.ub', rootfs_archive], out_search_list=[self._output_dir / self._sdc_image_name]):
+        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(src_search_list=[self._output_dir / 'BOOT.BIN', self._output_dir / 'boot.scr', self._output_dir / 'image.ub', self._dependencies_dir / 'rootfs'], out_search_list=[self._output_dir / self._sdc_image_name]):
             pretty_print.print_build('No need to rebuild the SD card image. No altered source files detected...')
             return
 
@@ -286,10 +307,13 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                                     f'    set-label /dev/sda2 ROOTFS : ' \
                                     f'    mkmountpoint /p1 : ' \
                                     f'    mount /dev/sda1 /p1 : ' \
-                                    f'    copy-in {self._output_dir}/image.ub {self._output_dir}/boot.scr {self._output_dir}/BOOT.BIN /p1/ : ' \
+                                    f'    copy-in {self._output_dir}/image.ub {self._output_dir}/boot.scr {self._output_dir}/BOOT.BIN /p1/ : '
+        if rootfs_archives:
+            sdc_img_build_commands = sdc_img_build_commands + \
                                     f'    mkmountpoint /p2 : ' \
                                     f'    mount /dev/sda2 /p2 : ' \
-                                    f'    tar-in {rootfs_archive} /p2/ compress:xz acls:true : ' \
+                                    f'    tar-in {rootfs_archives[0]} /p2/ compress:xz acls:true : '
+        sdc_img_build_commands = sdc_img_build_commands + \
                                     f'    umount-all\''
 
         if self._pc_container_tool  in ('docker', 'podman'):

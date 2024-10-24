@@ -13,7 +13,8 @@
     },
     "builder": {
       "description": "Builder class to be used",
-      "type": "string"
+      "type": "string",
+      "const": "ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8"
     },
     "project": {
       "type": "object",

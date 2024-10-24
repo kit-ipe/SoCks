@@ -13,7 +13,8 @@
     },
     "builder": {
       "description": "Builder class to be used",
-      "type": "string"
+      "type": "string",
+      "const": "ZynqMP_AMD_Image_Builder_Alma9"
     },
     "project": {
       "type": "object",
@@ -26,7 +27,11 @@
         },
         "dependencies": {
           "type": "object",
-          "required": ["atf", "devicetree", "fsbl", "kernel", "pmu-fw", "rootfs", "u-boot", "vivado"],
+          "required": ["atf", "devicetree", "fsbl", "kernel", "pmu-fw", "u-boot", "vivado"],
+          "anyOf": [
+            {"required": ["ramfs"]},
+            {"required": ["rootfs"]}
+          ],
           "additionalProperties": false,
           "properties": {
             "atf": {
@@ -46,6 +51,10 @@
               "type": "string"
             },
             "pmu-fw": {
+              "description": "Path to the block package, relative to the project directory",
+              "type": "string"
+            },
+            "ramfs": {
               "description": "Path to the block package, relative to the project directory",
               "type": "string"
             },

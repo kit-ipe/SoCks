@@ -13,7 +13,8 @@
     },
     "builder": {
       "description": "Builder class to be used",
-      "type": "string"
+      "type": "string",
+      "const": "ZynqMP_Alma_RootFS_Builder_Alma8"
     },
     "release": {
       "description": "Release version of the OS to be built",

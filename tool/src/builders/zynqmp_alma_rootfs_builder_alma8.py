@@ -18,9 +18,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
     AlmaLinux root file system builder class
     """
 
-    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path):
-        block_id = 'rootfs'
-        block_description = 'Build an AlmaLinux root file system'
+    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str = 'rootfs', block_description: str = 'Build an AlmaLinux root file system'):
 
         super().__init__(project_cfg=project_cfg,
                         project_cfg_files=project_cfg_files,
@@ -54,6 +52,8 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.
+        # Optional dependencies can also be listed here. They will be ignored if
+        # they are not listed in the project configuration.
         self._block_deps = {
             'kernel': ['kernel_modules.tar.gz'],
             'devicetree': ['system.dtb', 'system.dts'],
@@ -73,13 +73,13 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         self.block_cmds['clean'].extend([self.build_container_image, self.clean_download, self.clean_work, self.clean_dependencies, self.clean_output, self.clean_block_temp])
         if self._pc_block_source == 'build':
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
-            self.block_cmds['build'].extend([self.build_base_rootfs, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_tarball, self.export_block_package])
+            self.block_cmds['build'].extend([self.build_base_rootfs, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_archive, self.export_block_package])
             self.block_cmds['prebuild'].extend(self.block_cmds['prepare'])
-            self.block_cmds['prebuild'].extend([self.build_base_rootfs, self.build_tarball_prebuilt, self.export_block_package])
+            self.block_cmds['prebuild'].extend([self.build_base_rootfs, self.build_archive_prebuilt, self.export_block_package])
             self.block_cmds['start-container'].extend([self.build_container_image, self.start_container])
         elif self._pc_block_source == 'import':
             self.block_cmds['build'].extend(self.block_cmds['prepare'])
-            self.block_cmds['build'].extend([self.import_prebuilt, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_tarball, self.export_block_package])
+            self.block_cmds['build'].extend([self.import_prebuilt, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_archive, self.export_block_package])
 
 
     def enable_multiarch(self):
@@ -423,13 +423,13 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             print(md5_new_xsa_file, file=f, end='')
 
 
-    def build_tarball(self, prebuilt: bool = False):
+    def build_archive(self, prebuilt: bool = False):
         """
-        Packs the entire rootfs in a tarball.
+        Packs the entire rootfs in a archive.
 
         Args:
             prebuilt:
-                Set to True if the tarball will contain pre-built files
+                Set to True if the archive will contain pre-built files
                 instead of a complete project file system.
 
         Returns:
@@ -439,15 +439,15 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             None
         """
 
-        # Check if the tarball needs to be built
+        # Check if the archive needs to be built
         if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]):
-            pretty_print.print_build('No need to rebuild tarball. No altered source files detected...')
+            pretty_print.print_build('No need to rebuild archive. No altered source files detected...')
             return
 
         self.clean_output()
         self._output_dir.mkdir(parents=True)
 
-        pretty_print.print_build('Building tarball...')
+        pretty_print.print_build('Building archive...')
 
         if self._pc_project_build_info_flag == True:
             # Add build information file
@@ -492,40 +492,40 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 self._err_unsup_container_tool()
 
         if prebuilt:
-            tarball_name = f'almalinux{self._pc_alma_release}_zynqmp_pre-built'
+            archive_name = f'almalinux{self._pc_alma_release}_zynqmp_pre-built'
         else:
-            tarball_name = self._rootfs_name
+            archive_name = self._rootfs_name
 
         # Tar was tested with three compression options:
         # Option	Size	Duration
         # --xz	872M	real	17m59.080s
         # -I pxz	887M	real	3m43.987s
         # -I pigz	1.3G	real	0m20.747s
-        tarball_build_commands = f'\'cd {self._build_dir} && ' \
-                                f'tar -I pxz --numeric-owner -p -cf  {self._output_dir / f"{tarball_name}.tar.xz"} ./ && ' \
+        archive_build_commands = f'\'cd {self._build_dir} && ' \
+                                f'tar -I pxz --numeric-owner -p -cf  {self._output_dir / f"{archive_name}.tar.xz"} ./ && ' \
                                 f'if id {self._host_user} >/dev/null 2>&1; then ' \
-                                f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{tarball_name}.tar.xz"}; ' \
+                                f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{archive_name}.tar.xz"}; ' \
                                 f'fi\''
 
         if self._pc_container_tool  in ('docker', 'podman'):
             try:
                 # Run commands in container
                 # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', tarball_build_commands])
+                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', archive_build_commands])
             except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the tarball: {e}')
+                pretty_print.print_error(f'An error occurred while building the archive: {e}')
                 sys.exit(1)
         elif self._pc_container_tool  == 'none':
             # Run commands without using a container
             # The use of sudo is necessary in order to build a RootFS image.
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', tarball_build_commands])
+            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', archive_build_commands])
         else:
             self._err_unsup_container_tool()
 
 
-    def build_tarball_prebuilt(self):
+    def build_archive_prebuilt(self):
         """
-        Packs the entire pre-built rootfs in a tarball.
+        Packs the entire pre-built rootfs in a archive.
 
         Args:
             None
@@ -537,7 +537,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             None
         """
 
-        self.build_tarball(prebuilt = True)
+        self.build_archive(prebuilt = True)
 
 
     def import_prebuilt(self):

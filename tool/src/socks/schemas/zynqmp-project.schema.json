@@ -71,7 +71,11 @@
     },
     "blocks": {
       "type": "object",
-      "required": ["atf", "devicetree", "fsbl", "kernel", "pmu-fw", "rootfs", "u-boot", "vivado"],
+      "required": ["atf", "devicetree", "fsbl", "kernel", "pmu-fw", "u-boot", "vivado"],
+      "anyOf": [
+        {"required": ["ramfs"]},
+        {"required": ["rootfs"]}
+      ],
       "additionalProperties": false,
       "properties": {
         "atf": {
@@ -119,6 +123,17 @@
           }
         },
         "pmu-fw": {
+          "type": "object",
+          "required": ["builder"],
+          "additionalProperties": true,
+          "properties": {
+            "builder": {
+              "description": "Builder class to be used",
+              "type": "string"
+            }
+          }
+        },
+        "ramfs": {
           "type": "object",
           "required": ["builder"],
           "additionalProperties": true,
