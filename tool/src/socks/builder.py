@@ -490,10 +490,14 @@ class Builder:
         source_repo_branch = None
         local_source_dir = None
 
+        # Check whether this object has all mandatory attributes
+        if not hasattr(self, '_pc_project_source'):
+            raise AttributeError(f'This object of class {self.__class__.__name__} does not have attribute \'_pc_project_source\'')
+
         if validators.url(self._pc_project_source):
             # The sources are downloaded from git
             source_repo_url = self._pc_project_source
-            if self._pc_project_branch is None:
+            if not hasattr(self, '_pc_project_branch'):
                 pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {source_repo_url}')
                 sys.exit(1)
             else:
