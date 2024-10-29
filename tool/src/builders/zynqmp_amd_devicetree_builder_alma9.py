@@ -123,18 +123,9 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
                                 f'    \r\nhsi close_hw_design [hsi current_hw_design]\" > {self._base_work_dir}/generate_dts_prj.tcl && ' \
                                 f'xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{self._xsa_dir}:{self._xsa_dir}:Z', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._base_work_dir}:{self._base_work_dir}:Z', self._container_image, 'sh', '-c', prep_dt_srcs_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while preparing devicetree sources: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command(['sh', '-c', prep_dt_srcs_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=prep_dt_srcs_commands,
+                    dirs_to_mount=[(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._xsa_dir, 'Z'),
+                                (self._repo_dir, 'Z'), (self._base_work_dir, 'Z')])
 
         # Save checksum in file
         with self._source_xsa_md5_file.open('w') as f:
@@ -188,18 +179,8 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
                             'dtc -I dts -O dtb -@ -o system.dtb system.dts && ' \
                             'dtc -I dtb -O dts -o system.dts system.dtb\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._base_work_dir}:{self._base_work_dir}:Z', self._container_image, 'sh', '-c', dt_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the base devicetree: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command(['sh', '-c', dt_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=dt_build_commands,
+                    dirs_to_mount=[(self._base_work_dir, 'Z')])
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
         
@@ -249,18 +230,8 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
                                     '   dtc -O dtb -o ${name}.dtbo -@ ${name}.dtsi; ' \
                                     'done\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._overlay_work_dir}:{self._overlay_work_dir}:Z', self._container_image, 'sh', '-c', dt_overlays_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building devicetree overlays: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_Devicetree_Builder_Alma9._run_sh_command(['sh', '-c', dt_overlays_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=dt_overlays_build_commands,
+                    dirs_to_mount=[(self._overlay_work_dir, 'Z')])
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
 

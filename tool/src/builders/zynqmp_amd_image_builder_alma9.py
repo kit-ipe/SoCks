@@ -5,6 +5,7 @@ import zipfile
 
 import socks.pretty_print as pretty_print
 from socks.amd_builder import AMD_Builder
+from socks.builder import Builder
 
 class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
     """
@@ -86,9 +87,10 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             None
         """
 
-        potential_mounts = [f'{self._pc_xilinx_path}:ro', f'{self._misc_dir}:Z', f'{self._dependencies_dir}:Z', f'{self._work_dir}:Z', f'{self._output_dir}:Z']
+        potential_mounts = [(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._misc_dir, 'Z'),
+                    (self._dependencies_dir, 'Z'), (self._work_dir, 'Z'), (self._output_dir, 'Z')]
 
-        ZynqMP_AMD_Image_Builder_Alma9._start_container(self, potential_mounts=potential_mounts)
+        super(Builder, self).start_container(potential_mounts=potential_mounts)
 
 
     def linux_img(self):
@@ -140,18 +142,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         linux_img_build_commands = linux_img_build_commands + \
                                     f'mkimage -f {self._work_dir}/image.its {self._output_dir}/image.ub\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_Image_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._misc_dir}:{self._misc_dir}:Z', '-v', f'{self._dependencies_dir}:{self._dependencies_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', linux_img_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the Linux Image: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_Image_Builder_Alma9._run_sh_command(['sh', '-c', linux_img_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=linux_img_build_commands,
+                    dirs_to_mount=[(self._misc_dir, 'Z'), (self._dependencies_dir, 'Z'), (self._work_dir, 'Z'),
+                                (self._output_dir, 'Z')])
 
 
     def bootscr_img(self):
@@ -179,18 +172,8 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
 
         bootscr_img_build_commands = f'\'mkimage -c none -A arm -T script -d {self._misc_dir}/boot.cmd {self._output_dir}/boot.scr\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_Image_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._misc_dir}:{self._misc_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', bootscr_img_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building boot.scr: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_Image_Builder_Alma9._run_sh_command(['sh', '-c', bootscr_img_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=bootscr_img_build_commands,
+                    dirs_to_mount=[(self._misc_dir, 'Z'), (self._output_dir, 'Z')])
 
 
     def boot_img(self):
@@ -256,18 +239,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                                 f'sed -i "s:<BSCR_PATH>:{self._output_dir / "boot.scr"}:g;" {self._work_dir}/bootgen.bif && ' \
                                 f'{self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/bin/bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN -w\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_Image_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{self._misc_dir}:{self._misc_dir}:Z', '-v', f'{self._dependencies_dir}:{self._dependencies_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', boot_img_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building BOOT.BIN: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_Image_Builder_Alma9._run_sh_command(['sh', '-c', boot_img_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=boot_img_build_commands,
+                    dirs_to_mount=[(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._misc_dir, 'Z'),
+                                (self._dependencies_dir, 'Z'), (self._work_dir, 'Z'), (self._output_dir, 'Z')])
 
 
     def sd_card_img(self):
@@ -316,15 +290,5 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         sdc_img_build_commands = sdc_img_build_commands + \
                                     f'    umount-all\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_Image_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._dependencies_dir}:{self._dependencies_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', sdc_img_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building BOOT.BIN: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_Image_Builder_Alma9._run_sh_command(['sh', '-c', sdc_img_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=sdc_img_build_commands,
+                    dirs_to_mount=[(self._dependencies_dir, 'Z'), (self._output_dir, 'Z')])

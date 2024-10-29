@@ -8,6 +8,7 @@ import urllib
 import validators
 
 import socks.pretty_print as pretty_print
+from socks.shell_command_runners import Shell_Command_Runners
 from socks.builder import Builder
 
 class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
@@ -110,17 +111,17 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         self._repo_script.chmod(self._repo_script.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
         # Initialize repo in the current directory
-        ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['printf', '"y"', '|', str(self._repo_script), 'init', '-u', self._source_repo_url, '-b', self._source_repo_branch], cwd=self._source_repo_dir)
+        Shell_Command_Runners.run_sh_command(['printf', '"y"', '|', str(self._repo_script), 'init', '-u', self._source_repo_url, '-b', self._source_repo_branch], cwd=self._source_repo_dir)
         # Clone git repos
-        ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([str(self._repo_script), 'sync'], cwd=self._source_repo_dir)
+        Shell_Command_Runners.run_sh_command([str(self._repo_script), 'sync'], cwd=self._source_repo_dir)
         # Initialize local branches in all repos
-        results = ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._get_sh_results([str(self._repo_script), 'list'], cwd=self._source_repo_dir)
+        results = Shell_Command_Runners.get_sh_results([str(self._repo_script), 'list'], cwd=self._source_repo_dir)
         for line in results.stdout.splitlines():
             path, colon, project = line.split(' ', 2)
             # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([str(self._repo_script), 'start', self._git_local_ref_branch, project], cwd=self._source_repo_dir)
+            Shell_Command_Runners.run_sh_command([str(self._repo_script), 'start', self._git_local_ref_branch, project], cwd=self._source_repo_dir)
             # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([str(self._repo_script), 'start', self._git_local_dev_branch, project], cwd=self._source_repo_dir)
+            Shell_Command_Runners.run_sh_command([str(self._repo_script), 'start', self._git_local_dev_branch, project], cwd=self._source_repo_dir)
 
 
     def create_patches(self):
@@ -141,17 +142,17 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
 
         # Iterate over all repos and check for new commits
         repos_with_commits = []
-        results = ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._get_sh_results([str(self._repo_script), 'list'], cwd=self._source_repo_dir)
+        results = Shell_Command_Runners.get_sh_results([str(self._repo_script), 'list'], cwd=self._source_repo_dir)
         for line in results.stdout.splitlines():
             path, colon, project = line.split(' ', 2)
             # Check if this repo contains new commits
-            result_new_commits = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'log', '--cherry-pick', '--oneline', self._git_local_dev_branch, f'^{self._git_local_ref_branch}'])
+            result_new_commits = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'log', '--cherry-pick', '--oneline', self._git_local_dev_branch, f'^{self._git_local_ref_branch}'])
             if result_new_commits.stdout:
                 # This repo contains one or more new commits
                 repos_with_commits.append(project)
                 try:
                     # Create patches
-                    result_new_patches = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
+                    result_new_patches = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
                     # Add newly created patches to self._patch_list_file
                     for line in result_new_patches.stdout.splitlines():
                         new_patch = line.rpartition('/')[2]
@@ -159,9 +160,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                         with self._patch_list_file.open('a') as f:
                             print(f'{project} {new_patch}', file=f, end='\n')
                     # Synchronize the branches ref and dev to be able to detect new commits in the future
-                    Builder._run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'checkout', self._git_local_ref_branch], visible_lines=0)
-                    Builder._run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'merge', self._git_local_dev_branch], visible_lines=0)
-                    Builder._run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'checkout', self._git_local_dev_branch], visible_lines=0)
+                    Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'checkout', self._git_local_ref_branch], visible_lines=0)
+                    Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'merge', self._git_local_dev_branch], visible_lines=0)
+                    Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'checkout', self._git_local_dev_branch], visible_lines=0)
                 except Exception as e:
                     pretty_print.print_error(f'An error occurred while creating new patches: {e}')
                     sys.exit(1)
@@ -199,15 +200,15 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                         if line: # If this line in the file is not empty
                             project, patch = line.split(' ', 1)
                             # Get path of this project
-                            results = ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._get_sh_results([str(self._repo_script), 'list', '-r', project, '-p'], cwd=self._source_repo_dir)
+                            results = Shell_Command_Runners.get_sh_results([str(self._repo_script), 'list', '-r', project, '-p'], cwd=self._source_repo_dir)
                             path = results.stdout.splitlines()[0]
                             # Apply patch
-                            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'am', str(self._patch_dir / patch)])
+                            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'am', str(self._patch_dir / patch)])
 
                             # Update the branch self._git_local_ref_branch so that it contains the applied patch and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-                            Builder._run_sh_command([str(self._repo_script), 'checkout', self._git_local_ref_branch, project], cwd=self._source_repo_dir, visible_lines=0)
-                            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'merge', self._git_local_dev_branch], visible_lines=0)
-                            Builder._run_sh_command([str(self._repo_script), 'checkout', self._git_local_dev_branch, project], cwd=self._source_repo_dir, visible_lines=0)
+                            Shell_Command_Runners.run_sh_command([str(self._repo_script), 'checkout', self._git_local_ref_branch, project], cwd=self._source_repo_dir, visible_lines=0)
+                            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'merge', self._git_local_dev_branch], visible_lines=0)
+                            Shell_Command_Runners.run_sh_command([str(self._repo_script), 'checkout', self._git_local_dev_branch, project], cwd=self._source_repo_dir, visible_lines=0)
 
             # Create the flag if it doesn't exist and update the timestamps
             self._patches_applied_flag.touch()
@@ -243,18 +244,8 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                             f'source ./setupsdk && ' \
                             f'cat {local_conf_append} >> {self._source_repo_dir}/build/conf/local.conf\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._block_src_dir}:{self._block_src_dir}:Z', self._container_image, 'sh', '-c', yocto_init_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while initializing yocto: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', yocto_init_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=yocto_init_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._block_src_dir, 'Z')])
 
 
     def build_base_rootfs(self):
@@ -285,24 +276,15 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                                     f'source ./setupsdk && ' \
                                     'bitbake core-image-minimal\''
 
+        self.run_containerizable_sh_command(command=base_rootfs_build_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z')])
+
         extract_rootfs_commands = f'\'gunzip -c {self._source_repo_dir}/build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.cpio.gz | sh -c "cd {self._mod_dir}/ && cpio -i"\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', self._container_image, 'sh', '-c', base_rootfs_build_commands])
-                # The root user is used in this container. This is necessary in order to modify a RootFS image.
-                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', extract_rootfs_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the base root file system: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sh', '-c', base_rootfs_build_commands])
-            # The use of sudo is necessary in order to modify a RootFS image.
-            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', extract_rootfs_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=extract_rootfs_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._work_dir, 'Z')],
+                    run_as_root=True)
 
 
     def add_kmodules(self):
@@ -350,20 +332,10 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                                 f'mv lib/modules/* {self._mod_dir}/lib/modules/ && ' \
                                 f'rm -rf lib\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to modify a RootFS image.
-                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._dependencies_dir}:{self._dependencies_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_kmodules_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while adding Kernel Modules: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to modify a RootFS image.
-            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_kmodules_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=add_kmodules_commands,
+                    dirs_to_mount=[(self._dependencies_dir, 'Z'), (self._work_dir, 'Z')],
+                    run_as_root=True)
 
         # Save checksum in file
         with self._source_kmods_md5_file.open('w') as f:
@@ -405,38 +377,18 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             add_build_info_commands = f'\'mv {self._build_info_file} {self._mod_dir}/etc/fs_build_info && ' \
                                         f'chmod 0444 {self._mod_dir}/etc/fs_build_info\''
 
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    # Run commands in container
-                    # The root user is used in this container. This is necessary in order to build a RootFS image.
-                    ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_build_info_commands])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while adding the build info file to the root file system: {e}')
-                    sys.exit(1)
-            elif self._pc_container_tool  == 'none':
-                # Run commands without using a container
-                # The use of sudo is necessary in order to build a RootFS image.
-                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_build_info_commands])
-            else:
-                self._err_unsup_container_tool()
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.run_containerizable_sh_command(command=add_build_info_commands,
+                        dirs_to_mount=[(self._work_dir, 'Z')],
+                        run_as_root=True)
         else:
             # Remove existing build information file
             clean_build_info_commands = f'\'rm -f {self._build_dir}/etc/fs_build_info\''
 
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    # Run commands in container
-                    # The root user is used in this container. This is necessary in order to build a RootFS image.
-                    ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', clean_build_info_commands])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the build info file from the root file system: {e}')
-                    sys.exit(1)
-            elif self._pc_container_tool  == 'none':
-                # Run commands without using a container
-                # The use of sudo is necessary in order to build a RootFS image.
-                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', clean_build_info_commands])
-            else:
-                self._err_unsup_container_tool()
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.run_containerizable_sh_command(command=clean_build_info_commands,
+                        dirs_to_mount=[(self._work_dir, 'Z')],
+                        run_as_root=True)
 
         if prebuilt:
             archive_name = f'petalinux_zynqmp_pre-built'
@@ -454,20 +406,10 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                                 f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{archive_name}.tar.xz"}; ' \
                                 f'fi\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', archive_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the archive: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to build a RootFS image.
-            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', archive_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=archive_build_commands,
+                    dirs_to_mount=[(self._work_dir, 'Z'), (self._output_dir, 'Z')],
+                    run_as_root=True)
 
 
     def build_archive_prebuilt(self):
@@ -557,20 +499,10 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
 
         extract_pb_rootfs_commands = f'\'tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._mod_dir}\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', extract_pb_rootfs_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while importing the pre-built root file system: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to build a RootFS image.
-            ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', extract_pb_rootfs_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=extract_pb_rootfs_commands,
+                    dirs_to_mount=[(self._work_dir, 'Z')],
+                    run_as_root=True)
 
         # Save checksum in file
         with self._source_pb_md5_file.open('w') as f:
@@ -616,11 +548,11 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             return
 
         # Iterate over all repos and check if there are uncommited changes in the git repo
-        results = ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._get_sh_results([str(self._repo_script), 'list'], cwd=self._source_repo_dir)
+        results = Shell_Command_Runners.get_sh_results([str(self._repo_script), 'list'], cwd=self._source_repo_dir)
         for line in results.stdout.splitlines():
             path, colon, project = line.split(' ', 2)
             # Check if this repo contains uncommited changes
-            results = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'status', '--porcelain'])
+            results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'status', '--porcelain'])
             if results.stdout:
                 pretty_print.print_warning(f'There are uncommited changes in {self._source_repo_dir / path}. Do you really want to clean this repo? (y/n) ', end='')
                 answer = input('')
@@ -630,19 +562,10 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
 
         pretty_print.print_clean('Cleaning repo directory...')
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Clean up the repo directory from the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while cleaning the repo directory: {e}')
-                sys.exit(1)
+        cleaning_commands = f'\"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true\"'
 
-        elif self._pc_container_tool  == 'none':
-            # Clean up the repo directory without using a container
-            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true\"'])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=cleaning_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z')])
 
         # Remove flag
         self._patches_applied_flag.unlink(missing_ok=True)

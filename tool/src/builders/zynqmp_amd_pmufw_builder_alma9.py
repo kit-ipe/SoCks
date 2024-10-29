@@ -4,6 +4,7 @@ import shutil
 import hashlib
 
 import socks.pretty_print as pretty_print
+from socks.shell_command_runners import Shell_Command_Runners
 from socks.amd_builder import AMD_Builder
 
 class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
@@ -111,23 +112,14 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
                                             f'git -C {self._source_repo_dir} add {self._source_repo_dir}/. && ' \
                                             f'git -C {self._source_repo_dir} commit --quiet -m "Initial commit"\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_PMUFW_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{self._xsa_dir}:{self._xsa_dir}:Z', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', create_pmufw_project_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while creating the PMU Firmware project: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_PMUFW_Builder_Alma9._run_sh_command(['sh', '-c', create_pmufw_project_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=create_pmufw_project_commands,
+                    dirs_to_mount=[(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._xsa_dir, 'Z'),
+                                (self._repo_dir, 'Z'), (self._work_dir, 'Z'), (self._output_dir, 'Z')])
 
         # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-        ZynqMP_AMD_PMUFW_Builder_Alma9._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
+        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
         # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-        ZynqMP_AMD_PMUFW_Builder_Alma9._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
+        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
 
         # Save checksum in file
         with self._source_xsa_md5_file.open('w') as f:
@@ -166,18 +158,9 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
                                 'make clean && ' \
                                 'make\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_PMUFW_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{self._xsa_dir}:{self._xsa_dir}:Z', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', pmufw_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the PMU Firmware: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_PMUFW_Builder_Alma9._run_sh_command(['sh', '-c', pmufw_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=pmufw_build_commands,
+                    dirs_to_mount=[(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._xsa_dir, 'Z'),
+                                (self._repo_dir, 'Z'), (self._output_dir, 'Z')])
 
         # Create symlink to the output file
         (self._output_dir / 'pmufw.elf').unlink(missing_ok=True)

@@ -30,8 +30,8 @@
       "additionalProperties": false,
       "properties": {
         "containerTool": {
-          "description": "Container tool to be used [docker, podman]",
-          "type": "string"
+          "description": "Container tool to be used",
+          "enum": ["docker", "podman", "none"]
         },
         "make": {
           "type": "object",

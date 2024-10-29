@@ -8,7 +8,6 @@ import urllib
 import validators
 
 import socks.pretty_print as pretty_print
-from socks.builder import Builder
 from builders.zynqmp_amd_petalinux_rootfs_builder_alma8 import ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8
 
 class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8):
@@ -61,38 +60,18 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Build
             add_build_info_commands = f'\'mv {self._build_info_file} {self._mod_dir}/etc/fs_build_info && ' \
                                         f'chmod 0444 {self._mod_dir}/etc/fs_build_info\''
 
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    # Run commands in container
-                    # The root user is used in this container. This is necessary in order to build a RootFS image.
-                    ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_build_info_commands])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while adding the build info file to the root file system: {e}')
-                    sys.exit(1)
-            elif self._pc_container_tool  == 'none':
-                # Run commands without using a container
-                # The use of sudo is necessary in order to build a RootFS image.
-                ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_build_info_commands])
-            else:
-                self._err_unsup_container_tool()
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.run_containerizable_sh_command(command=add_build_info_commands,
+                        dirs_to_mount=[(self._work_dir, 'Z')],
+                        run_as_root=True)
         else:
             # Remove existing build information file
             clean_build_info_commands = f'\'rm -f {self._build_dir}/etc/fs_build_info\''
 
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    # Run commands in container
-                    # The root user is used in this container. This is necessary in order to build a RootFS image.
-                    ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', clean_build_info_commands])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the build info file from the root file system: {e}')
-                    sys.exit(1)
-            elif self._pc_container_tool  == 'none':
-                # Run commands without using a container
-                # The use of sudo is necessary in order to build a RootFS image.
-                ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', clean_build_info_commands])
-            else:
-                self._err_unsup_container_tool()
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.run_containerizable_sh_command(command=clean_build_info_commands,
+                        dirs_to_mount=[(self._work_dir, 'Z')],
+                        run_as_root=True)
 
         if prebuilt:
             archive_name = f'petalinux_zynqmp_pre-built'
@@ -105,17 +84,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Build
                                 f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{archive_name}.cpio.gz"}; ' \
                                 f'fi\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', archive_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the archive: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to build a RootFS image.
-            ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', archive_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=archive_build_commands,
+                    dirs_to_mount=[(self._work_dir, 'Z'), (self._output_dir, 'Z')],
+                    run_as_root=True)

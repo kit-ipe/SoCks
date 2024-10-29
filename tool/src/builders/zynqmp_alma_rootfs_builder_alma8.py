@@ -82,50 +82,6 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             self.block_cmds['build'].extend([self.import_prebuilt, self.add_fs_layers, self.add_users, self.add_kmodules, self.add_pl, self.build_archive, self.export_block_package])
 
 
-    def enable_multiarch(self):
-        """
-        Enable to execute binaries for different architectures in containers
-        that are launched afterwards. This enables to execute x86 and arm64
-        binaries in the same container. QEMU is automatically used when it
-        is needed.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        if list(pathlib.Path('/proc/sys/fs/binfmt_misc').glob('qemu-*')):
-            pretty_print.print_build('No need to activate multiarch support for containers. It is already active...')
-            return
-
-        pretty_print.print_build('Activating multiarch support for containers...')
-
-        if self._pc_container_tool  == 'docker':
-            try:
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['docker', 'pull', 'multiarch/qemu-user-static'])
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['docker', 'run', '--rm', '--privileged', 'multiarch/qemu-user-static', '--reset', '-p', 'yes'])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while activating multiarch for docker: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'podman':
-            try:
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'podman', 'pull', 'multiarch/qemu-user-static'])
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'podman', 'run', '--rm', '--privileged', 'multiarch/qemu-user-static', '--reset', '-p', 'yes'])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while activating multiarch for docker: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            pretty_print.print_warning(f'Multiarch is not activated in native mode.')
-            return
-        else:
-            self._err_unsup_container_tool()
-
-
     def build_base_rootfs(self):
         """
         Builds the base root file system.
@@ -154,20 +110,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                                     f'python3 mkrootfs.py --root={self._build_dir} --arch={self._target_arch} --extra=extra_rpms.txt --releasever={self._pc_alma_release} && ' \
                                     f'rm -f {self._build_dir}/etc/systemd/system/multi-user.target.wants/auditd.service\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', base_rootfs_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the base root file system: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to build a RootFS image.
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', base_rootfs_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=base_rootfs_build_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._work_dir, 'Z')],
+                    run_as_root=True)
 
         # Remove flags
         self._pfs_added_flag.unlink(missing_ok=True)
@@ -203,20 +149,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         add_fs_layers_commands = f'\'cd {self._repo_dir / "predefined_fs_layers"} && ' \
                                 f'for dir in ./*; do "$dir"/install_layer.sh {self._build_dir}/; done\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to modify a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_fs_layers_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while adding predefined file system layers: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to modify a RootFS image.
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_fs_layers_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=add_fs_layers_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._work_dir, 'Z')],
+                    run_as_root=True)
 
         # Create the flag if it doesn't exist and update the timestamps
         self._pfs_added_flag.touch()
@@ -252,20 +188,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                             f'chroot {self._build_dir} /bin/bash /tmp/users/add_users.sh && ' \
                             f'rm -rf {self._build_dir}/tmp/users\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to modify a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_users_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while adding users: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to modify a RootFS image.
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_users_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=add_users_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._work_dir, 'Z')],
+                    run_as_root=True)
 
         # Create the flag if it doesn't exist and update the timestamps
         self._users_added_flag.touch()
@@ -316,20 +242,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                                 f'mv lib/modules/* {self._build_dir}/lib/modules/ && ' \
                                 f'rm -rf lib\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to modify a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._dependencies_dir}:{self._dependencies_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_kmodules_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while adding Kernel Modules: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to modify a RootFS image.
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_kmodules_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=add_kmodules_commands,
+                    dirs_to_mount=[(self._dependencies_dir, 'Z'), (self._work_dir, 'Z')],
+                    run_as_root=True)
 
         # Save checksum in file
         with self._source_kmods_md5_file.open('w') as f:
@@ -403,20 +319,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                         f'mkdir -p {self._build_dir}/etc/dt-overlays && ' \
                         f'mv {self._work_dir}/*.dtbo {self._build_dir}/etc/dt-overlays/\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to modify a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_pl_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while adding files for the programmable logic (PL): {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to modify a RootFS image.
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_pl_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=add_pl_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._work_dir, 'Z')],
+                    run_as_root=True)
 
         # Save checksum in file
         with self._source_xsa_md5_file.open('w') as f:
@@ -458,38 +364,18 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             add_build_info_commands = f'\'mv {self._build_info_file} {self._build_dir}/etc/fs_build_info && ' \
                                         f'chmod 0444 {self._build_dir}/etc/fs_build_info\''
 
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    # Run commands in container
-                    # The root user is used in this container. This is necessary in order to build a RootFS image.
-                    ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', add_build_info_commands])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while adding the build info file to the root file system: {e}')
-                    sys.exit(1)
-            elif self._pc_container_tool  == 'none':
-                # Run commands without using a container
-                # The use of sudo is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', add_build_info_commands])
-            else:
-                self._err_unsup_container_tool()
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.run_containerizable_sh_command(command=add_build_info_commands,
+                        dirs_to_mount=[(self._repo_dir, 'Z'), (self._work_dir, 'Z')],
+                        run_as_root=True)
         else:
             # Remove existing build information file
             clean_build_info_commands = f'\'rm -f {self._build_dir}/etc/fs_build_info\''
 
-            if self._pc_container_tool  in ('docker', 'podman'):
-                try:
-                    # Run commands in container
-                    # The root user is used in this container. This is necessary in order to build a RootFS image.
-                    ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', clean_build_info_commands])
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while cleaning the build info file from the root file system: {e}')
-                    sys.exit(1)
-            elif self._pc_container_tool  == 'none':
-                # Run commands without using a container
-                # The use of sudo is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', clean_build_info_commands])
-            else:
-                self._err_unsup_container_tool()
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.run_containerizable_sh_command(command=clean_build_info_commands,
+                        dirs_to_mount=[(self._repo_dir, 'Z'), (self._work_dir, 'Z')],
+                        run_as_root=True)
 
         if prebuilt:
             archive_name = f'almalinux{self._pc_alma_release}_zynqmp_pre-built'
@@ -507,20 +393,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                                 f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{archive_name}.tar.xz"}; ' \
                                 f'fi\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', archive_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the archive: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to build a RootFS image.
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', archive_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=archive_build_commands,
+                    dirs_to_mount=[(self._work_dir, 'Z'), (self._output_dir, 'Z')],
+                    run_as_root=True)
 
 
     def build_archive_prebuilt(self):
@@ -611,20 +487,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         extract_pb_rootfs_commands = f'\'mkdir -p {self._build_dir} && ' \
                                     f'tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._build_dir}\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-u', 'root', '-v', f'{self._work_dir}:{self._work_dir}:Z', self._container_image, 'sh', '-c', extract_pb_rootfs_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while importing the pre-built root file system: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            # The use of sudo is necessary in order to build a RootFS image.
-            ZynqMP_Alma_RootFS_Builder_Alma8._run_sh_command(['sudo', 'sh', '-c', extract_pb_rootfs_commands])
-        else:
-            self._err_unsup_container_tool()
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(command=extract_pb_rootfs_commands,
+                    dirs_to_mount=[(self._work_dir, 'Z')],
+                    run_as_root=True)
 
         # Save checksum in file
         with self._source_pb_md5_file.open('w') as f:

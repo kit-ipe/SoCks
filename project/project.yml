@@ -42,7 +42,7 @@ blocks:
   image:
     project:
       dependencies:
-        ramfs: "temp/ramfs/output/ramfs.tar.gz"
+        rootfs: "temp/rootfs/output/rootfs.tar.gz"
 #  rootfs:
 #    source: "build"
 #    builder: "ZynqMP_Alma_RootFS_Builder_Alma8"

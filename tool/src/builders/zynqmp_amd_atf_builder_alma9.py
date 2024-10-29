@@ -75,18 +75,8 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
                                 'make distclean && ' \
                                 'make CROSS_COMPILE=aarch64-none-elf- PLAT=zynqmp RESET_TO_BL31=1 ZYNQMP_CONSOLE=cadence0\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_ATF_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', atf_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the ATF: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_ATF_Builder_Alma9._run_sh_command(['sh', '-c', atf_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=atf_build_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._output_dir, 'Z')])
 
         # Create symlinks to the output files
         (self._output_dir / 'bl31.elf').unlink(missing_ok=True)

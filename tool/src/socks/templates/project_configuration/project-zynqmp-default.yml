@@ -42,7 +42,7 @@ blocks:
       dependencies:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
-      image: "amd-xilinx-tools-alma9"
+      image: "amd-xilinx-tools-alma8"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   kernel:
     source: "build"
@@ -64,7 +64,7 @@ blocks:
       dependencies:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
-      image: "amd-xilinx-tools-alma9"
+      image: "amd-xilinx-tools-alma8"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
   u-boot:
     source: "build"

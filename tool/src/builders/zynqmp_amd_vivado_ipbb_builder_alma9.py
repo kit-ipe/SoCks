@@ -99,18 +99,9 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
 
         init_ipbb_env_commands = init_ipbb_env_commands + '\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', '$SSH_AUTH_SOCK:/ssh-auth-sock', '--env', 'SSH_AUTH_SOCK=/ssh-auth-sock', self._container_image, 'sh', '-c', init_ipbb_env_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while initializing the repo: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._run_sh_command(['sh', '-c', init_ipbb_env_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=init_ipbb_env_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z')],
+                    custom_params=['-v', '$SSH_AUTH_SOCK:/ssh-auth-sock', '--env', 'SSH_AUTH_SOCK=/ssh-auth-sock'])
 
         # Create the flag if it doesn't exist and update the timestamps
         self._ipbb_init_done_flag.touch()
@@ -153,18 +144,8 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
                                             f'source {self._pc_xilinx_path}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \
                                             'LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado generate-project\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', self._container_image, 'sh', '-c', create_vivado_project_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while creating the vivado project: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._run_sh_command(['sh', '-c', create_vivado_project_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=create_vivado_project_commands,
+                    dirs_to_mount=[(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._repo_dir, 'Z')])
 
 
     def build_vivado_project(self):
@@ -205,18 +186,8 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
                                 f'LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado synth -j{self._pc_vivado_threads} impl -j{self._pc_vivado_threads} && ' \
                                 'LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado bitfile package\''
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Run commands in container
-                ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._pc_xilinx_path}:{self._pc_xilinx_path}:ro', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', self._container_image, 'sh', '-c', vivado_build_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the vivado project: {e}')
-                sys.exit(1)
-        elif self._pc_container_tool  == 'none':
-            # Run commands without using a container
-            ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._run_sh_command(['sh', '-c', vivado_build_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=vivado_build_commands,
+                    dirs_to_mount=[(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._repo_dir, 'Z')])
 
         # Create symlinks to the output files
         for item in (self._ipbb_work_dir / 'proj' / self._pc_project_name / 'package' / 'src').glob('*'):
@@ -242,29 +213,11 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
             sys.exit(1)
 
-        # Check if x11docker is installed
-        results = ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._get_sh_results(['command', '-v', 'x11docker'])
-        if not results.stdout:
-            pretty_print.print_error('Command \'x11docker\' not found. Install x11docker (https://github.com/mviereck/x11docker).')
-            sys.exit(1)
-
-        pretty_print.print_build('Starting container...')
-
         start_vivado_gui_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
                                     f'source {self._pc_xilinx_path}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \
                                     f'vivado -nojournal -nolog {self._ipbb_work_dir}/proj/{self._pc_project_name}/{self._pc_project_name}/{self._pc_project_name}.xpr && ' \
                                     f'exit\''
 
-        try:
-            if self._pc_container_tool  == 'docker':
-                ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._run_sh_command(['x11docker' , '--backend=docker', '--interactive', '--network', '--clipboard=yes', '--xauth=trusted', '--user=RETAIN', '--share', f'{self._pc_xilinx_path}:ro', '--share', str(self._repo_dir), '--share', str(self._output_dir), self._container_image, f'--runasuser={start_vivado_gui_commands}'])
-            elif self._pc_container_tool  == 'podman':
-                ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._run_sh_command(['x11docker' , '--backend=podman', '--interactive', '--network', '--clipboard=yes', '--xauth=trusted', '--cap-default', '--user=RETAIN', '--share', f'{self._pc_xilinx_path}:ro', '--share', str(self._repo_dir), '--share', str(self._output_dir), self._container_image, f'--runasuser={start_vivado_gui_commands}'])
-            elif self._pc_container_tool  == 'none':
-                # This function is only supported if a container tool is used
-                ZynqMP_AMD_Vivado_IPBB_Builder_Alma9._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
-            else:
-                self._err_unsup_container_tool()
-        except Exception as e:
-                pretty_print.print_error(f'An error occurred while starting the container: {e}')
-                sys.exit(1)
+        self.start_gui_container(start_gui_command=start_vivado_gui_commands,
+                    potential_mounts=[(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._repo_dir, 'Z'),
+                                (self._output_dir, 'Z')])

@@ -3,11 +3,8 @@ import os
 import pathlib
 import shutil
 import sys
-import subprocess
-import select
 import datetime
 from dateutil import parser
-import inspect
 import urllib
 import requests
 import validators
@@ -18,8 +15,10 @@ import hashlib
 import time
 
 import socks.pretty_print as pretty_print
+from socks.shell_command_runners import Shell_Command_Runners
+from socks.containerization import Containerization
 
-class Builder:
+class Builder(Containerization):
     """
     Base class for all builder classes
     """
@@ -53,9 +52,6 @@ class Builder:
         self._host_user = os.getlogin()
         self._host_user_id = os.getuid()
 
-        # Container
-        self._container_image = f'{self._pc_container_image}:{self._pc_container_tag}'
-
         # Local git branches
         self._git_local_ref_branch = '__ref'
         self._git_local_dev_branch = '__temp'
@@ -81,8 +77,6 @@ class Builder:
         # Project files
         # A list of all project configuration files used. These files should only be used to determine whether a rebuild is necessary!
         self._project_cfg_files = project_cfg_files
-        # Container file for creating the container to be used for building this block
-        self._container_file = self._container_dir / f'{self._container_image}.containerfile'
         # ASCII file with all patches in the order in which they are to be applied
         self._patch_list_file = self._patch_dir / 'patches.cfg'
         # Flag to remember if patches have already been applied
@@ -90,142 +84,11 @@ class Builder:
         # File for saving the checksum of the imported, pre-built block package
         self._source_pb_md5_file = self._work_dir / 'source_pb.md5'
 
-
-    @staticmethod
-    def _run_sh_command(command: typing.List[str], cwd: pathlib.Path = None, logfile: pathlib.Path = None, scrolling_output: bool = False, visible_lines: int = 20):
-        """ (Google documentation style: https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
-        Runs a sh command. If the srolling view is enabled or the output is to be logged,
-        this function loses some output of commands that display a progress bar or
-        someting similar. The 'tee' shell command has the same issue.
-
-        Args:
-            command:
-                The command to execute as a list of strings. Example: ['/usr/bin/ping', 'www.google.com'].
-                The executable should be given with the full path, as mentioned
-                here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
-            cwd:
-                If cwd is not None, the working directory is changed to cwd before the
-                commands are executed.
-            logfile:
-                Logfile as pathlib.Path object. None if no log file is to be used.
-            scrolling_output:
-                If True, the output of the sh command is printed in a scrolling view.
-                The printed output is updated at runtime and the latest lines are
-                always displayed.
-            visible_lines:
-                Maximum number of sh output lines to be printed if scolling_output
-                is True. If set to 0, no output is visible.
-
-        Returns:
-            None
-
-        Raises:
-            subprocess.CalledProcessError: If the return code of the subprocess is not 0 
-        """
-
-        # If scolling output is disabled and the output should not be hidden or logged, subprocess.run can be used to run the subprocess
-        if scrolling_output == False and visible_lines != 0 and logfile == None:
-            subprocess.run(' '.join(command), shell=True, cwd=cwd, check=True)
-            return
-
-        # Prepare to process the command line output of the command
-        printed_lines = 0
-        last_lines = []
-
-        def update_last_lines(line):
-            if visible_lines <= 0:
-                return
-            if len(last_lines) >= visible_lines:
-                last_lines.pop(0)
-            last_lines.append(line)
-        
-        # Start the subprocess
-        process = subprocess.Popen(' '.join(command), shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-        # Continuously read from the process output
-        while True:
-            try:
-                # Wait for any of the pipes to have available data
-                readable = select.select([process.stdout, process.stderr], [], [])[0]
-            
-            except KeyboardInterrupt:
-                # Gracefully handle Ctrl+C
-                process.kill()
-
-            # Read one line from the pipe(s) in which data is available
-            stdout_line = None
-            if process.stdout in readable:
-                stdout_line = process.stdout.readline()
-
-            stderr_line = None
-            if process.stderr in readable:
-                stderr_line = process.stderr.readline()
-
-            # If both are empty and the process is done, break
-            if not stdout_line and not stderr_line and process.poll() is not None:
-                break
-
-            # If provided, write to log file
-            if logfile:
-                with logfile.open('a') as f:
-                    if stdout_line:
-                        print(stdout_line, file=f, end='')
-                    if stderr_line:
-                        print(stderr_line, file=f, end='')
-
-            # Show output of the command
-            if stdout_line:
-                update_last_lines(stdout_line)
-            if stderr_line:
-                update_last_lines(stderr_line)
-
-            # Clear previous output
-            for _ in range(printed_lines):
-                # Move the cursor up one line
-                print('\033[F', end='')
-                # Clear the line
-                print('\033[K', end='')
-
-            # Print output
-            printed_lines = 0
-            for line in last_lines:
-                print(line, end='', flush=True)
-                printed_lines += 1
-
-        # Close the streams
-        process.stdout.close()
-        process.stderr.close()
-        process.wait()
-
-        # Check return code
-        if process.returncode != 0:
-            raise subprocess.CalledProcessError(process.returncode, ' '.join(command))
-
-
-    @staticmethod
-    def _get_sh_results(command: typing.List[str], cwd: pathlib.Path = None) -> subprocess.CompletedProcess:
-        """ (Google documentation style: https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
-        Runs a sh command and get all output.
-
-        Args:
-            command:
-                The command to execute as a list of strings. Example: ['/usr/bin/ping', 'www.google.com'].
-                The executable should be given with the full path, as mentioned
-                here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
-            cwd:
-                If cwd is not None, the working directory is changed to cwd before the
-                commands are executed.
-
-        Returns:
-            An object that contains stdout (str), stderr (str) and returncode (int).
-
-        Raises:
-            None
-        """
-
-        result = subprocess.run(' '.join(command), shell=True, cwd=cwd, capture_output=True, text=True, check=False)
-
-        return result
+        # Containerization
+        container_image = f'{self._pc_container_image}:{self._pc_container_tag}'
+        super().__init__(container_tool=self._pc_container_tool,
+                        container_image=container_image,
+                        container_file=self._container_dir / f'{container_image}.containerfile')
 
 
     @staticmethod
@@ -408,7 +271,7 @@ class Builder:
         else:
             src_ignore_str = ''
 
-        results = Builder._get_sh_results(['find', src_search_str, src_ignore_str, '\( -type f -o -type l \) -print0', '2>', '/dev/null', '|', 'xargs', '-0', 'stat', '-L', '--format', '\'%Y\'', '2>', '/dev/null', '|', 'sort', '-nr'])
+        results = Shell_Command_Runners.get_sh_results(['find', src_search_str, src_ignore_str, '\( -type f -o -type l \) -print0', '2>', '/dev/null', '|', 'xargs', '-0', 'stat', '-L', '--format', '\'%Y\'', '2>', '/dev/null', '|', 'sort', '-nr'])
         latest_src_mod = results.stdout.splitlines()[0]
 
         # Find last modified output file
@@ -418,7 +281,7 @@ class Builder:
         else:
             out_ignore_str = ''
 
-        results = Builder._get_sh_results(['find', out_search_str, out_ignore_str, '\( -type f -o -type l \) -print0', '2>', '/dev/null', '|', 'xargs', '-0', 'stat', '-L', '--format', '\'%Y\'', '2>', '/dev/null', '|', 'sort', '-nr'])
+        results = Shell_Command_Runners.get_sh_results(['find', out_search_str, out_ignore_str, '\( -type f -o -type l \) -print0', '2>', '/dev/null', '|', 'xargs', '-0', 'stat', '-L', '--format', '\'%Y\'', '2>', '/dev/null', '|', 'sort', '-nr'])
         latest_out_mod = results.stdout.splitlines()[0]
 
         # If there are source and output files, check whether a rebuild is required
@@ -428,43 +291,6 @@ class Builder:
         # A rebuild is required if source or output files are missing
         else:
             return True
-
-
-    @staticmethod
-    def _err_container_feature(feature: str):
-        """
-        Display an error message that the requested feature is only available if a container tool is used.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        pretty_print.print_error(f'{feature} is only available if a containerization tool is used.')
-        sys.exit(1)
-
-
-    def _err_unsup_container_tool(self):
-        """
-        Display an error message that the requested container tool is not supported.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        pretty_print.print_error(f'Containerization tool {self._pc_container_tool } is not supported. Options are \'docker\', \'podman\' and \'none\'.')
-        sys.exit(1)
 
 
     def _get_single_source(self) -> typing.Tuple[str, str, pathlib.Path]:
@@ -576,20 +402,20 @@ class Builder:
 
         build_info = ''
 
-        results = Builder._get_sh_results(['git', '-C', str(self._project_dir), 'rev-parse', 'HEAD'])
+        results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._project_dir), 'rev-parse', 'HEAD'])
         build_info = build_info + f'GIT_COMMIT_SHA: {results.stdout.splitlines()[0]}\n'
 
-        results = Builder._get_sh_results(['git', '-C', str(self._project_dir), 'rev-parse', '--abbrev-ref', 'HEAD'])
+        results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._project_dir), 'rev-parse', '--abbrev-ref', 'HEAD'])
         git_ref_name = results.stdout.splitlines()[0]
         if git_ref_name == 'HEAD':
-            results = Builder._get_sh_results(['git', '-C', str(self._project_dir), 'describe', '--exact-match', git_ref_name])
+            results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._project_dir), 'describe', '--exact-match', git_ref_name])
             git_tag_name = results.stdout.splitlines()[0]
             if results.returncode == 0:
                 build_info = build_info + f'GIT_TAG_NAME: {git_tag_name}\n'
         else:
             build_info = build_info + f'GIT_BRANCH_NAME: {git_ref_name}\n'
 
-        results = Builder._get_sh_results(['git', '-C', str(self._project_dir), 'status', '--porcelain'])
+        results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._project_dir), 'status', '--porcelain'])
         if results.stdout:
             build_info = build_info + 'GIT_IS_REPO_CLEAN: false\n\n'
         else:
@@ -607,77 +433,12 @@ class Builder:
         else:
             build_info = build_info + 'BUILD_TYPE: manual\n'
             build_info = build_info + f'BUILD_TIMESTAMP: {int(current_time)}   # {time.strftime("%Y-%m-%d %H:%M:%S (UTC)", time.gmtime(current_time))}\n'
-            results = Builder._get_sh_results(['hostname'])
+            results = Shell_Command_Runners.get_sh_results(['hostname'])
             build_info = build_info + f'MANUAL_BUILD_HOST: {results.stdout.splitlines()[0]}\n'
-            results = Builder._get_sh_results(['id', '-un'])
+            results = Shell_Command_Runners.get_sh_results(['id', '-un'])
             build_info = build_info + f'MANUAL_BUILD_USER: {results.stdout.splitlines()[0]}\n'
 
         return build_info
-
-
-    def build_container_image(self):
-        """
-        Builds the container image for the selected container tool.
-
-        The container management tool (podman/docker) will restore everything that has not changed in the containerfile from the cache.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        # Check if the required container file exists
-        if not self._container_file.is_file():
-            pretty_print.print_error(f'File {self._container_file} not found.')
-            sys.exit(1)
-
-        try:
-            if self._pc_container_tool  == 'docker':
-                # Get last tag time from docker
-                results = Builder._get_sh_results(['docker', 'image', 'inspect', '-f \'{{ .Metadata.LastTagTime }}\'', self._container_image])
-                # Do not extract tag time if the image does not yet exist
-                if f'No such image: {self._container_image}' in results.stderr:
-                    last_tag_timestamp = 0
-                else:
-                    last_tag_timestamp = parser.parse(results.stdout.rpartition(' ')[0]).timestamp()
-                # Get last modification time of the container file
-                last_file_mod_timestamp = self._container_file.stat().st_mtime
-                # Build image, if necessary
-                if last_tag_timestamp < last_file_mod_timestamp:
-                    pretty_print.print_build(f'Building docker image {self._container_image}...')
-                    Builder._run_sh_command(['docker', 'build', '-t', self._container_image, '-f', str(self._container_file), '--build-arg', f'user_name={self._host_user}', '--build-arg', f'user_id={self._host_user_id}', '.'])
-                else:
-                    pretty_print.print_build(f'No need to build the docker image {self._container_image}...')
-
-            elif self._pc_container_tool  == 'podman':
-                # Get last build event time from podman
-                results = Builder._get_sh_results(['podman', 'image', 'inspect', '-f', '\'{{ .Id }}\'', self._container_image, '|', 'xargs', '-I', '{}', 'podman', 'events', '--filter', 'image={}', '--filter', 'event=build', '--format', '\'{{.Time}}\'', '--until', '0m'])
-                # Do not extract last build event time if the image does not yet exist
-                if f'{self._container_image}: image not known' in results.stderr:
-                    last_build_time_timestamp = 0
-                else:
-                    last_build_time_timestamp = parser.parse(results.stdout.splitlines()[-2].rpartition(' ')[0]).timestamp()
-                # Get last modification time of the container file
-                last_file_mod_timestamp = self._container_file.stat().st_mtime
-                # Build image, if necessary
-                if last_build_time_timestamp < last_file_mod_timestamp:
-                    pretty_print.print_build(f'Building podman image {self._container_image}...')
-                    Builder._run_sh_command(['podman', 'build', '-t', self._container_image, '-f', str(self._container_file), '.'])
-                else:
-                    pretty_print.print_build(f'No need to build the podman image {self._container_image}...')
-
-            elif self._pc_container_tool  == 'none':
-                pretty_print.print_warning('Container image is not built in native mode.')
-            else:
-                self._err_unsup_container_tool()
-        except Exception as e:
-                pretty_print.print_error(f'An error occurred while building the container image: {e}')
-                sys.exit(1)
 
 
     def init_repo(self):
@@ -711,11 +472,11 @@ class Builder:
             self._repo_dir.mkdir(parents=True, exist_ok=True)
 
             # Clone the repo
-            Builder._run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo_branch, self._source_repo_url, str(self._source_repo_dir)])
+            Shell_Command_Runners.run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo_branch, self._source_repo_url, str(self._source_repo_dir)])
             # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
+            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
             # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
+            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
         except Exception as e:
             pretty_print.print_error(f'An error occurred while initializing the repository: {e}')
             sys.exit(1)
@@ -736,7 +497,7 @@ class Builder:
         """
 
         # Only create patches if there are commits on branch self._git_local_dev_branch that are not on branch self._git_local_dev_branch.
-        result_new_commits = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'log', '--cherry-pick', '--oneline', self._git_local_dev_branch, f'^{self._git_local_ref_branch}'])
+        result_new_commits = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir), 'log', '--cherry-pick', '--oneline', self._git_local_dev_branch, f'^{self._git_local_ref_branch}'])
         if not result_new_commits.stdout:
             pretty_print.print_warning('No commits found that can be used as sources for patches.')
             return
@@ -745,7 +506,7 @@ class Builder:
 
         try:
             # Create patches
-            result_new_patches = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
+            result_new_patches = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
             # Add newly created patches to self._patch_list_file
             for line in result_new_patches.stdout.splitlines():
                 new_patch = line.rpartition('/')[2]
@@ -753,9 +514,9 @@ class Builder:
                 with self._patch_list_file.open('a') as f:
                     print(new_patch, file=f, end='\n')
             # Synchronize the branches ref and dev to be able to detect new commits in the future
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch], visible_lines=0)
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch], visible_lines=0)
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch], visible_lines=0)
+            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch], visible_lines=0)
+            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch], visible_lines=0)
+            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch], visible_lines=0)
         except Exception as e:
             pretty_print.print_error(f'An error occurred while creating new patches: {e}')
             sys.exit(1)
@@ -783,24 +544,20 @@ class Builder:
 
         pretty_print.print_build('Applying patches...')
 
-        try:
-            if self._patch_list_file.is_file():
-                with self._patch_list_file.open('r') as f:
-                    for patch in f:
-                        if patch: # If this line in the file is not empty
-                            # Apply patch
-                            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'am', str(self._patch_dir / patch)])
+        if self._patch_list_file.is_file():
+            with self._patch_list_file.open('r') as f:
+                for patch in f:
+                    if patch: # If this line in the file is not empty
+                        # Apply patch
+                        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'am', str(self._patch_dir / patch)])
 
-            # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch], visible_lines=0)
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch], visible_lines=0)
-            Builder._run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch], visible_lines=0)
+        # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
+        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch], visible_lines=0)
+        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch], visible_lines=0)
+        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch], visible_lines=0)
 
-            # Create the flag if it doesn't exist and update the timestamps
-            self._patches_applied_flag.touch()
-        except Exception as e:
-            pretty_print.print_error(f'An error occurred while applying patches: {e}')
-            sys.exit(1)
+        # Create the flag if it doesn't exist and update the timestamps
+        self._patches_applied_flag.touch()
 
 
     def _download_prebuilt(self):
@@ -934,8 +691,11 @@ class Builder:
 
         pretty_print.print_build('Importing pre-built block package...')
 
-        #Extract pre-built files
-        with tarfile.open(prebuilt_block_package, "r:*") as archive:
+        # Copy block package
+        shutil.copy(prebuilt_block_package, self._output_dir / prebuilt_block_package.name)
+
+        # Extract pre-built files
+        with tarfile.open(self._output_dir / prebuilt_block_package.name, "r:*") as archive:
             # Extract all contents to the output directory
             archive.extractall(path=self._output_dir)
 
@@ -1062,50 +822,10 @@ class Builder:
             None
         """
 
-        potential_mounts = [f'{self._dependencies_dir}:Z', f'{self._repo_dir}:Z', f'{self._block_src_dir}:Z', f'{self._work_dir}:Z', f'{self._output_dir}:Z']
+        potential_mounts = [(self._dependencies_dir, 'Z'), (self._repo_dir, 'Z'), (self._block_src_dir, 'Z'),
+                    (self._work_dir, 'Z'), (self._output_dir, 'Z')]
 
-        Builder._start_container(self, potential_mounts=potential_mounts)
-
-
-    def _start_container(self, potential_mounts: typing.List[str]):
-        """
-        Starts an interactive container with which the block can be built.
-
-        Args:
-            potential_mounts:
-                List of all directories that could be mounted in the container.
-                Existing directories are mounted, non-existing directories are ignored.
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                pretty_print.print_build('Starting container...')
-                # Check which mounts (resp. directories) are available on the host system
-                available_mounts = []
-                for mount in potential_mounts:
-                    segments = mount.split(':')
-                    if len(segments) != 2:
-                        pretty_print.print_error(f'The following path contains a forbidden colon: {mount.rpartition(":")[0]}')
-                        sys.exit(1)
-                    if pathlib.Path(segments[0]).is_dir():
-                        available_mounts.append(f'{segments[0]}:{segments[0]}:{segments[1]}')
-                # Start the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', ' -v '.join(available_mounts), self._container_image])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while executing the container: {e}')
-                sys.exit(1)
-
-        elif self._pc_container_tool  == 'none':
-            # This function is only supported if a container tool is used
-            Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
-        else:
-            self._err_unsup_container_tool()
+        super().start_container(potential_mounts=potential_mounts)
 
 
     def _run_menuconfig(self, menuconfig_commands: str):
@@ -1129,19 +849,8 @@ class Builder:
 
         pretty_print.print_build('Opening configuration menu...')
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Open the menuconfig tool in the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', menuconfig_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while running the menuconfig tool: {e}')
-                sys.exit(1)
-
-        elif self._pc_container_tool  == 'none':
-            # Open the menuconfig tool without using a container
-            Builder._run_sh_command(['sh', '-c', menuconfig_commands])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=menuconfig_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._output_dir, 'Z')])
 
 
     def _prep_clean_srcs(self, prep_srcs_commands: str):
@@ -1167,53 +876,8 @@ class Builder:
             pretty_print.print_error(f'Configuration file already exists in {self._source_repo_dir / ".config"}')
             sys.exit(1)
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Prepare clean sources in the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:{self._repo_dir}:Z', '-v', f'{self._output_dir}:{self._output_dir}:Z', self._container_image, 'sh', '-c', prep_srcs_commands])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while preparing clean sources: {e}')
-                sys.exit(1)
-
-        elif self._pc_container_tool  == 'none':
-            # Prepare clean sources without using a container
-            Builder._run_sh_command(['sh', '-c', prep_srcs_commands])
-        else:
-            self._err_unsup_container_tool()
-
-
-    def clean_container_image(self):
-        """
-        Cleans the container image of the selected container tool.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Clean image only if it exists
-                results = Builder._get_sh_results([self._pc_container_tool , 'images', '-q', self._container_image])
-                if results.stdout.splitlines():
-                    pretty_print.print_build(f'Cleaning container image {self._container_image}...')
-                    Builder._run_sh_command([self._pc_container_tool , 'image', 'rm', self._container_image])
-                else:
-                    pretty_print.print_build(f'No need to clean container image {self._container_image}, the image doesn\'t exist...')
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while cleaning the container image: {e}')
-                sys.exit(1)
-
-        elif self._pc_container_tool  == 'none':
-            # This function is only supported if a container tool is used
-            Builder._err_container_feature(f'{inspect.getframeinfo(inspect.currentframe()).function}()')
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=prep_srcs_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._output_dir, 'Z')])
 
 
     def clean_repo(self):
@@ -1235,7 +899,7 @@ class Builder:
             return
 
         # Check if there are uncommited changes in the git repo
-        results = Builder._get_sh_results(['git', '-C', str(self._source_repo_dir), 'status', '--porcelain'])
+        results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir), 'status', '--porcelain'])
         if results.stdout:
             pretty_print.print_warning(f'There are uncommited changes in {self._source_repo_dir}. Do you really want to clean this repo? (y/n) ', end='')
             answer = input('')
@@ -1245,19 +909,10 @@ class Builder:
 
         pretty_print.print_clean('Cleaning repo directory...')
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Clean up the repo directory from the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._repo_dir}:/app/repo:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/repo/* /app/repo/.* 2> /dev/null || true\"'])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while cleaning the repo directory: {e}')
-                sys.exit(1)
+        cleaning_commands = f'\"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true\"'
 
-        elif self._pc_container_tool  == 'none':
-            # Clean up the repo directory without using a container
-            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true\"'])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=cleaning_commands,
+                    dirs_to_mount=[(self._repo_dir, 'Z')])
 
         # Remove flag
         self._patches_applied_flag.unlink(missing_ok=True)
@@ -1286,19 +941,10 @@ class Builder:
 
         pretty_print.print_clean('Cleaning output directory...')
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Clean up the output directory from the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._output_dir}:/app/output:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/output/* /app/output/.* 2> /dev/null || true\"'])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while cleaning the output directory: {e}')
-                sys.exit(1)
+        cleaning_commands = f'\"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true\"'
 
-        elif self._pc_container_tool  == 'none':
-            # Clean up the output directory without using a container
-            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true\"'])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=cleaning_commands,
+                    dirs_to_mount=[(self._output_dir, 'Z')])
 
         # Remove empty output directory
         self._output_dir.rmdir()
@@ -1328,22 +974,11 @@ class Builder:
         else:
             pretty_print.print_clean('Cleaning work directory...')
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                user_opt = ''
-                if as_root:
-                    user_opt = '-u root'
-                # Clean up the work directory from the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', user_opt, '-v', f'{self._work_dir}:/app/work:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/work/* /app/work/.* 2> /dev/null || true\"'])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while cleaning the work directory: {e}')
-                sys.exit(1)
+        cleaning_commands = f'\"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true\"'
 
-        elif self._pc_container_tool  == 'none':
-            # Clean up the work directory without using a container
-            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true\"'])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=cleaning_commands,
+                    dirs_to_mount=[(self._work_dir, 'Z')],
+                    run_as_root=as_root)
 
         # Remove empty work directory
         self._work_dir.rmdir()
@@ -1369,19 +1004,10 @@ class Builder:
 
         pretty_print.print_clean('Cleaning download directory...')
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Clean up the download directory from the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._download_dir}:/app/download:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/download/* /app/download/.* 2> /dev/null || true\"'])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while cleaning the download directory: {e}')
-                sys.exit(1)
+        cleaning_commands = f'\"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true\"'
 
-        elif self._pc_container_tool  == 'none':
-            # Clean up the download directory without using a container
-            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true\"'])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=cleaning_commands,
+                    dirs_to_mount=[(self._download_dir, 'Z')])
 
         # Remove empty download directory
         self._download_dir.rmdir()
@@ -1414,19 +1040,11 @@ class Builder:
         else:
             pretty_print.print_clean(f'Cleaning dependencies subdirectory {dependency}...')
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Clean up the dependencies directory from the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._dependencies_dir}:/app/dependencies:Z', self._container_image, 'sh', '-c', f'\"rm -rf /app/dependencies/{dependency}/* /app/dependencies/{dependency}/.* 2> /dev/null || true\"'])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while cleaning the dependencies directory: {e}')
-                sys.exit(1)
+        cleaning_commands = f'\"rm -rf {self._dependencies_dir}/{dependency}/* ' \
+                            f'{self._dependencies_dir}/{dependency}/.* 2> /dev/null || true\"'
 
-        elif self._pc_container_tool  == 'none':
-            # Clean up the dependencies directory without using a container
-            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._dependencies_dir}/{dependency}/* {self._dependencies_dir}/{dependency}/.* 2> /dev/null || true\"'])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=cleaning_commands,
+                    dirs_to_mount=[(self._dependencies_dir, 'Z')])
 
         # Remove empty download directory
         if dependency == '':
@@ -1453,19 +1071,10 @@ class Builder:
 
         pretty_print.print_clean(f'Cleaning temp directory of block {self.block_id}...')
 
-        if self._pc_container_tool  in ('docker', 'podman'):
-            try:
-                # Clean up the temp directory of this block from the container
-                Builder._run_sh_command([self._pc_container_tool , 'run', '--rm', '-it', '-v', f'{self._block_temp_dir}:/app/temp:Z', self._container_image, 'sh', '-c', '\"rm -rf /app/temp/* /app/temp/.* 2> /dev/null || true\"'])
-            except Exception as e:
-                pretty_print.print_error(f'An error occurred while cleaning the temp directory of block {self.block_id}: {e}')
-                sys.exit(1)
+        cleaning_commands = f'\"rm -rf {self._block_temp_dir}/* {self._block_temp_dir}/.* 2> /dev/null || true\"'
 
-        elif self._pc_container_tool  == 'none':
-            # Clean up the temp directory of this block without using a container
-            Builder._run_sh_command(['sh', '-c', f'\"rm -rf {self._block_temp_dir}/* {self._block_temp_dir}/.* 2> /dev/null || true\"'])
-        else:
-            self._err_unsup_container_tool()
+        self.run_containerizable_sh_command(command=cleaning_commands,
+                    dirs_to_mount=[(self._block_temp_dir, 'Z')])
 
         # Remove empty temp directory
         self._block_temp_dir.rmdir()
