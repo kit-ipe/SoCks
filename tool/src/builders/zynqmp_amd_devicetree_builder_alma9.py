@@ -175,7 +175,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
 
         # The *.dts file created by gcc is for humans difficult to read. Therefore, in the last step, it is replaced by one created with the devicetree compiler.
         dt_build_commands = f'\'cd {self._base_work_dir} && ' \
-                            'gcc -I dts_output -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -o system.dts system-top.dts && ' \
+                            'gcc -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -o system.dts system-top.dts && ' \
                             'dtc -I dts -O dtb -@ -o system.dtb system.dts && ' \
                             'dtc -I dtb -O dts -o system.dts system.dtb\''
 
@@ -219,6 +219,30 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build('Building devicetree overlays...')
 
+        # Copy and adapt generated device tree sources that can be used as includes in devicetree overlays
+        includes_dir = self._overlay_work_dir / 'include'
+        includes_dir.mkdir(parents=True)
+        shutil.copy(self._base_work_dir / 'pl.dtsi', includes_dir / 'pl.dtsi')
+        with (includes_dir / 'pl.dtsi').open('r') as f:
+            pl_dtsi_content = f.readlines()
+
+        # Modify pl.dtsi so that it can be used in devicetree overlays
+        for i, line in enumerate(pl_dtsi_content):
+            if '/ {' in line:
+                del pl_dtsi_content[i]
+                break
+        for i, line in enumerate(pl_dtsi_content):
+            if 'amba_pl: amba_pl@0 {' in line:
+                pl_dtsi_content[i] = pl_dtsi_content[i].replace('amba_pl: amba_pl@0 {', '&amba_pl {')
+                break
+        for i, line in enumerate(reversed(pl_dtsi_content)):
+            if '};' in line:
+                del pl_dtsi_content[-i-1]
+                break
+
+        with (includes_dir / 'pl.dtsi').open('w') as f:
+            f.writelines(pl_dtsi_content)
+
         # Copy all overlays to the work directory to make them accessable in the container
         # The overlays are copied before every build to make sure they are up to date
         for overlay in self._dt_overlay_dir.glob('*.dtsi'):
@@ -226,8 +250,11 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
 
         dt_overlays_build_commands = f'\'cd {self._overlay_work_dir} && ' \
                                     'for file in *.dtsi; do ' \
-                                    '   name=$(printf "${file}" | awk -F/ "{print \$(NF)}" | awk -F. "{print \$(NF-1)}"); ' \
-                                    '   dtc -O dtb -o ${name}.dtbo -@ ${name}.dtsi; ' \
+                                    '   name=$(printf "${file}" | awk -F/ "{print \$(NF)}" | ' \
+                                                'awk -F. "{print \$(NF-1)}") && ' \
+                                    f'  gcc -I {includes_dir} -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp ' \
+                                                '-o ${name}_res.dtsi ${name}.dtsi && ' \
+                                    '   dtc -O dtb -o ${name}.dtbo -@ ${name}_res.dtsi; ' \
                                     'done\''
 
         self.run_containerizable_sh_command(command=dt_overlays_build_commands,
