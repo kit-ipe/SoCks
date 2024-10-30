@@ -150,25 +150,21 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build('Building the base devicetree...')
 
-        try:
-            if self._dt_incl_list_file.is_file():
-                with self._dt_incl_list_file.open('r') as incl_list_file:
-                    for incl in incl_list_file:
-                        incl = incl.strip()
-                        if incl:
-                            # Devicetree includes are copied before every build to make sure they are up to date
-                            shutil.copy(self._dt_incl_dir / incl, self._base_work_dir / incl)
-                            # Check if this file is already included, and if not, include it
-                            with (self._base_work_dir / 'system-top.dts').open('r+') as dts_top_file:
-                                contents = dts_top_file.read()
-                                incl_line = f'#include "{incl}"\n'
-                                if incl_line not in contents:
-                                    # If the line was not found, the file pointer is now at the end
-                                    # Write the include line
-                                    dts_top_file.write(incl_line)
-        except Exception as e:
-            pretty_print.print_error(f'An error occurred while adding devicetree includes: {e}')
-            sys.exit(1)
+        if self._dt_incl_list_file.is_file():
+            with self._dt_incl_list_file.open('r') as incl_list_file:
+                for incl in incl_list_file:
+                    incl = incl.strip()
+                    if incl:
+                        # Devicetree includes are copied before every build to make sure they are up to date
+                        shutil.copy(self._dt_incl_dir / incl, self._base_work_dir / incl)
+                        # Check if this file is already included, and if not, include it
+                        with (self._base_work_dir / 'system-top.dts').open('r+') as dts_top_file:
+                            contents = dts_top_file.read()
+                            incl_line = f'#include "{incl}"\n'
+                            if incl_line not in contents:
+                                # If the line was not found, the file pointer is now at the end
+                                # Write the include line
+                                dts_top_file.write(incl_line)
 
         # The *.dts file created by gcc is for humans difficult to read. Therefore, in the last step, it is replaced by one created with the devicetree compiler.
         dt_build_commands = f'\'cd {self._base_work_dir} && ' \
@@ -211,7 +207,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         try:
             shutil.rmtree(self._overlay_work_dir)
         except FileNotFoundError:
-            pass  # Ignore if the directory does not exist
+            pass # Ignore if the directory does not exist
         self._overlay_work_dir.mkdir(parents=True)
 
         pretty_print.print_build('Building devicetree overlays...')

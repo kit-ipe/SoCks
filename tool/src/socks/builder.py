@@ -467,19 +467,15 @@ class Builder(Containerization):
 
         pretty_print.print_build('Initializing local repo...')
 
-        try:
-            self._output_dir.mkdir(parents=True, exist_ok=True)
-            self._repo_dir.mkdir(parents=True, exist_ok=True)
+        self._output_dir.mkdir(parents=True, exist_ok=True)
+        self._repo_dir.mkdir(parents=True, exist_ok=True)
 
-            # Clone the repo
-            Shell_Command_Runners.run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo_branch, self._source_repo_url, str(self._source_repo_dir)])
-            # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
-            # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
-        except Exception as e:
-            pretty_print.print_error(f'An error occurred while initializing the repository: {e}')
-            sys.exit(1)
+        # Clone the repo
+        Shell_Command_Runners.run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo_branch, self._source_repo_url, str(self._source_repo_dir)])
+        # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
+        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
+        # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
+        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
 
 
     def create_patches(self):
@@ -504,22 +500,18 @@ class Builder(Containerization):
 
         pretty_print.print_build('Creating patches...')
 
-        try:
-            # Create patches
-            result_new_patches = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
-            # Add newly created patches to self._patch_list_file
-            for line in result_new_patches.stdout.splitlines():
-                new_patch = line.rpartition('/')[2]
-                print(f'Patch {new_patch} was created')
-                with self._patch_list_file.open('a') as f:
-                    print(new_patch, file=f, end='\n')
-            # Synchronize the branches ref and dev to be able to detect new commits in the future
-            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch], visible_lines=0)
-            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch], visible_lines=0)
-            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch], visible_lines=0)
-        except Exception as e:
-            pretty_print.print_error(f'An error occurred while creating new patches: {e}')
-            sys.exit(1)
+        # Create patches
+        result_new_patches = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
+        # Add newly created patches to self._patch_list_file
+        for line in result_new_patches.stdout.splitlines():
+            new_patch = line.rpartition('/')[2]
+            print(f'Patch {new_patch} was created')
+            with self._patch_list_file.open('a') as f:
+                print(new_patch, file=f, end='\n')
+        # Synchronize the branches ref and dev to be able to detect new commits in the future
+        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch], visible_lines=0)
+        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch], visible_lines=0)
+        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch], visible_lines=0)
 
 
     def apply_patches(self):

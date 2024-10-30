@@ -249,8 +249,7 @@ class Containerization:
                 Shell_Command_Runners.run_sh_command([self._container_tool , 'run', '--rm', '-it', mounts,
                             self._container_image])
             except subprocess.CalledProcessError:
-                # It is okay if the interactive shell session is ended with an exit code not equal to 0
-                pass
+                pass # It is okay if the interactive shell session is ended with an exit code not equal to 0
 
         elif self._container_tool  == 'none':
             # This function is only supported if a container tool is used

@@ -150,22 +150,18 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             if result_new_commits.stdout:
                 # This repo contains one or more new commits
                 repos_with_commits.append(project)
-                try:
-                    # Create patches
-                    result_new_patches = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
-                    # Add newly created patches to self._patch_list_file
-                    for line in result_new_patches.stdout.splitlines():
-                        new_patch = line.rpartition('/')[2]
-                        print(f'Patch {new_patch} was created')
-                        with self._patch_list_file.open('a') as f:
-                            print(f'{project} {new_patch}', file=f, end='\n')
-                    # Synchronize the branches ref and dev to be able to detect new commits in the future
-                    Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'checkout', self._git_local_ref_branch], visible_lines=0)
-                    Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'merge', self._git_local_dev_branch], visible_lines=0)
-                    Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'checkout', self._git_local_dev_branch], visible_lines=0)
-                except Exception as e:
-                    pretty_print.print_error(f'An error occurred while creating new patches: {e}')
-                    sys.exit(1)
+                # Create patches
+                result_new_patches = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir / path), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
+                # Add newly created patches to self._patch_list_file
+                for line in result_new_patches.stdout.splitlines():
+                    new_patch = line.rpartition('/')[2]
+                    print(f'Patch {new_patch} was created')
+                    with self._patch_list_file.open('a') as f:
+                        print(f'{project} {new_patch}', file=f, end='\n')
+                # Synchronize the branches ref and dev to be able to detect new commits in the future
+                Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'checkout', self._git_local_ref_branch], visible_lines=0)
+                Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'merge', self._git_local_dev_branch], visible_lines=0)
+                Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'checkout', self._git_local_dev_branch], visible_lines=0)
 
         if not repos_with_commits:
             pretty_print.print_warning('No commits found that can be used as sources for patches.')
@@ -193,28 +189,24 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
 
         pretty_print.print_build('Applying patches...')
         
-        try:
-            if self._patch_list_file.is_file():
-                with self._patch_list_file.open('r') as f:
-                    for line in f:
-                        if line: # If this line in the file is not empty
-                            project, patch = line.split(' ', 1)
-                            # Get path of this project
-                            results = Shell_Command_Runners.get_sh_results([str(self._repo_script), 'list', '-r', project, '-p'], cwd=self._source_repo_dir)
-                            path = results.stdout.splitlines()[0]
-                            # Apply patch
-                            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'am', str(self._patch_dir / patch)])
+        if self._patch_list_file.is_file():
+            with self._patch_list_file.open('r') as f:
+                for line in f:
+                    if line: # If this line in the file is not empty
+                        project, patch = line.split(' ', 1)
+                        # Get path of this project
+                        results = Shell_Command_Runners.get_sh_results([str(self._repo_script), 'list', '-r', project, '-p'], cwd=self._source_repo_dir)
+                        path = results.stdout.splitlines()[0]
+                        # Apply patch
+                        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'am', str(self._patch_dir / patch)])
 
-                            # Update the branch self._git_local_ref_branch so that it contains the applied patch and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-                            Shell_Command_Runners.run_sh_command([str(self._repo_script), 'checkout', self._git_local_ref_branch, project], cwd=self._source_repo_dir, visible_lines=0)
-                            Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'merge', self._git_local_dev_branch], visible_lines=0)
-                            Shell_Command_Runners.run_sh_command([str(self._repo_script), 'checkout', self._git_local_dev_branch, project], cwd=self._source_repo_dir, visible_lines=0)
+                        # Update the branch self._git_local_ref_branch so that it contains the applied patch and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
+                        Shell_Command_Runners.run_sh_command([str(self._repo_script), 'checkout', self._git_local_ref_branch, project], cwd=self._source_repo_dir, visible_lines=0)
+                        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir / path), 'merge', self._git_local_dev_branch], visible_lines=0)
+                        Shell_Command_Runners.run_sh_command([str(self._repo_script), 'checkout', self._git_local_dev_branch, project], cwd=self._source_repo_dir, visible_lines=0)
 
-            # Create the flag if it doesn't exist and update the timestamps
-            self._patches_applied_flag.touch()
-        except Exception as e:
-            pretty_print.print_error(f'An error occurred while applying patches: {e}')
-            sys.exit(1)
+        # Create the flag if it doesn't exist and update the timestamps
+        self._patches_applied_flag.touch()
 
 
     def yocto_init(self):
