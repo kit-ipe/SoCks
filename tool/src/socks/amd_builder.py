@@ -40,7 +40,7 @@ class AMD_Builder(Builder):
 
     def check_amd_tools(self, required_tools: typing.List[str]):
         """
-        Collects and checks AMD Xilinx tool setup information from the host environment.
+        Collects and checks AMD Xilinx tools setup information from the host environment.
 
         Args:
             required_tools:
@@ -53,46 +53,39 @@ class AMD_Builder(Builder):
             ValueError: If an unsupported tool is requested.
         """
 
+        supported_amd_tools = ('vivado', 'vitis')
+
         for tool in required_tools:
-            if tool not in ['vivado', 'vitis']:
+            if tool not in supported_amd_tools:
                 raise ValueError(f'The following AMD Xilinx tool is not supported {tool}.')
 
         # Skip if the requested AMD Xilinx tools have already been checked
-        if (not ('vivado' in required_tools and self._amd_vivado_path is None) and
-                    not ('vitis' in required_tools and self._amd_vitis_path is None) and
+        if (all(getattr(self, f'_amd_{tool}_path') is not None for tool in required_tools) and
                     self._amd_license is not None):
             return
 
-        self._amd_vivado_path = pathlib.Path(os.getenv('XILINX_VIVADO')) if os.getenv('XILINX_VIVADO') else None
-        self._amd_vitis_path = pathlib.Path(os.getenv('XILINX_VITIS')) if os.getenv('XILINX_VITIS') else None
+        # Read values from environment
+        for tool in required_tools:
+            setattr(self, f'_amd_{tool}_path', pathlib.Path(os.getenv(f'XILINX_{tool.upper()}')) if
+                        os.getenv(f'XILINX_{tool.upper()}') else None)
         self._amd_license = os.getenv('XILINXD_LICENSE_FILE')
-
-        # If requested, check if Vivado is available and if the version matches the project
-        if 'vivado' in required_tools and self._amd_vivado_path is None:
-            pretty_print.print_error(f'Vivado could not be found. Please source Vivado.\n' \
-                        '(The installation path is expected in environment variable \'XILINX_VIVADO\'.)')
-            sys.exit(1)
-        elif 'vivado' in required_tools:
-            if self._amd_vivado_path.name != str(self._pc_xilinx_version):
-                pretty_print.print_error(f'The sourced version of Vivado is \'{self._amd_vivado_path.name}\',' \
-                            f' but this project requires version \'{self._pc_xilinx_version}\'.')
+        
+        # Check if the requested tools are available and if the version matches the project
+        for tool in required_tools:
+            if getattr(self, f'_amd_{tool}_path') is None:
+                pretty_print.print_error(f'{tool.capitalize()} could not be found. ' \
+                            f'Please source {tool.capitalize()}.')
                 sys.exit(1)
-            self._amd_tools_path = self._amd_vivado_path.parent.parent
-
-        # If requested, check if Vitis is available and if the version matches the project
-        if 'vitis' in required_tools and self._amd_vitis_path is None:
-            pretty_print.print_error(f'Vitis could not be found. Please source Vitis.\n' \
-                        '(The installation path is expected in environment variable \'XILINX_VITIS\'.)')
-            sys.exit(1)
-        elif 'vitis' in required_tools:
-            if self._amd_vitis_path.name != str(self._pc_xilinx_version):
-                pretty_print.print_error(f'The sourced version of Vitis is \'{self._amd_vitis_path.name}\',' \
-                            f' but this project requires version \'{self._pc_xilinx_version}\'.')
-                sys.exit(1)
-            self._amd_tools_path = self._amd_vivado_path.parent.parent
+            else:
+                if getattr(self, f'_amd_{tool}_path').name != str(self._pc_xilinx_version):
+                    pretty_print.print_error(f'The sourced version of {tool.capitalize()} is ' \
+                                f'\'{getattr(self, f"_amd_{tool}_path").name}\',' \
+                                f' but this project requires version \'{self._pc_xilinx_version}\'.')
+                    sys.exit(1)
+                self._amd_tools_path = getattr(self, f'_amd_{tool}_path').parent.parent
 
         # Check if the license was found
-        if 'vitis' in required_tools and self._amd_vitis_path is None:
+        if self._amd_license is None:
             pretty_print.print_error(f'AMD Xilinx license could not be found. It was expected in ' \
                         'environment variable \'XILINXD_LICENSE_FILE\'.')
             sys.exit(1)
