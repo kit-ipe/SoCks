@@ -87,7 +87,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             None
         """
 
-        potential_mounts = [(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._misc_dir, 'Z'),
+        self.check_amd_tools(required_tools=['vitis'])
+
+        potential_mounts = [(pathlib.Path(self._amd_tools_path), 'ro'), (self._misc_dir, 'Z'),
                     (self._dependencies_dir, 'Z'), (self._work_dir, 'Z'), (self._output_dir, 'Z')]
 
         super(Builder, self).start_container(potential_mounts=potential_mounts)
@@ -203,10 +205,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             pretty_print.print_build('No need to rebuild BOOT.BIN. No altered source files detected...')
             return
 
-        # Check if Xilinx tools are available
-        if not pathlib.Path(self._pc_xilinx_path).is_dir():
-            pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
-            sys.exit(1)
+        self.check_amd_tools(required_tools=['vitis'])
 
         self._work_dir.mkdir(parents=True, exist_ok=True)
 
@@ -228,7 +227,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             bit_file = self._work_dir / 'system.bit'
             temp_bit_file.rename(bit_file)
 
-        boot_img_build_commands = f'\'cp {self._misc_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif && ' \
+        boot_img_build_commands = f'\'export XILINXD_LICENSE_FILE={self._amd_license} && ' \
+                                f'source {self._amd_vitis_path}/settings64.sh && ' \
+                                f'cp {self._misc_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif && ' \
                                 f'sed -i "s:<FSBL_PATH>:{self._fsbl_img_path}:g;" {self._work_dir}/bootgen.bif && ' \
                                 f'sed -i "s:<PMUFW_PATH>:{self._pmufw_img_path}:g;" {self._work_dir}/bootgen.bif && ' \
                                 f'sed -i "s:<PLBIT_PATH>:{bit_file}:g;" {self._work_dir}/bootgen.bif && ' \
@@ -237,10 +238,10 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                                 f'sed -i "s:<UBOOT_PATH>:{self._uboot_img_path}:g;" {self._work_dir}/bootgen.bif && ' \
                                 f'sed -i "s:<LINUX_PATH>:{self._output_dir / "image.ub"}:g;" {self._work_dir}/bootgen.bif && ' \
                                 f'sed -i "s:<BSCR_PATH>:{self._output_dir / "boot.scr"}:g;" {self._work_dir}/bootgen.bif && ' \
-                                f'{self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/bin/bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN -w\''
+                                f'bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN -w\''
 
         self.run_containerizable_sh_command(command=boot_img_build_commands,
-                    dirs_to_mount=[(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._misc_dir, 'Z'),
+                    dirs_to_mount=[(pathlib.Path(self._amd_tools_path), 'ro'), (self._misc_dir, 'Z'),
                                 (self._dependencies_dir, 'Z'), (self._work_dir, 'Z'), (self._output_dir, 'Z')])
 
 

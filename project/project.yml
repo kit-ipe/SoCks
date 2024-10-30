@@ -5,9 +5,7 @@ project:
   name: "test-project"
 externalTools:
   xilinx:
-    path: "/media/marvin/T9MF/Tools/Xilinx"
     version: 2022.2
-    license: "50000@ipeflex1.ipe.kit.edu"
 blocks:
   atf:
     project:

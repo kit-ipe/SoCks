@@ -70,21 +70,18 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             pretty_print.print_build('The Vivado Project already exists. It will not be recreated...')
             return
 
-        # Check if Xilinx tools are available
-        if not pathlib.Path(self._pc_xilinx_path).is_dir():
-            pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
-            sys.exit(1)
+        self.check_amd_tools(required_tools=['vivado'])
 
         pretty_print.print_build('Creating the Vivado Project...')
 
-        create_vivado_project_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
-                                            f'source {self._pc_xilinx_path}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \
+        create_vivado_project_commands = f'\'export XILINXD_LICENSE_FILE={self._amd_license} && ' \
+                                            f'source {self._amd_vivado_path}/settings64.sh && ' \
                                             f'git config --global --add safe.directory {self._source_repo_dir} && ' \
                                             f'git config --global --add safe.directory {self._source_repo_dir}/Hog && ' \
                                             f'LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do CREATE {self._pc_project_name}\''
 
         self.run_containerizable_sh_command(command=create_vivado_project_commands,
-                    dirs_to_mount=[(pathlib.Path(self._pc_xilinx_path), 'ro'),
+                    dirs_to_mount=[(pathlib.Path(self._amd_tools_path), 'ro'),
                                 (self._repo_dir, 'Z'), (self._output_dir, 'Z')])
 
 
@@ -107,10 +104,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             pretty_print.print_build('No need to rebuild the Vivado Project. No altered source files detected...')
             return
 
-        # Check if Xilinx tools are available
-        if not pathlib.Path(self._pc_xilinx_path).is_dir():
-            pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
-            sys.exit(1)
+        self.check_amd_tools(required_tools=['vivado'])
 
         # Clean output directory
         self.clean_output()
@@ -119,14 +113,14 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         pretty_print.print_build('Building the Vivado Project...')
 
         vivado_build_commands = f'\'rm -rf {self._source_repo_dir}/bin' \
-                                f'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
-                                f'source {self._pc_xilinx_path}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \
+                                f'export XILINXD_LICENSE_FILE={self._amd_license} && ' \
+                                f'source {self._amd_vivado_path}/settings64.sh && ' \
                                 f'git config --global --add safe.directory {self._source_repo_dir} && ' \
                                 f'git config --global --add safe.directory {self._source_repo_dir}/Hog && ' \
                                 f'LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do WORKFLOW {self._pc_project_name}\''
 
         self.run_containerizable_sh_command(command=vivado_build_commands,
-                    dirs_to_mount=[(pathlib.Path(self._pc_xilinx_path), 'ro'),
+                    dirs_to_mount=[(pathlib.Path(self._amd_tools_path), 'ro'),
                                 (self._repo_dir, 'Z'), (self._output_dir, 'Z')])
 
         # Create symlinks to the output files
@@ -151,16 +145,13 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             None
         """
 
-        # Check if Xilinx tools are available
-        if not pathlib.Path(self._pc_xilinx_path).is_dir():
-            pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
-            sys.exit(1)
+        self.check_amd_tools(required_tools=['vivado'])
 
-        start_vivado_gui_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
-                                    f'source {self._pc_xilinx_path}/Vivado/{self._pc_xilinx_version}/settings64.sh && ' \
+        start_vivado_gui_commands = f'\'export XILINXD_LICENSE_FILE={self._amd_license} && ' \
+                                    f'source {self._amd_vivado_path}/settings64.sh && ' \
                                     f'vivado -nojournal -nolog {self._source_repo_dir}/Projects/{self._pc_project_name}/{self._pc_project_name}.xpr && ' \
                                     f'exit\''
 
         self.start_gui_container(start_gui_command=start_vivado_gui_commands,
-                    potential_mounts=[(pathlib.Path(self._pc_xilinx_path), 'ro'),
+                    potential_mounts=[(pathlib.Path(self._amd_tools_path), 'ro'),
                                 (self._repo_dir, 'Z'), (self._output_dir, 'Z')])

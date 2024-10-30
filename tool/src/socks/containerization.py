@@ -4,6 +4,7 @@ import pathlib
 import sys
 from dateutil import parser
 import inspect
+import subprocess
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
@@ -244,8 +245,12 @@ class Containerization:
 
             pretty_print.print_build('Starting container...')
 
-            Shell_Command_Runners.run_sh_command([self._container_tool , 'run', '--rm', '-it', mounts,
-                        self._container_image])
+            try:
+                Shell_Command_Runners.run_sh_command([self._container_tool , 'run', '--rm', '-it', mounts,
+                            self._container_image])
+            except subprocess.CalledProcessError:
+                # It is okay if the interactive shell session is ended with an exit code not equal to 0
+                pass
 
         elif self._container_tool  == 'none':
             # This function is only supported if a container tool is used

@@ -46,20 +46,12 @@
         },
         "xilinx": {
           "type": "object",
-          "required": ["path", "version", "license"],
+          "required": ["version", "maxThreadsVivado"],
           "additionalProperties": false,
           "properties": {
-            "path": {
-              "description": "Path to the AMD Xilinx tool (Vivado, Vitis, ...)",
-              "type": "string"
-            },
             "version": {
               "description": "Version of the toolset to use",
               "type": "number"
-            },
-            "license": {
-              "description": "License file",
-              "type": "string"
             },
             "maxThreadsVivado": {
               "description": "Maximum number of jobs to be execute simultaneously by Vivado",

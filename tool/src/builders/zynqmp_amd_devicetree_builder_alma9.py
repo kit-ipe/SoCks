@@ -103,18 +103,15 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             pretty_print.print_warning('No new XSA archive recognized. Devicetree sources are not recreated.')
             return
 
-        # Check if Xilinx tools are available
-        if not pathlib.Path(self._pc_xilinx_path).is_dir():
-            pretty_print.print_error(f'Directory {self._pc_xilinx_path} not found.')
-            sys.exit(1)
+        self.check_amd_tools(required_tools=['vitis'])
 
         self.clean_work()
         self._base_work_dir.mkdir(parents=True)
 
         pretty_print.print_build('Preparing devicetree sources...')
 
-        prep_dt_srcs_commands = f'\'export XILINXD_LICENSE_FILE={self._pc_xilinx_license} && ' \
-                                f'source {self._pc_xilinx_path}/Vitis/{self._pc_xilinx_version}/settings64.sh && ' \
+        prep_dt_srcs_commands = f'\'export XILINXD_LICENSE_FILE={self._amd_license} && ' \
+                                f'source {self._amd_vitis_path}/settings64.sh && ' \
                                 f'SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa) && ' \
                                 'printf \"hsi open_hw_design ${SOURCE_XSA_PATH}' \
                                 f'    \r\nhsi set_repo_path {self._source_repo_dir} ' \
@@ -124,7 +121,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
                                 f'xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl\''
 
         self.run_containerizable_sh_command(command=prep_dt_srcs_commands,
-                    dirs_to_mount=[(pathlib.Path(self._pc_xilinx_path), 'ro'), (self._xsa_dir, 'Z'),
+                    dirs_to_mount=[(pathlib.Path(self._amd_tools_path), 'ro'), (self._xsa_dir, 'Z'),
                                 (self._repo_dir, 'Z'), (self._base_work_dir, 'Z')])
 
         # Save checksum in file
