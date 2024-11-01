@@ -25,5 +25,8 @@ dependencies = [
 [tool.setuptools.package-data]
 socks = ["container/*.containerfile", "schemas/*.schema.json", "templates/**/*"]
 
+[tool.black]
+line-length = 120
+
 [project.scripts]
 socks = "socks.main:main"

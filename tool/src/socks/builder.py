@@ -18,81 +18,93 @@ import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
 from socks.containerization import Containerization
 
+
 class Builder(Containerization):
     """
     Base class for all builder classes
     """
 
-    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str, block_description: str):
+    def __init__(
+        self,
+        project_cfg: dict,
+        project_cfg_files: list,
+        socks_dir: pathlib.Path,
+        project_dir: pathlib.Path,
+        block_id: str,
+        block_description: str,
+    ):
         self.block_id = block_id
         self.block_description = block_description
 
         # Import project configuration
-        self._pc_prj_name = project_cfg['project']['name']
-        self._pc_container_tool = project_cfg['externalTools']['containerTool']
+        self._pc_prj_name = project_cfg["project"]["name"]
+        self._pc_container_tool = project_cfg["externalTools"]["containerTool"]
         self._pc_make_threads = project_cfg["externalTools"]["make"]["maxBuildThreads"]
         self._pc_block_source = project_cfg["blocks"][self.block_id]["source"]
         self._pc_container_image = project_cfg["blocks"][self.block_id]["container"]["image"]
         self._pc_container_tag = project_cfg["blocks"][self.block_id]["container"]["tag"]
-        self._pc_project = project_cfg['blocks'][self.block_id]['project']
+        self._pc_project = project_cfg["blocks"][self.block_id]["project"]
 
         self._pc_project_prebuilt = None
-        if 'import-src' in self._pc_project:
-            self._pc_project_prebuilt = project_cfg['blocks'][self.block_id]['project']['import-src']
+        if "import-src" in self._pc_project:
+            self._pc_project_prebuilt = project_cfg["blocks"][self.block_id]["project"]["import-src"]
 
         self._pc_project_build_info_flag = None
-        if 'add-build-info' in self._pc_project:
-            self._pc_project_build_info_flag = project_cfg['blocks'][self.block_id]['project']['add-build-info']
+        if "add-build-info" in self._pc_project:
+            self._pc_project_build_info_flag = project_cfg["blocks"][self.block_id]["project"]["add-build-info"]
 
         self._pc_project_dependencies = None
-        if 'dependencies' in self._pc_project:
-            self._pc_project_dependencies = project_cfg['blocks'][self.block_id]['project']['dependencies']
+        if "dependencies" in self._pc_project:
+            self._pc_project_dependencies = project_cfg["blocks"][self.block_id]["project"]["dependencies"]
 
         # Host user
         self._host_user = os.getlogin()
         self._host_user_id = os.getuid()
 
         # Local git branches
-        self._git_local_ref_branch = '__ref'
-        self._git_local_dev_branch = '__temp'
+        self._git_local_ref_branch = "__ref"
+        self._git_local_dev_branch = "__temp"
 
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = socks_dir
-        self._container_dir = self._socks_dir / 'container'
-        
+        self._container_dir = self._socks_dir / "container"
+
         # Project directories
         self._project_dir = project_dir
-        self._project_src_dir = self._project_dir / 'src'
-        self._project_temp_dir = self._project_dir / 'temp'
+        self._project_src_dir = self._project_dir / "src"
+        self._project_temp_dir = self._project_dir / "temp"
         self._block_src_dir = self._project_src_dir / self.block_id
         self._block_temp_dir = self._project_temp_dir / self.block_id
-        self._patch_dir = self._block_src_dir / 'patches'
-        self._repo_dir = self._block_temp_dir / 'repo'
+        self._patch_dir = self._block_src_dir / "patches"
+        self._repo_dir = self._block_temp_dir / "repo"
         self._source_repo_dir = None
-        self._download_dir = self._block_temp_dir / 'download'
-        self._work_dir = self._block_temp_dir / 'work'
-        self._output_dir = self._block_temp_dir / 'output'
-        self._dependencies_dir = self._block_temp_dir / 'dependencies'
+        self._download_dir = self._block_temp_dir / "download"
+        self._work_dir = self._block_temp_dir / "work"
+        self._output_dir = self._block_temp_dir / "output"
+        self._dependencies_dir = self._block_temp_dir / "dependencies"
 
         # Project files
         # A list of all project configuration files used. These files should only be used to determine whether a rebuild is necessary!
         self._project_cfg_files = project_cfg_files
         # ASCII file with all patches in the order in which they are to be applied
-        self._patch_list_file = self._patch_dir / 'patches.cfg'
+        self._patch_list_file = self._patch_dir / "patches.cfg"
         # Flag to remember if patches have already been applied
-        self._patches_applied_flag = self._block_temp_dir / '.patchesapplied'
+        self._patches_applied_flag = self._block_temp_dir / ".patchesapplied"
         # File for saving the checksum of the imported, pre-built block package
-        self._source_pb_md5_file = self._work_dir / 'source_pb.md5'
+        self._source_pb_md5_file = self._work_dir / "source_pb.md5"
 
         # Containerization
-        container_image = f'{self._pc_container_image}:{self._pc_container_tag}'
-        super().__init__(container_tool=self._pc_container_tool,
-                        container_image=container_image,
-                        container_file=self._container_dir / f'{container_image}.containerfile')
-
+        container_image = f"{self._pc_container_image}:{self._pc_container_tag}"
+        super().__init__(
+            container_tool=self._pc_container_tool,
+            container_image=container_image,
+            container_file=self._container_dir / f"{container_image}.containerfile",
+        )
 
     @staticmethod
-    def _find_last_modified_file(search_list: typing.List[pathlib.Path], ignore_list: typing.List[pathlib.Path] = None) -> typing.Optional[pathlib.Path]:
+    def _find_last_modified_file(
+        search_list: typing.List[pathlib.Path], ignore_list: typing.List[pathlib.Path] = None
+    ) -> typing.Optional[pathlib.Path]:
         """
         Find the last modified file in a list of directories, whereby files and directories can be ignored.
 
@@ -144,7 +156,9 @@ class Builder(Containerization):
                 continue
 
             # Handle directory, including its subdirectories
-            for dir_path, dir_names, file_names in os.walk(search_path): #ToDo: In Python 3.12 there should be a pathlib Version of walk
+            for dir_path, dir_names, file_names in os.walk(
+                search_path
+            ):  # ToDo: In Python 3.12 there should be a pathlib Version of walk
                 current_dir = pathlib.Path(dir_path).resolve()
 
                 # Skip if the current directory is in the ignore list
@@ -179,9 +193,13 @@ class Builder(Containerization):
 
         return latest_file
 
-
     @staticmethod
-    def _check_rebuild_required(src_search_list: typing.List[pathlib.Path], src_ignore_list: typing.List[pathlib.Path] = None, out_search_list: typing.List[pathlib.Path] = None, out_ignore_list: typing.List[pathlib.Path] = None) -> bool:
+    def _check_rebuild_required(
+        src_search_list: typing.List[pathlib.Path],
+        src_ignore_list: typing.List[pathlib.Path] = None,
+        out_search_list: typing.List[pathlib.Path] = None,
+        out_ignore_list: typing.List[pathlib.Path] = None,
+    ) -> bool:
         """
         Check whether some file(s) needs to be rebuilt.
 
@@ -222,22 +240,29 @@ class Builder(Containerization):
         latest_src_file = Builder._find_last_modified_file(search_list=src_search_list, ignore_list=src_ignore_list)
 
         # Find last modified output file
-        if(out_search_list):
+        if out_search_list:
             latest_out_file = Builder._find_last_modified_file(search_list=out_search_list, ignore_list=out_ignore_list)
         else:
             latest_out_file = None
 
         # If there are source and output files, check whether a rebuild is required
         if latest_src_file and latest_out_file:
-            return latest_src_file.stat(follow_symlinks=False).st_mtime > latest_out_file.stat(follow_symlinks=False).st_mtime
+            return (
+                latest_src_file.stat(follow_symlinks=False).st_mtime
+                > latest_out_file.stat(follow_symlinks=False).st_mtime
+            )
 
         # A rebuild is required if source or output files are missing
         else:
             return True
 
-
     @staticmethod
-    def _check_rebuild_required_faster(src_search_list: typing.List[pathlib.Path], src_ignore_list: typing.List[pathlib.Path] = None, out_search_list: typing.List[pathlib.Path] = None, out_ignore_list: typing.List[pathlib.Path] = None) -> bool:
+    def _check_rebuild_required_faster(
+        src_search_list: typing.List[pathlib.Path],
+        src_ignore_list: typing.List[pathlib.Path] = None,
+        out_search_list: typing.List[pathlib.Path] = None,
+        out_ignore_list: typing.List[pathlib.Path] = None,
+    ) -> bool:
         """
         Check whether some file(s) needs to be rebuilt.
 
@@ -265,23 +290,65 @@ class Builder(Containerization):
         """
 
         # Find last modified source file
-        src_search_str = ' '.join(list(map(str, src_search_list)))
+        src_search_str = " ".join(list(map(str, src_search_list)))
         if src_ignore_list:
             src_ignore_str = f'\( -path {" -prune -o -path ".join(list(map(str, src_ignore_list)))} -prune \) -o'
         else:
-            src_ignore_str = ''
+            src_ignore_str = ""
 
-        results = Shell_Command_Runners.get_sh_results(['find', src_search_str, src_ignore_str, '\( -type f -o -type l \) -print0', '2>', '/dev/null', '|', 'xargs', '-0', 'stat', '-L', '--format', '\'%Y\'', '2>', '/dev/null', '|', 'sort', '-nr'])
+        results = Shell_Command_Runners.get_sh_results(
+            [
+                "find",
+                src_search_str,
+                src_ignore_str,
+                "\( -type f -o -type l \) -print0",
+                "2>",
+                "/dev/null",
+                "|",
+                "xargs",
+                "-0",
+                "stat",
+                "-L",
+                "--format",
+                "'%Y'",
+                "2>",
+                "/dev/null",
+                "|",
+                "sort",
+                "-nr",
+            ]
+        )
         latest_src_mod = results.stdout.splitlines()[0]
 
         # Find last modified output file
-        out_search_str = ' '.join(list(map(str, out_search_list)))
+        out_search_str = " ".join(list(map(str, out_search_list)))
         if out_ignore_list:
             out_ignore_str = f'\( -path {" -prune -o -path ".join(list(map(str, out_ignore_list)))} -prune \) -o'
         else:
-            out_ignore_str = ''
+            out_ignore_str = ""
 
-        results = Shell_Command_Runners.get_sh_results(['find', out_search_str, out_ignore_str, '\( -type f -o -type l \) -print0', '2>', '/dev/null', '|', 'xargs', '-0', 'stat', '-L', '--format', '\'%Y\'', '2>', '/dev/null', '|', 'sort', '-nr'])
+        results = Shell_Command_Runners.get_sh_results(
+            [
+                "find",
+                out_search_str,
+                out_ignore_str,
+                "\( -type f -o -type l \) -print0",
+                "2>",
+                "/dev/null",
+                "|",
+                "xargs",
+                "-0",
+                "stat",
+                "-L",
+                "--format",
+                "'%Y'",
+                "2>",
+                "/dev/null",
+                "|",
+                "sort",
+                "-nr",
+            ]
+        )
         latest_out_mod = results.stdout.splitlines()[0]
 
         # If there are source and output files, check whether a rebuild is required
@@ -291,7 +358,6 @@ class Builder(Containerization):
         # A rebuild is required if source or output files are missing
         else:
             return True
-
 
     def _get_single_source(self) -> typing.Tuple[typing.Tuple[str, str], pathlib.Path]:
         """
@@ -316,32 +382,38 @@ class Builder(Containerization):
         local_source_dir = None
 
         # Check whether this object has all mandatory attributes
-        if not hasattr(self, '_pc_project_source'):
-            raise AttributeError(f'This object of class {self.__class__.__name__} does not have attribute \'_pc_project_source\'')
+        if not hasattr(self, "_pc_project_source"):
+            raise AttributeError(
+                f"This object of class {self.__class__.__name__} does not have attribute '_pc_project_source'"
+            )
 
-        if urllib.parse.urlparse(self._pc_project_source).scheme == 'file':
+        if urllib.parse.urlparse(self._pc_project_source).scheme == "file":
             local_source_dir = pathlib.Path(urllib.parse.urlparse(self._pc_project_source).path)
-            pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {local_source_dir}')
+            pretty_print.print_error(
+                f"It is not yet supported to use local sources, but the following path was provided as source: {local_source_dir}"
+            )
             sys.exit(1)
         elif validators.url(self._pc_project_source):
             # The sources are downloaded from git
-            if not hasattr(self, '_pc_project_branch'):
-                pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_source}')
+            if not hasattr(self, "_pc_project_branch"):
+                pretty_print.print_error(
+                    f"It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_source}"
+                )
                 sys.exit(1)
             else:
-                source_repo = {
-                    'url': self._pc_project_source,
-                    'branch': self._pc_project_branch
-                }
+                source_repo = {"url": self._pc_project_source, "branch": self._pc_project_branch}
         else:
-            raise ValueError('The following string is not a valid reference to a block project source: ' \
-                        f'{self._pc_project_source}. Only URI schemes \'https\', \'http\', and \'file\' ' \
-                        'are supported.')
+            raise ValueError(
+                "The following string is not a valid reference to a block project source: "
+                f"{self._pc_project_source}. Only URI schemes 'https', 'http', and 'file' "
+                "are supported."
+            )
 
         return source_repo, local_source_dir
 
-
-    def _get_multiple_sources(self) -> typing.Tuple[typing.Tuple[typing.List[str], typing.List[str]], typing.List[pathlib.Path]]:
+    def _get_multiple_sources(
+        self,
+    ) -> typing.Tuple[typing.Tuple[typing.List[str], typing.List[str]], typing.List[pathlib.Path]]:
         """
         Process the source section of a block with a multiple sources.
 
@@ -363,27 +435,31 @@ class Builder(Containerization):
         local_source_dirs = []
 
         for index in range(len(self._pc_project_sources)):
-            if urllib.parse.urlparse(self._pc_project_sources[index]).scheme == 'file':
+            if urllib.parse.urlparse(self._pc_project_sources[index]).scheme == "file":
                 local_source_dir = pathlib.Path(urllib.parse.urlparse(self._pc_project_sources[index]).path)
-                pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {local_source_dir}')
+                pretty_print.print_error(
+                    f"It is not yet supported to use local sources, but the following path was provided as source: {local_source_dir}"
+                )
                 sys.exit(1)
             elif validators.url(self._pc_project_sources[index]):
                 # This source is downloaded from git
                 if self._pc_project_branches[index] is None:
-                    pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_sources[index]}')
+                    pretty_print.print_error(
+                        f"It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_sources[index]}"
+                    )
                     sys.exit(1)
                 else:
-                    source_repos.append({
-                                            'url': self._pc_project_sources[index],
-                                            'branch': self._pc_project_branches[index]
-                                        })
+                    source_repos.append(
+                        {"url": self._pc_project_sources[index], "branch": self._pc_project_branches[index]}
+                    )
             else:
-                raise ValueError('The following string is not a valid reference to a block project source: ' \
-                        f'{self._pc_project_sources[index]}. Only URI schemes \'https\', \'http\', and \'file\' ' \
-                        'are supported.')
+                raise ValueError(
+                    "The following string is not a valid reference to a block project source: "
+                    f"{self._pc_project_sources[index]}. Only URI schemes 'https', 'http', and 'file' "
+                    "are supported."
+                )
 
         return source_repos, local_source_dirs
-
 
     def _compose_build_info(self) -> str:
         """
@@ -399,46 +475,55 @@ class Builder(Containerization):
             None
         """
 
-        build_info = ''
+        build_info = ""
 
-        results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._project_dir), 'rev-parse', 'HEAD'])
-        build_info = build_info + f'GIT_COMMIT_SHA: {results.stdout.splitlines()[0]}\n'
+        results = Shell_Command_Runners.get_sh_results(["git", "-C", str(self._project_dir), "rev-parse", "HEAD"])
+        build_info = build_info + f"GIT_COMMIT_SHA: {results.stdout.splitlines()[0]}\n"
 
-        results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._project_dir), 'rev-parse', '--abbrev-ref', 'HEAD'])
+        results = Shell_Command_Runners.get_sh_results(
+            ["git", "-C", str(self._project_dir), "rev-parse", "--abbrev-ref", "HEAD"]
+        )
         git_ref_name = results.stdout.splitlines()[0]
-        if git_ref_name == 'HEAD':
-            results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._project_dir), 'describe', '--exact-match', git_ref_name])
+        if git_ref_name == "HEAD":
+            results = Shell_Command_Runners.get_sh_results(
+                ["git", "-C", str(self._project_dir), "describe", "--exact-match", git_ref_name]
+            )
             git_tag_name = results.stdout.splitlines()[0]
             if results.returncode == 0:
-                build_info = build_info + f'GIT_TAG_NAME: {git_tag_name}\n'
+                build_info = build_info + f"GIT_TAG_NAME: {git_tag_name}\n"
         else:
-            build_info = build_info + f'GIT_BRANCH_NAME: {git_ref_name}\n'
+            build_info = build_info + f"GIT_BRANCH_NAME: {git_ref_name}\n"
 
-        results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._project_dir), 'status', '--porcelain'])
+        results = Shell_Command_Runners.get_sh_results(["git", "-C", str(self._project_dir), "status", "--porcelain"])
         if results.stdout:
-            build_info = build_info + 'GIT_IS_REPO_CLEAN: false\n\n'
+            build_info = build_info + "GIT_IS_REPO_CLEAN: false\n\n"
         else:
-            build_info = build_info + 'GIT_IS_REPO_CLEAN: true\n\n'
+            build_info = build_info + "GIT_IS_REPO_CLEAN: true\n\n"
 
         current_time = time.time()
-        if os.environ.get('GITLAB_CI') == 'true':
-            build_info = build_info + 'BUILD_TYPE: gitlab\n'
-            build_info = build_info + f'BUILD_TIMESTAMP: {int(current_time)}   # {time.strftime("%Y-%m-%d %H:%M:%S (UTC)", time.gmtime(current_time))}\n'
+        if os.environ.get("GITLAB_CI") == "true":
+            build_info = build_info + "BUILD_TYPE: gitlab\n"
+            build_info = (
+                build_info
+                + f'BUILD_TIMESTAMP: {int(current_time)}   # {time.strftime("%Y-%m-%d %H:%M:%S (UTC)", time.gmtime(current_time))}\n'
+            )
             build_info = build_info + f'GITLAB_CI_SERVER_URL: {os.environ.get("CI_SERVER_URL")}\n'
             build_info = build_info + f'GITLAB_CI_PROJECT_PATH: {os.environ.get("CI_PROJECT_PATH")}\n'
             build_info = build_info + f'GITLAB_CI_PROJECT_ID: {os.environ.get("CI_PROJECT_ID")}\n'
             build_info = build_info + f'GITLAB_CI_PIPELINE_ID: {os.environ.get("CI_PIPELINE_ID")}\n'
             build_info = build_info + f'GITLAB_CI_JOB_ID: {os.environ.get("CI_JOB_ID")}\n'
         else:
-            build_info = build_info + 'BUILD_TYPE: manual\n'
-            build_info = build_info + f'BUILD_TIMESTAMP: {int(current_time)}   # {time.strftime("%Y-%m-%d %H:%M:%S (UTC)", time.gmtime(current_time))}\n'
-            results = Shell_Command_Runners.get_sh_results(['hostname'])
-            build_info = build_info + f'MANUAL_BUILD_HOST: {results.stdout.splitlines()[0]}\n'
-            results = Shell_Command_Runners.get_sh_results(['id', '-un'])
-            build_info = build_info + f'MANUAL_BUILD_USER: {results.stdout.splitlines()[0]}\n'
+            build_info = build_info + "BUILD_TYPE: manual\n"
+            build_info = (
+                build_info
+                + f'BUILD_TIMESTAMP: {int(current_time)}   # {time.strftime("%Y-%m-%d %H:%M:%S (UTC)", time.gmtime(current_time))}\n'
+            )
+            results = Shell_Command_Runners.get_sh_results(["hostname"])
+            build_info = build_info + f"MANUAL_BUILD_HOST: {results.stdout.splitlines()[0]}\n"
+            results = Shell_Command_Runners.get_sh_results(["id", "-un"])
+            build_info = build_info + f"MANUAL_BUILD_USER: {results.stdout.splitlines()[0]}\n"
 
         return build_info
-
 
     def init_repo(self):
         """
@@ -456,26 +541,41 @@ class Builder(Containerization):
 
         # Skip all operations if the repo already exists
         if self._source_repo_dir.exists():
-            pretty_print.print_build('No need to initialize the local repo...')
+            pretty_print.print_build("No need to initialize the local repo...")
             return
 
-        if self._source_repo['url'] is None:
+        if self._source_repo["url"] is None:
             # ToDo: Maybe at some point this function should support initializing multiple repos as well, but I am not sure yet if this is really needed
-            pretty_print.print_error(f'This function expects a single object and not an array in blocks/{self.block_id}/project/build-srcs.')
+            pretty_print.print_error(
+                f"This function expects a single object and not an array in blocks/{self.block_id}/project/build-srcs."
+            )
             sys.exit(1)
 
-        pretty_print.print_build('Initializing local repo...')
+        pretty_print.print_build("Initializing local repo...")
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
         self._repo_dir.mkdir(parents=True, exist_ok=True)
 
         # Clone the repo
-        Shell_Command_Runners.run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo['branch'], self._source_repo['url'], str(self._source_repo_dir)])
+        Shell_Command_Runners.run_sh_command(
+            [
+                "git",
+                "clone",
+                "--recursive",
+                "--branch",
+                self._source_repo["branch"],
+                self._source_repo["url"],
+                str(self._source_repo_dir),
+            ]
+        )
         # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
+        Shell_Command_Runners.run_sh_command(
+            ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_ref_branch]
+        )
         # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_dev_branch])
-
+        Shell_Command_Runners.run_sh_command(
+            ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_dev_branch]
+        )
 
     def create_patches(self):
         """
@@ -492,26 +592,52 @@ class Builder(Containerization):
         """
 
         # Only create patches if there are commits on branch self._git_local_dev_branch that are not on branch self._git_local_dev_branch.
-        result_new_commits = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir), 'log', '--cherry-pick', '--oneline', self._git_local_dev_branch, f'^{self._git_local_ref_branch}'])
+        result_new_commits = Shell_Command_Runners.get_sh_results(
+            [
+                "git",
+                "-C",
+                str(self._source_repo_dir),
+                "log",
+                "--cherry-pick",
+                "--oneline",
+                self._git_local_dev_branch,
+                f"^{self._git_local_ref_branch}",
+            ]
+        )
         if not result_new_commits.stdout:
-            pretty_print.print_warning('No commits found that can be used as sources for patches.')
+            pretty_print.print_warning("No commits found that can be used as sources for patches.")
             return
 
-        pretty_print.print_build('Creating patches...')
+        pretty_print.print_build("Creating patches...")
 
         # Create patches
-        result_new_patches = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir), 'format-patch', '--output-directory', str(self._patch_dir), self._git_local_ref_branch])
+        result_new_patches = Shell_Command_Runners.get_sh_results(
+            [
+                "git",
+                "-C",
+                str(self._source_repo_dir),
+                "format-patch",
+                "--output-directory",
+                str(self._patch_dir),
+                self._git_local_ref_branch,
+            ]
+        )
         # Add newly created patches to self._patch_list_file
         for line in result_new_patches.stdout.splitlines():
-            new_patch = line.rpartition('/')[2]
-            print(f'Patch {new_patch} was created')
-            with self._patch_list_file.open('a') as f:
-                print(new_patch, file=f, end='\n')
+            new_patch = line.rpartition("/")[2]
+            print(f"Patch {new_patch} was created")
+            with self._patch_list_file.open("a") as f:
+                print(new_patch, file=f, end="\n")
         # Synchronize the branches ref and dev to be able to detect new commits in the future
-        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch], visible_lines=0)
-        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch], visible_lines=0)
-        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch], visible_lines=0)
-
+        Shell_Command_Runners.run_sh_command(
+            ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_ref_branch], visible_lines=0
+        )
+        Shell_Command_Runners.run_sh_command(
+            ["git", "-C", str(self._source_repo_dir), "merge", self._git_local_dev_branch], visible_lines=0
+        )
+        Shell_Command_Runners.run_sh_command(
+            ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
+        )
 
     def apply_patches(self):
         """
@@ -530,26 +656,33 @@ class Builder(Containerization):
 
         # Skip all operations if the patches have already been applied
         if self._patches_applied_flag.exists():
-            pretty_print.print_build('No need to apply patches...')
+            pretty_print.print_build("No need to apply patches...")
             return
 
-        pretty_print.print_build('Applying patches...')
+        pretty_print.print_build("Applying patches...")
 
         if self._patch_list_file.is_file():
-            with self._patch_list_file.open('r') as f:
+            with self._patch_list_file.open("r") as f:
                 for patch in f:
-                    if patch: # If this line in the file is not empty
+                    if patch:  # If this line in the file is not empty
                         # Apply patch
-                        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'am', str(self._patch_dir / patch)])
+                        Shell_Command_Runners.run_sh_command(
+                            ["git", "-C", str(self._source_repo_dir), "am", str(self._patch_dir / patch)]
+                        )
 
         # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_ref_branch], visible_lines=0)
-        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'merge', self._git_local_dev_branch], visible_lines=0)
-        Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'checkout', self._git_local_dev_branch], visible_lines=0)
+        Shell_Command_Runners.run_sh_command(
+            ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_ref_branch], visible_lines=0
+        )
+        Shell_Command_Runners.run_sh_command(
+            ["git", "-C", str(self._source_repo_dir), "merge", self._git_local_dev_branch], visible_lines=0
+        )
+        Shell_Command_Runners.run_sh_command(
+            ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
+        )
 
         # Create the flag if it doesn't exist and update the timestamps
         self._patches_applied_flag.touch()
-
 
     def _download_prebuilt(self):
         """
@@ -568,7 +701,7 @@ class Builder(Containerization):
         # Progress callback function to show a status bar
         def download_progress(block_num, block_size, total_size):
             if download_progress.t is None:
-                download_progress.t = tqdm.tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024)
+                download_progress.t = tqdm.tqdm(total=total_size, unit="B", unit_scale=True, unit_divisor=1024)
             downloaded = block_num * block_size
             download_progress.t.update(downloaded - download_progress.t.n)
 
@@ -577,19 +710,23 @@ class Builder(Containerization):
 
         if response.status_code == 404:
             # File not found
-            pretty_print.print_error(f'The following file could not be downloaded: {self._pc_project_prebuilt}\nStatus code {response.status_code} (File not found)')
+            pretty_print.print_error(
+                f"The following file could not be downloaded: {self._pc_project_prebuilt}\nStatus code {response.status_code} (File not found)"
+            )
             sys.exit(1)
         elif response.status_code != 200:
             # Unexpected status code
-            pretty_print.print_error(f'The following file could not be downloaded: {self._pc_project_prebuilt}\nUnexpected status code {response.status_code}')
+            pretty_print.print_error(
+                f"The following file could not be downloaded: {self._pc_project_prebuilt}\nUnexpected status code {response.status_code}"
+            )
             sys.exit(1)
 
         # Get timestamp of the file online
-        last_mod_online = response.headers.get('Last-Modified')
+        last_mod_online = response.headers.get("Last-Modified")
         if last_mod_online:
             last_mod_online_timestamp = parser.parse(last_mod_online).timestamp()
         else:
-            pretty_print.print_error(f'No \'Last-Modified\' header found for {self._pc_project_prebuilt}')
+            pretty_print.print_error(f"No 'Last-Modified' header found for {self._pc_project_prebuilt}")
             sys.exit(1)
 
         # Get timestamp of the downloaded file, if any
@@ -599,26 +736,29 @@ class Builder(Containerization):
             if len(items) == 1:
                 last_mod_local_timestamp = items[0].stat().st_mtime
             elif len(items) != 0:
-                pretty_print.print_error(f'There is more than one item in {self._download_dir}\nPlease empty the directory')
+                pretty_print.print_error(
+                    f"There is more than one item in {self._download_dir}\nPlease empty the directory"
+                )
                 sys.exit(1)
 
         # Check if the file needs to be downloaded
         if last_mod_local_timestamp > last_mod_online_timestamp:
-            pretty_print.print_build('No need to download pre-built files...')
+            pretty_print.print_build("No need to download pre-built files...")
             return
 
         self.clean_download()
         self._download_dir.mkdir(parents=True)
 
-        pretty_print.print_build('Downloading archive with pre-built files...')
+        pretty_print.print_build("Downloading archive with pre-built files...")
 
         # Download the file
         download_progress.t = None
-        filename = self._pc_project_prebuilt.rpartition('/')[2]
-        urllib.request.urlretrieve(url=self._pc_project_prebuilt, filename=self._download_dir / filename, reporthook=download_progress)
+        filename = self._pc_project_prebuilt.rpartition("/")[2]
+        urllib.request.urlretrieve(
+            url=self._pc_project_prebuilt, filename=self._download_dir / filename, reporthook=download_progress
+        )
         if download_progress.t:
             download_progress.t.close()
-
 
     def import_prebuilt(self):
         """
@@ -637,32 +777,40 @@ class Builder(Containerization):
 
         # Get path of the pre-built block package
         if self._pc_project_prebuilt is None:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/project/pre-built is required to ' \
-                        'import the block, but it is not set.')
+            pretty_print.print_error(
+                f"The property blocks/{self.block_id}/project/pre-built is required to "
+                "import the block, but it is not set."
+            )
             sys.exit(1)
-        elif urllib.parse.urlparse(self._pc_project_prebuilt).scheme == 'file':
+        elif urllib.parse.urlparse(self._pc_project_prebuilt).scheme == "file":
             prebuilt_block_package = pathlib.Path(urllib.parse.urlparse(self._pc_project_prebuilt).path)
         elif validators.url(self._pc_project_prebuilt):
             self._download_prebuilt()
-            downloads = list(self._download_dir.glob('*'))
+            downloads = list(self._download_dir.glob("*"))
             # Check if there is more than one file in the download directory
             if len(downloads) != 1:
-                pretty_print.print_error(f'Not exactly one file in {self._download_dir}.')
+                pretty_print.print_error(f"Not exactly one file in {self._download_dir}.")
                 sys.exit(1)
             prebuilt_block_package = downloads[0]
         else:
-            raise ValueError('The following string is not a valid reference to a block package: ' \
-                        f'{self._pc_project_prebuilt}. Only URI schemes \'https\', \'http\', and \'file\' ' \
-                        'are supported.')
+            raise ValueError(
+                "The following string is not a valid reference to a block package: "
+                f"{self._pc_project_prebuilt}. Only URI schemes 'https', 'http', and 'file' "
+                "are supported."
+            )
 
         # Check whether the file to be imported exists
         if not prebuilt_block_package.is_file():
-            pretty_print.print_error(f'Unable to import block package. The following file does not exist: {prebuilt_block_package}')
+            pretty_print.print_error(
+                f"Unable to import block package. The following file does not exist: {prebuilt_block_package}"
+            )
             sys.exit(1)
 
         # Check whether the file is a supported archive
-        if prebuilt_block_package.name.partition('.')[2] not in ['tar.gz', 'tgz', 'tar.xz', 'txz']:
-            pretty_print.print_error(f'Unable to import block package. The following archive type is not supported: {prebuilt_block_package.name.partition(".")[2]}')
+        if prebuilt_block_package.name.partition(".")[2] not in ["tar.gz", "tgz", "tar.xz", "txz"]:
+            pretty_print.print_error(
+                f'Unable to import block package. The following archive type is not supported: {prebuilt_block_package.name.partition(".")[2]}'
+            )
             sys.exit(1)
 
         # Calculate md5 of the provided file
@@ -670,19 +818,21 @@ class Builder(Containerization):
         # Read md5 of previously used file, if any
         md5_existsing_file = 0
         if self._source_pb_md5_file.is_file():
-            with self._source_pb_md5_file.open('r') as f:
+            with self._source_pb_md5_file.open("r") as f:
                 md5_existsing_file = f.read()
 
         # Check if the pre-built block package needs to be imported
         if md5_existsing_file == md5_new_file:
-            pretty_print.print_build('No need to import the pre-built block package. No altered source files detected...')
+            pretty_print.print_build(
+                "No need to import the pre-built block package. No altered source files detected..."
+            )
             return
 
         self.clean_output()
         self._output_dir.mkdir(parents=True)
         self._work_dir.mkdir(parents=True, exist_ok=True)
 
-        pretty_print.print_build('Importing pre-built block package...')
+        pretty_print.print_build("Importing pre-built block package...")
 
         # Copy block package
         shutil.copy(prebuilt_block_package, self._output_dir / prebuilt_block_package.name)
@@ -693,9 +843,8 @@ class Builder(Containerization):
             archive.extractall(path=self._output_dir)
 
         # Save checksum in file
-        with self._source_pb_md5_file.open('w') as f:
-            print(md5_new_file, file=f, end='')
-
+        with self._source_pb_md5_file.open("w") as f:
+            print(md5_new_file, file=f, end="")
 
     def export_block_package(self):
         """
@@ -711,28 +860,33 @@ class Builder(Containerization):
             None
         """
 
-        block_pkg_path = self._output_dir / f'{self.block_id}.tar.gz'
+        block_pkg_path = self._output_dir / f"{self.block_id}.tar.gz"
 
         # Check whether there is something to export
         if not self._output_dir.is_dir() or not any(self._output_dir.iterdir()):
-            pretty_print.print_error(f'Unable to export block package. The following director does not exist or is empty: {self._output_dir}')
+            pretty_print.print_error(
+                f"Unable to export block package. The following director does not exist or is empty: {self._output_dir}"
+            )
             sys.exit(1)
 
         # Check whether a package needs to be created
-        if not Builder._check_rebuild_required(src_search_list=self._project_cfg_files + [self._output_dir], src_ignore_list=[block_pkg_path], out_search_list=[block_pkg_path]):
-            pretty_print.print_build('No need to export block package. No altered source files detected...')
+        if not Builder._check_rebuild_required(
+            src_search_list=self._project_cfg_files + [self._output_dir],
+            src_ignore_list=[block_pkg_path],
+            out_search_list=[block_pkg_path],
+        ):
+            pretty_print.print_build("No need to export block package. No altered source files detected...")
             return
 
         block_pkg_path.unlink(missing_ok=True)
 
-        pretty_print.print_build('Exporting block package...')
+        pretty_print.print_build("Exporting block package...")
 
         # Export block package
         with tarfile.open(block_pkg_path, "w:gz") as archive:
             for file in self._output_dir.iterdir():
                 if not file.samefile(block_pkg_path):
                     archive.add(file.resolve(strict=True), arcname=file.name)
-
 
     def import_dependencies(self):
         """
@@ -752,16 +906,20 @@ class Builder(Containerization):
         for block_id, block_pkg_path_str in self._pc_project_dependencies.items():
             block_pkg_path = self._project_dir / block_pkg_path_str
             import_path = self._dependencies_dir / block_id
-            block_pkg_md5_file = self._dependencies_dir / f'block_pkg_{block_id}.md5'
+            block_pkg_md5_file = self._dependencies_dir / f"block_pkg_{block_id}.md5"
 
             # Check whether the file to be imported exists
             if not block_pkg_path.is_file():
-                pretty_print.print_error(f'Unable to import block package. The following file does not exist: {block_pkg_path}')
+                pretty_print.print_error(
+                    f"Unable to import block package. The following file does not exist: {block_pkg_path}"
+                )
                 sys.exit(1)
 
             # Check whether the file is a tar.gz archive
-            if block_pkg_path.name.partition('.')[2] != 'tar.gz':
-                pretty_print.print_error(f'Unable to import block package. The following archive type is not supported: {block_pkg_path.name.partition(".")[2]}')
+            if block_pkg_path.name.partition(".")[2] != "tar.gz":
+                pretty_print.print_error(
+                    f'Unable to import block package. The following archive type is not supported: {block_pkg_path.name.partition(".")[2]}'
+                )
                 sys.exit(1)
 
             # Calculate md5 of the provided block package
@@ -769,37 +927,40 @@ class Builder(Containerization):
             # Read md5 of previously imported block package, if any
             md5_existsing_file = 0
             if block_pkg_md5_file.is_file():
-                with block_pkg_md5_file.open('r') as f:
+                with block_pkg_md5_file.open("r") as f:
                     md5_existsing_file = f.read()
 
             # Check whether this dependencie needs to be imported
             if md5_existsing_file == md5_new_file:
-                pretty_print.print_build(f'No need to import block package {block_pkg_path.name}. No altered source files detected...')
+                pretty_print.print_build(
+                    f"No need to import block package {block_pkg_path.name}. No altered source files detected..."
+                )
                 continue
 
             # Clean directory of this dependency
             self.clean_dependencies(dependency=block_id)
             import_path.mkdir(parents=True, exist_ok=True)
 
-            pretty_print.print_build(f'Importing block package {block_pkg_path.name}...')
+            pretty_print.print_build(f"Importing block package {block_pkg_path.name}...")
 
             # Import block package
             with tarfile.open(block_pkg_path, "r:*") as archive:
-                    # Check whether all expected files are included
-                    content = archive.getnames()
-                    for pattern in self._block_deps[block_id]:
-                        matched_files = [file for file in content if re.fullmatch(pattern=pattern, string=file)]
-                        # A file is missing if no file matches the pattern
-                        if not matched_files:
-                            pretty_print.print_error(f'The block package {block_pkg_path} does not contain a file that matches the regex {pattern}')
-                            sys.exit(1)
-                    # Extract all contents to the output directory
-                    archive.extractall(path=import_path)
+                # Check whether all expected files are included
+                content = archive.getnames()
+                for pattern in self._block_deps[block_id]:
+                    matched_files = [file for file in content if re.fullmatch(pattern=pattern, string=file)]
+                    # A file is missing if no file matches the pattern
+                    if not matched_files:
+                        pretty_print.print_error(
+                            f"The block package {block_pkg_path} does not contain a file that matches the regex {pattern}"
+                        )
+                        sys.exit(1)
+                # Extract all contents to the output directory
+                archive.extractall(path=import_path)
 
             # Save checksum in file
-            with block_pkg_md5_file.open('w') as f:
-                print(md5_new_file, file=f, end='')
-
+            with block_pkg_md5_file.open("w") as f:
+                print(md5_new_file, file=f, end="")
 
     def start_container(self):
         """
@@ -815,11 +976,15 @@ class Builder(Containerization):
             None
         """
 
-        potential_mounts = [(self._dependencies_dir, 'Z'), (self._repo_dir, 'Z'), (self._block_src_dir, 'Z'),
-                    (self._work_dir, 'Z'), (self._output_dir, 'Z')]
+        potential_mounts = [
+            (self._dependencies_dir, "Z"),
+            (self._repo_dir, "Z"),
+            (self._block_src_dir, "Z"),
+            (self._work_dir, "Z"),
+            (self._output_dir, "Z"),
+        ]
 
         super().start_container(potential_mounts=potential_mounts)
-
 
     def _run_menuconfig(self, menuconfig_commands: str):
         """
@@ -837,14 +1002,14 @@ class Builder(Containerization):
         """
 
         if not self._source_repo_dir.is_dir():
-            pretty_print.print_error(f'No local sources found in {self._source_repo_dir}')
+            pretty_print.print_error(f"No local sources found in {self._source_repo_dir}")
             sys.exit(1)
 
-        pretty_print.print_build('Opening configuration menu...')
+        pretty_print.print_build("Opening configuration menu...")
 
-        self.run_containerizable_sh_command(command=menuconfig_commands,
-                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._output_dir, 'Z')])
-
+        self.run_containerizable_sh_command(
+            command=menuconfig_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+        )
 
     def _prep_clean_srcs(self, prep_srcs_commands: str):
         """
@@ -862,16 +1027,16 @@ class Builder(Containerization):
         """
 
         if not self._source_repo_dir.is_dir():
-            pretty_print.print_error(f'No local sources found in {self._source_repo_dir}')
+            pretty_print.print_error(f"No local sources found in {self._source_repo_dir}")
             sys.exit(1)
 
-        if (self._source_repo_dir / '.config').is_file():
+        if (self._source_repo_dir / ".config").is_file():
             pretty_print.print_error(f'Configuration file already exists in {self._source_repo_dir / ".config"}')
             sys.exit(1)
 
-        self.run_containerizable_sh_command(command=prep_srcs_commands,
-                    dirs_to_mount=[(self._repo_dir, 'Z'), (self._output_dir, 'Z')])
-
+        self.run_containerizable_sh_command(
+            command=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+        )
 
     def clean_repo(self):
         """
@@ -888,31 +1053,34 @@ class Builder(Containerization):
         """
 
         if not self._repo_dir.exists():
-            pretty_print.print_clean('No need to clean the repo directory...')
+            pretty_print.print_clean("No need to clean the repo directory...")
             return
 
         # Check if there are uncommited changes in the git repo
-        results = Shell_Command_Runners.get_sh_results(['git', '-C', str(self._source_repo_dir), 'status', '--porcelain'])
+        results = Shell_Command_Runners.get_sh_results(
+            ["git", "-C", str(self._source_repo_dir), "status", "--porcelain"]
+        )
         if results.stdout:
-            pretty_print.print_warning(f'There are uncommited changes in {self._source_repo_dir}. Do you really want to clean this repo? (y/n) ', end='')
-            answer = input('')
-            if answer.lower() not in ['y', 'Y', 'yes', 'Yes']:
-                pretty_print.print_clean('Cleaning abborted...')
+            pretty_print.print_warning(
+                f"There are uncommited changes in {self._source_repo_dir}. Do you really want to clean this repo? (y/n) ",
+                end="",
+            )
+            answer = input("")
+            if answer.lower() not in ["y", "Y", "yes", "Yes"]:
+                pretty_print.print_clean("Cleaning abborted...")
                 sys.exit(1)
 
-        pretty_print.print_clean('Cleaning repo directory...')
+        pretty_print.print_clean("Cleaning repo directory...")
 
-        cleaning_commands = f'\"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true\"'
+        cleaning_commands = f'"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true"'
 
-        self.run_containerizable_sh_command(command=cleaning_commands,
-                    dirs_to_mount=[(self._repo_dir, 'Z')])
+        self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._repo_dir, "Z")])
 
         # Remove flag
         self._patches_applied_flag.unlink(missing_ok=True)
 
         # Remove empty repo directory
         self._repo_dir.rmdir()
-
 
     def clean_output(self):
         """
@@ -929,19 +1097,17 @@ class Builder(Containerization):
         """
 
         if not self._output_dir.exists():
-            pretty_print.print_clean('No need to clean the output directory...')
+            pretty_print.print_clean("No need to clean the output directory...")
             return
 
-        pretty_print.print_clean('Cleaning output directory...')
+        pretty_print.print_clean("Cleaning output directory...")
 
-        cleaning_commands = f'\"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true\"'
+        cleaning_commands = f'"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true"'
 
-        self.run_containerizable_sh_command(command=cleaning_commands,
-                    dirs_to_mount=[(self._output_dir, 'Z')])
+        self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._output_dir, "Z")])
 
         # Remove empty output directory
         self._output_dir.rmdir()
-
 
     def clean_work(self, as_root: bool = False):
         """
@@ -959,23 +1125,22 @@ class Builder(Containerization):
         """
 
         if not self._work_dir.exists():
-            pretty_print.print_clean('No need to clean the work directory...')
+            pretty_print.print_clean("No need to clean the work directory...")
             return
 
         if as_root:
-            pretty_print.print_clean('Cleaning work directory as root user...')
+            pretty_print.print_clean("Cleaning work directory as root user...")
         else:
-            pretty_print.print_clean('Cleaning work directory...')
+            pretty_print.print_clean("Cleaning work directory...")
 
-        cleaning_commands = f'\"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true\"'
+        cleaning_commands = f'"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true"'
 
-        self.run_containerizable_sh_command(command=cleaning_commands,
-                    dirs_to_mount=[(self._work_dir, 'Z')],
-                    run_as_root=as_root)
+        self.run_containerizable_sh_command(
+            command=cleaning_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=as_root
+        )
 
         # Remove empty work directory
         self._work_dir.rmdir()
-
 
     def clean_download(self):
         """
@@ -992,21 +1157,19 @@ class Builder(Containerization):
         """
 
         if not self._download_dir.exists():
-            pretty_print.print_clean('No need to clean the download directory...')
+            pretty_print.print_clean("No need to clean the download directory...")
             return
 
-        pretty_print.print_clean('Cleaning download directory...')
+        pretty_print.print_clean("Cleaning download directory...")
 
-        cleaning_commands = f'\"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true\"'
+        cleaning_commands = f'"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true"'
 
-        self.run_containerizable_sh_command(command=cleaning_commands,
-                    dirs_to_mount=[(self._download_dir, 'Z')])
+        self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._download_dir, "Z")])
 
         # Remove empty download directory
         self._download_dir.rmdir()
 
-
-    def clean_dependencies(self, dependency: str = ''):
+    def clean_dependencies(self, dependency: str = ""):
         """
         This function cleans the dependencies directory.
 
@@ -1022,27 +1185,27 @@ class Builder(Containerization):
         """
 
         if not (self._dependencies_dir / dependency).exists():
-            if dependency == '':
-                pretty_print.print_clean('No need to clean the dependencies directory...')
+            if dependency == "":
+                pretty_print.print_clean("No need to clean the dependencies directory...")
             else:
-                pretty_print.print_clean(f'No need to clean the dependencies subdirectory {dependency}...')
+                pretty_print.print_clean(f"No need to clean the dependencies subdirectory {dependency}...")
             return
 
-        if dependency == '':
-            pretty_print.print_clean('Cleaning dependencies directory...')
+        if dependency == "":
+            pretty_print.print_clean("Cleaning dependencies directory...")
         else:
-            pretty_print.print_clean(f'Cleaning dependencies subdirectory {dependency}...')
+            pretty_print.print_clean(f"Cleaning dependencies subdirectory {dependency}...")
 
-        cleaning_commands = f'\"rm -rf {self._dependencies_dir}/{dependency}/* ' \
-                            f'{self._dependencies_dir}/{dependency}/.* 2> /dev/null || true\"'
+        cleaning_commands = (
+            f'"rm -rf {self._dependencies_dir}/{dependency}/* '
+            f'{self._dependencies_dir}/{dependency}/.* 2> /dev/null || true"'
+        )
 
-        self.run_containerizable_sh_command(command=cleaning_commands,
-                    dirs_to_mount=[(self._dependencies_dir, 'Z')])
+        self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._dependencies_dir, "Z")])
 
         # Remove empty download directory
-        if dependency == '':
+        if dependency == "":
             self._dependencies_dir.rmdir()
-
 
     def clean_block_temp(self):
         """
@@ -1059,15 +1222,14 @@ class Builder(Containerization):
         """
 
         if not self._block_temp_dir.exists():
-            pretty_print.print_clean(f'No need to clean the temp directory of block {self.block_id}...')
+            pretty_print.print_clean(f"No need to clean the temp directory of block {self.block_id}...")
             return
 
-        pretty_print.print_clean(f'Cleaning temp directory of block {self.block_id}...')
+        pretty_print.print_clean(f"Cleaning temp directory of block {self.block_id}...")
 
-        cleaning_commands = f'\"rm -rf {self._block_temp_dir}/* {self._block_temp_dir}/.* 2> /dev/null || true\"'
+        cleaning_commands = f'"rm -rf {self._block_temp_dir}/* {self._block_temp_dir}/.* 2> /dev/null || true"'
 
-        self.run_containerizable_sh_command(command=cleaning_commands,
-                    dirs_to_mount=[(self._block_temp_dir, 'Z')])
+        self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._block_temp_dir, "Z")])
 
         # Remove empty temp directory
         self._block_temp_dir.rmdir()

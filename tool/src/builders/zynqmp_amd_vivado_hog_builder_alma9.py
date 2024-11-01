@@ -5,51 +5,67 @@ import urllib
 import socks.pretty_print as pretty_print
 from socks.amd_builder import AMD_Builder
 
+
 class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
     """
     Builder class for AMD Vivado projects utilizing the Hog framework
     """
 
-    def __init__(self, project_cfg: dict, project_cfg_files: list, socks_dir: pathlib.Path, project_dir: pathlib.Path, block_id: str = 'vivado', block_description: str = 'Build an AMD/Xilinx Vivado Project with HDL on git (Hog)'):
+    def __init__(
+        self,
+        project_cfg: dict,
+        project_cfg_files: list,
+        socks_dir: pathlib.Path,
+        project_dir: pathlib.Path,
+        block_id: str = "vivado",
+        block_description: str = "Build an AMD/Xilinx Vivado Project with HDL on git (Hog)",
+    ):
 
-        super().__init__(project_cfg=project_cfg,
-                        project_cfg_files=project_cfg_files,
-                        socks_dir=socks_dir,
-                        project_dir=project_dir,
-                        block_id=block_id,
-                        block_description=block_description)
+        super().__init__(
+            project_cfg=project_cfg,
+            project_cfg_files=project_cfg_files,
+            socks_dir=socks_dir,
+            project_dir=project_dir,
+            block_id=block_id,
+            block_description=block_description,
+        )
 
         # Import project configuration
-        self._pc_project_source = project_cfg['blocks'][self.block_id]['project']['build-srcs']['source']
-        if 'branch' in project_cfg['blocks'][self.block_id]['project']['build-srcs']:
-            self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['build-srcs']['branch']
-        self._pc_project_name = project_cfg['blocks'][self.block_id]['project']['name']
+        self._pc_project_source = project_cfg["blocks"][self.block_id]["project"]["build-srcs"]["source"]
+        if "branch" in project_cfg["blocks"][self.block_id]["project"]["build-srcs"]:
+            self._pc_project_branch = project_cfg["blocks"][self.block_id]["project"]["build-srcs"]["branch"]
+        self._pc_project_name = project_cfg["blocks"][self.block_id]["project"]["name"]
 
         # Find sources for this block
         self._source_repo, self._local_source_dir = self._get_single_source()
 
         # Project directories
-        self._source_repo_dir = self._repo_dir / f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo["url"]).path).stem}-{self._source_repo["branch"]}'
+        self._source_repo_dir = (
+            self._repo_dir
+            / f"{pathlib.Path(urllib.parse.urlparse(url=self._source_repo['url']).path).stem}-{self._source_repo['branch']}"
+        )
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
-        self.block_cmds = {
-            'prepare': [],
-            'build': [],
-            'clean': [],
-            'start-container': [],
-            'start-vivado-gui': []
-        }
-        self.block_cmds['clean'].extend([self.build_container_image, self.clean_download, self.clean_work, self.clean_repo, self.clean_output, self.clean_block_temp])
-        if self._pc_block_source == 'build':
-            self.block_cmds['prepare'].extend([self.build_container_image, self.init_repo, self.create_vivado_project])
-            self.block_cmds['build'].extend(self.block_cmds['prepare'])
-            self.block_cmds['build'].extend([self.build_vivado_project, self.export_block_package])
-            self.block_cmds['start-container'].extend([self.build_container_image, self.start_container])
-            self.block_cmds['start-vivado-gui'].extend([self.build_container_image, self.start_vivado_gui])
-        elif self._pc_block_source == 'import':
-            self.block_cmds['build'].extend([self.import_prebuilt])
-
+        self.block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": [], "start-vivado-gui": []}
+        self.block_cmds["clean"].extend(
+            [
+                self.build_container_image,
+                self.clean_download,
+                self.clean_work,
+                self.clean_repo,
+                self.clean_output,
+                self.clean_block_temp,
+            ]
+        )
+        if self._pc_block_source == "build":
+            self.block_cmds["prepare"].extend([self.build_container_image, self.init_repo, self.create_vivado_project])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"])
+            self.block_cmds["build"].extend([self.build_vivado_project, self.export_block_package])
+            self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
+            self.block_cmds["start-vivado-gui"].extend([self.build_container_image, self.start_vivado_gui])
+        elif self._pc_block_source == "import":
+            self.block_cmds["build"].extend([self.import_prebuilt])
 
     def create_vivado_project(self):
         """
@@ -66,24 +82,26 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         """
 
         # Check if the Vivado project needs to be created
-        if (self._source_repo_dir / 'Projects' / self._pc_project_name).is_dir():
-            pretty_print.print_build('The Vivado Project already exists. It will not be recreated...')
+        if (self._source_repo_dir / "Projects" / self._pc_project_name).is_dir():
+            pretty_print.print_build("The Vivado Project already exists. It will not be recreated...")
             return
 
-        self.check_amd_tools(required_tools=['vivado'])
+        self.check_amd_tools(required_tools=["vivado"])
 
-        pretty_print.print_build('Creating the Vivado Project...')
+        pretty_print.print_build("Creating the Vivado Project...")
 
-        create_vivado_project_commands = f'\'export XILINXD_LICENSE_FILE={self._amd_license} && ' \
-                                            f'source {self._amd_vivado_path}/settings64.sh && ' \
-                                            f'git config --global --add safe.directory {self._source_repo_dir} && ' \
-                                            f'git config --global --add safe.directory {self._source_repo_dir}/Hog && ' \
-                                            f'LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do CREATE {self._pc_project_name}\''
+        create_vivado_project_commands = (
+            f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
+            f"source {self._amd_vivado_path}/settings64.sh && "
+            f"git config --global --add safe.directory {self._source_repo_dir} && "
+            f"git config --global --add safe.directory {self._source_repo_dir}/Hog && "
+            f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do CREATE {self._pc_project_name}'"
+        )
 
-        self.run_containerizable_sh_command(command=create_vivado_project_commands,
-                    dirs_to_mount=[(pathlib.Path(self._amd_tools_path), 'ro'),
-                                (self._repo_dir, 'Z'), (self._output_dir, 'Z')])
-
+        self.run_containerizable_sh_command(
+            command=create_vivado_project_commands,
+            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._output_dir, "Z")],
+        )
 
     def build_vivado_project(self):
         """
@@ -100,36 +118,48 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         """
 
         # Check if the project needs to be build
-        if not ZynqMP_AMD_Vivado_Hog_Builder_Alma9._check_rebuild_required(src_search_list=self._project_cfg_files + [self._source_repo_dir / 'Top', self._source_repo_dir / 'Hog', self._source_repo_dir / f'lib_{self._pc_project_name}'], out_search_list=[self._source_repo_dir / 'bin']):
-            pretty_print.print_build('No need to rebuild the Vivado Project. No altered source files detected...')
+        if not ZynqMP_AMD_Vivado_Hog_Builder_Alma9._check_rebuild_required(
+            src_search_list=self._project_cfg_files
+            + [
+                self._source_repo_dir / "Top",
+                self._source_repo_dir / "Hog",
+                self._source_repo_dir / f"lib_{self._pc_project_name}",
+            ],
+            out_search_list=[self._source_repo_dir / "bin"],
+        ):
+            pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
 
-        self.check_amd_tools(required_tools=['vivado'])
+        self.check_amd_tools(required_tools=["vivado"])
 
         # Clean output directory
         self.clean_output()
         self._output_dir.mkdir(parents=True)
 
-        pretty_print.print_build('Building the Vivado Project...')
+        pretty_print.print_build("Building the Vivado Project...")
 
-        vivado_build_commands = f'\'rm -rf {self._source_repo_dir}/bin' \
-                                f'export XILINXD_LICENSE_FILE={self._amd_license} && ' \
-                                f'source {self._amd_vivado_path}/settings64.sh && ' \
-                                f'git config --global --add safe.directory {self._source_repo_dir} && ' \
-                                f'git config --global --add safe.directory {self._source_repo_dir}/Hog && ' \
-                                f'LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do WORKFLOW {self._pc_project_name}\''
+        vivado_build_commands = (
+            f"'rm -rf {self._source_repo_dir}/bin"
+            f"export XILINXD_LICENSE_FILE={self._amd_license} && "
+            f"source {self._amd_vivado_path}/settings64.sh && "
+            f"git config --global --add safe.directory {self._source_repo_dir} && "
+            f"git config --global --add safe.directory {self._source_repo_dir}/Hog && "
+            f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do WORKFLOW {self._pc_project_name}'"
+        )
 
-        self.run_containerizable_sh_command(command=vivado_build_commands,
-                    dirs_to_mount=[(pathlib.Path(self._amd_tools_path), 'ro'),
-                                (self._repo_dir, 'Z'), (self._output_dir, 'Z')])
+        self.run_containerizable_sh_command(
+            command=vivado_build_commands,
+            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._output_dir, "Z")],
+        )
 
         # Create symlinks to the output files
-        xsa_files = list(self._source_repo_dir.glob(f'bin/{self._pc_project_name}-*/{self._pc_project_name}-*.xsa'))
+        xsa_files = list(self._source_repo_dir.glob(f"bin/{self._pc_project_name}-*/{self._pc_project_name}-*.xsa"))
         if len(xsa_files) != 1:
-            pretty_print.print_error(f'Unexpected number of {len(xsa_files)} *.xsa files in output direct. Expected was 1.')
+            pretty_print.print_error(
+                f"Unexpected number of {len(xsa_files)} *.xsa files in output direct. Expected was 1."
+            )
             sys.exit(1)
         (self._output_dir / xsa_files[0].name).symlink_to(xsa_files[0])
-
 
     def start_vivado_gui(self):
         """
@@ -145,13 +175,20 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             None
         """
 
-        self.check_amd_tools(required_tools=['vivado'])
+        self.check_amd_tools(required_tools=["vivado"])
 
-        start_vivado_gui_commands = f'\'export XILINXD_LICENSE_FILE={self._amd_license} && ' \
-                                    f'source {self._amd_vivado_path}/settings64.sh && ' \
-                                    f'vivado -nojournal -nolog {self._source_repo_dir}/Projects/{self._pc_project_name}/{self._pc_project_name}.xpr && ' \
-                                    f'exit\''
+        start_vivado_gui_commands = (
+            f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
+            f"source {self._amd_vivado_path}/settings64.sh && "
+            f"vivado -nojournal -nolog {self._source_repo_dir}/Projects/{self._pc_project_name}/{self._pc_project_name}.xpr && "
+            f"exit'"
+        )
 
-        self.start_gui_container(start_gui_command=start_vivado_gui_commands,
-                    potential_mounts=[(pathlib.Path(self._amd_tools_path), 'ro'),
-                                (self._repo_dir, 'Z'), (self._output_dir, 'Z')])
+        self.start_gui_container(
+            start_gui_command=start_vivado_gui_commands,
+            potential_mounts=[
+                (pathlib.Path(self._amd_tools_path), "ro"),
+                (self._repo_dir, "Z"),
+                (self._output_dir, "Z"),
+            ],
+        )

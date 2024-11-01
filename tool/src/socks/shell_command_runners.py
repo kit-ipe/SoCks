@@ -6,16 +6,21 @@ import subprocess
 
 import socks.pretty_print as pretty_print
 
+
 class Shell_Command_Runners:
     """
     A collection of functions to execute shell commands
     """
 
-
     @staticmethod
-    def run_sh_command(command: typing.List[str], cwd: pathlib.Path = None, logfile: pathlib.Path = None,
-                        scrolling_output: bool = False, visible_lines: int = 20):
-        """ (Google documentation style:
+    def run_sh_command(
+        command: typing.List[str],
+        cwd: pathlib.Path = None,
+        logfile: pathlib.Path = None,
+        scrolling_output: bool = False,
+        visible_lines: int = 20,
+    ):
+        """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
         Runs a sh command. If the srolling view is enabled or the output is to be logged, this function loses some
         output of commands that display a progress bar or someting similar. The 'tee' shell command has the same issue.
@@ -40,13 +45,13 @@ class Shell_Command_Runners:
             None
 
         Raises:
-            subprocess.CalledProcessError: If the return code of the subprocess is not 0 
+            subprocess.CalledProcessError: If the return code of the subprocess is not 0
         """
 
         # If scolling output is disabled and the output should not be hidden or logged, subprocess.run can be used
         # to run the subprocess
         if scrolling_output == False and visible_lines != 0 and logfile == None:
-            subprocess.run(' '.join(command), shell=True, cwd=cwd, check=True)
+            subprocess.run(" ".join(command), shell=True, cwd=cwd, check=True)
             return
 
         # Prepare to process the command line output of the command
@@ -59,17 +64,18 @@ class Shell_Command_Runners:
             if len(last_lines) >= visible_lines:
                 last_lines.pop(0)
             last_lines.append(line)
-        
+
         # Start the subprocess
-        process = subprocess.Popen(' '.join(command), shell=True, cwd=cwd, stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(
+            " ".join(command), shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
 
         # Continuously read from the process output
         while True:
             try:
                 # Wait for any of the pipes to have available data
                 readable = select.select([process.stdout, process.stderr], [], [])[0]
-            
+
             except KeyboardInterrupt:
                 # Gracefully handle Ctrl+C
                 process.kill()
@@ -89,11 +95,11 @@ class Shell_Command_Runners:
 
             # If provided, write to log file
             if logfile:
-                with logfile.open('a') as f:
+                with logfile.open("a") as f:
                     if stdout_line:
-                        print(stdout_line, file=f, end='')
+                        print(stdout_line, file=f, end="")
                     if stderr_line:
-                        print(stderr_line, file=f, end='')
+                        print(stderr_line, file=f, end="")
 
             # Show output of the command
             if stdout_line:
@@ -104,14 +110,14 @@ class Shell_Command_Runners:
             # Clear previous output
             for _ in range(printed_lines):
                 # Move the cursor up one line
-                print('\033[F', end='')
+                print("\033[F", end="")
                 # Clear the line
-                print('\033[K', end='')
+                print("\033[K", end="")
 
             # Print output
             printed_lines = 0
             for line in last_lines:
-                print(line, end='', flush=True)
+                print(line, end="", flush=True)
                 printed_lines += 1
 
         # Close the streams
@@ -121,12 +127,11 @@ class Shell_Command_Runners:
 
         # Check return code
         if process.returncode != 0:
-            raise subprocess.CalledProcessError(process.returncode, ' '.join(command))
-
+            raise subprocess.CalledProcessError(process.returncode, " ".join(command))
 
     @staticmethod
     def get_sh_results(command: typing.List[str], cwd: pathlib.Path = None) -> subprocess.CompletedProcess:
-        """ (Google documentation style:
+        """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
         Runs a sh command and get all output.
 
@@ -145,6 +150,6 @@ class Shell_Command_Runners:
             None
         """
 
-        result = subprocess.run(' '.join(command), shell=True, cwd=cwd, capture_output=True, text=True, check=False)
+        result = subprocess.run(" ".join(command), shell=True, cwd=cwd, capture_output=True, text=True, check=False)
 
         return result
