@@ -31,12 +31,12 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['build-srcs']['branch']
 
         # Find sources for this block
-        self._source_repo_url, self._source_repo_branch, self._local_source_dir = self._get_single_source()
+        self._source_repo, self._local_source_dir = self._get_single_source()
 
         self._rootfs_name = f'petalinux_zynqmp_{self._pc_prj_name}'
 
         # Project directories
-        self._source_repo_dir = self._repo_dir / f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo_url).path).stem}-{self._source_repo_branch}'
+        self._source_repo_dir = self._repo_dir / f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo["url"]).path).stem}-{self._source_repo["branch"]}'
         self._mod_dir = self._work_dir / self._rootfs_name
 
         # Project files
@@ -111,7 +111,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         self._repo_script.chmod(self._repo_script.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
         # Initialize repo in the current directory
-        Shell_Command_Runners.run_sh_command(['printf', '"y"', '|', str(self._repo_script), 'init', '-u', self._source_repo_url, '-b', self._source_repo_branch], cwd=self._source_repo_dir)
+        Shell_Command_Runners.run_sh_command(['printf', '"y"', '|', str(self._repo_script), 'init', '-u', self._source_repo['url'], '-b', self._source_repo['branch']], cwd=self._source_repo_dir)
         # Clone git repos
         Shell_Command_Runners.run_sh_command([str(self._repo_script), 'sync'], cwd=self._source_repo_dir)
         # Initialize local branches in all repos

@@ -30,7 +30,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         self._pc_project_name = project_cfg['blocks'][self.block_id]['project']['name']
 
         # Find sources for this block
-        self._source_repo_urls, self._source_repo_branches, self._local_source_dirs = self._get_multiple_sources()
+        self._source_repos, self._local_source_dirs = self._get_multiple_sources()
 
         self._ipbb_work_dir_name = 'ipbb-work'
 
@@ -91,11 +91,11 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
                                 f'cd {self._ipbb_work_dir}'
 
         # ToDo: It is also possible to use local repos with 'ipbb add symlink ...'. This needs to be implemented if we want to support local block sources.  
-        for index in range(len(self._source_repo_urls)):
-            if not self._source_repo_branches[index].startswith(('-b ', '-r ')):
+        for index in range(len(self._source_repos)):
+            if not self._source_repos[index]['branch'].startswith(('-b ', '-r ')):
                 pretty_print.print_error(f'Entries in blocks/{self.block_id}/project/build-srcs[N]/branch have to start with \'-b \' for branches and tags or with \'-r \' for commit ids.')
                 sys.exit(1)
-            init_ipbb_env_commands = init_ipbb_env_commands + f' && ipbb add git {self._source_repo_urls[index]} {self._source_repo_branches[index]}'
+            init_ipbb_env_commands = init_ipbb_env_commands + f' && ipbb add git {self._source_repos[index]["url"]} {self._source_repos[index]["branch"]}'
 
         init_ipbb_env_commands = init_ipbb_env_commands + '\''
 

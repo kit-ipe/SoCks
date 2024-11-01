@@ -7,6 +7,9 @@ ARG user_id=0
 # Switch to the root user to configure the image
 USER root
 
+# Install GPG key for CERN repos
+RUN curl -o "/etc/pki/rpm-gpg/RPM-GPG-KEY-kojiv2" "https://gitlab.cern.ch/api/v4/projects/141918/repository/files/src%2FRPM-GPG-KEY-kojiv2/raw?ref=main"
+
 # Install required packages to build the base RootFS
 RUN dnf -y install make wget sudo git python3 python3-devel gcc libffi-devel
 RUN dnf -y install augeas epel-release

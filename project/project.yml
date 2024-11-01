@@ -10,20 +10,20 @@ blocks:
   atf:
     project:
       import-src: "https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/serenity-s1-kria-atf.tar.gz"
-  rootfs:
-    source: "build"
-    builder: "ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8"
-    project:
-      build-srcs:
-        source: "https://github.com/Xilinx/yocto-manifests.git"
-        branch: "rel-v{{externalTools/xilinx/version}}"
-      add-build-info: true
-      # If no 'import-src' property is specified, the block must be built locally
-      dependencies:
-        kernel: "temp/kernel/output/kernel.tar.gz"
-    container:
-      image: "petalinux-rootfs-builder-alma8"
-      tag: "xilinx-v{{externalTools/xilinx/version}}"
+#  rootfs:
+#    source: "build"
+#    builder: "ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8"
+#    project:
+#      build-srcs:
+#        source: "https://github.com/Xilinx/yocto-manifests.git"
+#        branch: "rel-v{{externalTools/xilinx/version}}"
+#      add-build-info: true
+#      # If no 'import-src' property is specified, the block must be built locally
+#      dependencies:
+#        kernel: "temp/kernel/output/kernel.tar.gz"
+#    container:
+#      image: "petalinux-rootfs-builder-alma8"
+#      tag: "xilinx-v{{externalTools/xilinx/version}}"
   vivado:
     builder: "ZynqMP_AMD_Vivado_IPBB_Builder_Alma9"
     project:
@@ -41,17 +41,17 @@ blocks:
     project:
       dependencies:
         rootfs: "temp/rootfs/output/rootfs.tar.gz"
-#  rootfs:
-#    source: "build"
-#    builder: "ZynqMP_Alma_RootFS_Builder_Alma8"
-#    release: "8"
-#    project:
-#      add-build-info: false
-#      # If no 'import-src' property is specified, the block must be built locally
-#      dependencies:
-#        kernel: "temp/kernel/output/kernel.tar.gz"
-#        devicetree: "temp/devicetree/output/devicetree.tar.gz"
-#        vivado: "temp/vivado/output/vivado.tar.gz"
-#    container:
-#      image: "alma8-rootfs-builder-alma8"
-#      tag: "v1.0"
+  rootfs:
+    source: "build"
+    builder: "ZynqMP_Alma_RootFS_Builder_Alma8"
+    release: "8"
+    project:
+      add-build-info: false
+      # If no 'import-src' property is specified, the block must be built locally
+      dependencies:
+        kernel: "temp/kernel/output/kernel.tar.gz"
+        devicetree: "temp/devicetree/output/devicetree.tar.gz"
+        vivado: "temp/vivado/output/vivado.tar.gz"
+    container:
+      image: "alma8-rootfs-builder-alma8"
+      tag: "v1.0"

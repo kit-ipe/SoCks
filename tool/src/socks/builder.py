@@ -293,7 +293,7 @@ class Builder(Containerization):
             return True
 
 
-    def _get_single_source(self) -> typing.Tuple[str, str, pathlib.Path]:
+    def _get_single_source(self) -> typing.Tuple[typing.Tuple[str, str], pathlib.Path]:
         """
         Process the source section of a block with a single source.
 
@@ -301,47 +301,47 @@ class Builder(Containerization):
             None
 
         Returns:
-            source_repo_url:
-                The URL of the source repo. None if the source section in the block configuration does not contain a URL.
-            source_repo_branch:
-                The branch of the source repo to be used. None if the source section in the block configuration does not contain a URL.
+            source_repo:
+                A dict containing the URL and branch of the source repo. None if the source section in the block
+                configuration does not contain a URL.
             local_source_dir:
-                The path to the local source folder. None if the source section in the block configuration contains a URL.
+                The path to the local source folder. None if the source section in the block configuration
+                contains a URL.
 
         Raises:
             None
         """
 
-        source_repo_url = None
-        source_repo_branch = None
+        source_repo = None
         local_source_dir = None
 
         # Check whether this object has all mandatory attributes
         if not hasattr(self, '_pc_project_source'):
             raise AttributeError(f'This object of class {self.__class__.__name__} does not have attribute \'_pc_project_source\'')
 
-        if validators.url(self._pc_project_source):
+        if urllib.parse.urlparse(self._pc_project_source).scheme == 'file':
+            local_source_dir = pathlib.Path(urllib.parse.urlparse(self._pc_project_source).path)
+            pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {local_source_dir}')
+            sys.exit(1)
+        elif validators.url(self._pc_project_source):
             # The sources are downloaded from git
-            source_repo_url = self._pc_project_source
             if not hasattr(self, '_pc_project_branch'):
-                pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {source_repo_url}')
+                pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_source}')
                 sys.exit(1)
             else:
-                source_repo_branch = self._pc_project_branch
+                source_repo = {
+                    'url': self._pc_project_source,
+                    'branch': self._pc_project_branch
+                }
         else:
-            try:
-                # The sources are provided locally
-                local_source_dir = pathlib.Path(self._pc_project_source)
-                pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {self._pc_project_source}')
-                sys.exit(1)
-            except ValueError:
-                pretty_print.print_error(f'{self._pc_project_source} is not a valid URL and not a valid path')
-                sys.exit(1)
+            raise ValueError('The following string is not a valid reference to a block project source: ' \
+                        f'{self._pc_project_source}. Only URI schemes \'https\', \'http\', and \'file\' ' \
+                        'are supported.')
 
-        return source_repo_url, source_repo_branch, local_source_dir
+        return source_repo, local_source_dir
 
 
-    def _get_multiple_sources(self) -> typing.Tuple[typing.List[str], typing.List[str], typing.List[pathlib.Path]]:
+    def _get_multiple_sources(self) -> typing.Tuple[typing.Tuple[typing.List[str], typing.List[str]], typing.List[pathlib.Path]]:
         """
         Process the source section of a block with a multiple sources.
 
@@ -349,10 +349,9 @@ class Builder(Containerization):
             None
 
         Returns:
-            source_repo_url:
-                A list of all URLs of source repos for this block. The list is empty if no URL has been provided.
-            source_repo_branch:
-                A list of the branches of the source repos to be used. The list of branches is in the same order as the list of URLs. The list is empty if no URL has been provided.
+            source_repos:
+                A list of dicts with all source repo URLs and the associated branches for this block. The list
+                is empty if no URL has been provided.
             local_source_dir:
                 A list of paths to the local source folders. The list is empty if no path has been provided.
 
@@ -360,30 +359,30 @@ class Builder(Containerization):
             None
         """
 
-        source_repo_urls = []
-        source_repo_branches = []
+        source_repos = []
         local_source_dirs = []
 
         for index in range(len(self._pc_project_sources)):
-            if validators.url(self._pc_project_sources[index]):
+            if urllib.parse.urlparse(self._pc_project_sources[index]).scheme == 'file':
+                local_source_dir = pathlib.Path(urllib.parse.urlparse(self._pc_project_sources[index]).path)
+                pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {local_source_dir}')
+                sys.exit(1)
+            elif validators.url(self._pc_project_sources[index]):
                 # This source is downloaded from git
-                source_repo_urls.append(self._pc_project_sources[index])
                 if self._pc_project_branches[index] is None:
                     pretty_print.print_error(f'It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_sources[index]}')
                     sys.exit(1)
                 else:
-                    source_repo_branches.append(self._pc_project_branches[index])
+                    source_repos.append({
+                                            'url': self._pc_project_sources[index],
+                                            'branch': self._pc_project_branches[index]
+                                        })
             else:
-                try:
-                    # This source is provided locally
-                    local_source_dirs.append(pathlib.Path(self._pc_project_sources[index]))
-                    pretty_print.print_error(f'It is not yet supported to use local sources, but the following path was provided as source: {self._pc_project_sources[index]}')
-                    sys.exit(1)
-                except ValueError:
-                    pretty_print.print_error(f'{self._pc_project_sources[index]} is not a valid URL and not a valid path')
-                    sys.exit(1)
+                raise ValueError('The following string is not a valid reference to a block project source: ' \
+                        f'{self._pc_project_sources[index]}. Only URI schemes \'https\', \'http\', and \'file\' ' \
+                        'are supported.')
 
-        return source_repo_urls, source_repo_branches, local_source_dirs
+        return source_repos, local_source_dirs
 
 
     def _compose_build_info(self) -> str:
@@ -460,7 +459,7 @@ class Builder(Containerization):
             pretty_print.print_build('No need to initialize the local repo...')
             return
 
-        if self._source_repo_url is None:
+        if self._source_repo['url'] is None:
             # ToDo: Maybe at some point this function should support initializing multiple repos as well, but I am not sure yet if this is really needed
             pretty_print.print_error(f'This function expects a single object and not an array in blocks/{self.block_id}/project/build-srcs.')
             sys.exit(1)
@@ -471,7 +470,7 @@ class Builder(Containerization):
         self._repo_dir.mkdir(parents=True, exist_ok=True)
 
         # Clone the repo
-        Shell_Command_Runners.run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo_branch, self._source_repo_url, str(self._source_repo_dir)])
+        Shell_Command_Runners.run_sh_command(['git', 'clone', '--recursive', '--branch', self._source_repo['branch'], self._source_repo['url'], str(self._source_repo_dir)])
         # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
         Shell_Command_Runners.run_sh_command(['git', '-C', str(self._source_repo_dir), 'switch', '-c', self._git_local_ref_branch])
         # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
@@ -623,7 +622,8 @@ class Builder(Containerization):
 
     def import_prebuilt(self):
         """
-        Imports a pre-built block package. If a URL is provided instead of a path, the file is downloaded.
+        Imports a pre-built block package. If a file URI is provided, this directory is used locally. If a http or
+        https URI is provided, the file is downloaded.
 
         Args:
             None
@@ -637,8 +637,11 @@ class Builder(Containerization):
 
         # Get path of the pre-built block package
         if self._pc_project_prebuilt is None:
-            pretty_print.print_error(f'The property blocks/{self.block_id}/project/pre-built is required to import the block, but it is not set.')
+            pretty_print.print_error(f'The property blocks/{self.block_id}/project/pre-built is required to ' \
+                        'import the block, but it is not set.')
             sys.exit(1)
+        elif urllib.parse.urlparse(self._pc_project_prebuilt).scheme == 'file':
+            prebuilt_block_package = pathlib.Path(urllib.parse.urlparse(self._pc_project_prebuilt).path)
         elif validators.url(self._pc_project_prebuilt):
             self._download_prebuilt()
             downloads = list(self._download_dir.glob('*'))
@@ -648,11 +651,9 @@ class Builder(Containerization):
                 sys.exit(1)
             prebuilt_block_package = downloads[0]
         else:
-            try:
-                prebuilt_block_package = pathlib.Path(self._pc_project_prebuilt)
-            except ValueError:
-                pretty_print.print_error(f'{self._pc_project_prebuilt} is not a valid URL and not a valid path')
-                sys.exit(1)
+            raise ValueError('The following string is not a valid reference to a block package: ' \
+                        f'{self._pc_project_prebuilt}. Only URI schemes \'https\', \'http\', and \'file\' ' \
+                        'are supported.')
 
         # Check whether the file to be imported exists
         if not prebuilt_block_package.is_file():

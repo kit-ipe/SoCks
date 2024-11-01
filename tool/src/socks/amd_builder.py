@@ -40,7 +40,10 @@ class AMD_Builder(Builder):
 
     def check_amd_tools(self, required_tools: typing.List[str]):
         """
-        Collects and checks AMD Xilinx tools setup information from the host environment.
+        Collects and checks AMD Xilinx tools setup information from the host environment. This function should
+        only be called immediately before one of the AMD Xilinx tools is used and not in the constructor of a class.
+        This allows people to use all features of socks that no not require AMD Xilinx tools also when they
+        do not have the AMD Xilinx tools installed.
 
         Args:
             required_tools:

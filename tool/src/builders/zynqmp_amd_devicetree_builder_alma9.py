@@ -27,10 +27,10 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             self._pc_project_branch = project_cfg['blocks'][self.block_id]['project']['build-srcs']['branch']
 
         # Find sources for this block
-        self._source_repo_url, self._source_repo_branch, self._local_source_dir = self._get_single_source()
+        self._source_repo, self._local_source_dir = self._get_single_source()
 
         # Project directories
-        self._source_repo_dir = self._repo_dir / f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo_url).path).stem}-{self._source_repo_branch}'
+        self._source_repo_dir = self._repo_dir / f'{pathlib.Path(urllib.parse.urlparse(url=self._source_repo["url"]).path).stem}-{self._source_repo["branch"]}'
         self._dt_incl_dir = self._block_src_dir / 'dt_includes'
         self._dt_overlay_dir = self._block_src_dir / 'dt_overlays'
         self._base_work_dir = self._work_dir / 'base'

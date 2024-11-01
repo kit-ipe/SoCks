@@ -1,0 +1,11 @@
+# IPBus Remote
+KERNEL=="uio?", SUBSYSTEMS=="uio", ATTR{name}=="ipbus_remote", MODE="0666", SYMLINK+="uio-ipbus-remote", OWNER="root"
+
+# IPBus Local
+KERNEL=="uio?", SUBSYSTEMS=="uio", ATTR{name}=="ipbus_local", MODE="0666", SYMLINK+="uio-ipbus-local", OWNER="root"
+
+# GPIO Remote
+KERNEL=="uio?", SUBSYSTEMS=="uio", ATTR{name}=="axi_firewall", SYMLINK+="uio-axi-firewall", OWNER="root"
+
+# GPIO Local
+KERNEL=="uio?", SUBSYSTEMS=="uio", ATTR{name}=="gpio_local", SYMLINK+="uio-gpio-local", OWNER="root"
