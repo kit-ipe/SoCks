@@ -36,22 +36,25 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             block_description=block_description,
         )
 
-        # Import project configuration
-        self._pc_project_source = project_cfg["blocks"][self.block_id]["project"]["build-srcs"]["source"]
-        if "branch" in project_cfg["blocks"][self.block_id]["project"]["build-srcs"]:
-            self._pc_project_branch = project_cfg["blocks"][self.block_id]["project"]["build-srcs"]["branch"]
-
-        # Find sources for this block
-        self._source_repo, self._local_source_dir = self._get_single_source()
+        # Find project sources for this block
+        self._get_single_prj_src()
 
         self._rootfs_name = f"petalinux_zynqmp_{self._pc_prj_name}"
 
         # Project directories
-        self._source_repo_dir = (
-            self._repo_dir
-            / f"{pathlib.Path(urllib.parse.urlparse(url=self._source_repo['url']).path).stem}-{self._source_repo['branch']}"
-        )
         self._mod_dir = self._work_dir / self._rootfs_name
+        if self._local_source_dir is not None:
+            # Local project sources are used for this block
+            self._repo_dir = self._local_source_dir
+            self._source_repo_dir = self._local_source_dir
+        elif self._source_repo is not None:
+            # Online project sources are used for this block
+            self._source_repo_dir = (
+                self._repo_dir
+                / f"{pathlib.Path(urllib.parse.urlparse(url=self._source_repo['url']).path).stem}-{self._source_repo['branch']}"
+            )
+        else:
+            raise ValueError(f"No project source for block '{self.block_id}'")
 
         # Project files
         # File for version & build info tracking

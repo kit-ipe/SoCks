@@ -35,6 +35,7 @@ class Builder(Containerization):
     ):
         self.block_id = block_id
         self.block_description = block_description
+        self.pre_build_warnings = []
 
         # Import project configuration
         self._pc_prj_name = project_cfg["project"]["name"]
@@ -57,6 +58,29 @@ class Builder(Containerization):
         if "dependencies" in self._pc_project:
             self._pc_project_dependencies = project_cfg["blocks"][self.block_id]["project"]["dependencies"]
 
+        self._pc_project_sources = []
+        self._pc_project_branches = []
+        if "build-srcs" in self._pc_project:
+            if isinstance(project_cfg["blocks"][self.block_id]["project"]["build-srcs"], dict):
+                self._pc_project_sources.append(project_cfg["blocks"][self.block_id]["project"]["build-srcs"]["source"])
+                if "branch" in project_cfg["blocks"][self.block_id]["project"]["build-srcs"]:
+                    self._pc_project_branches.append(
+                        project_cfg["blocks"][self.block_id]["project"]["build-srcs"]["branch"]
+                    )
+                else:
+                    self._pc_project_branches.append(None)
+            elif isinstance(project_cfg["blocks"][self.block_id]["project"]["build-srcs"], list):
+                for item in project_cfg["blocks"][self.block_id]["project"]["build-srcs"]:
+                    self._pc_project_sources.append(item["source"])
+                    if "branch" in item:
+                        self._pc_project_branches.append(item["branch"])
+                    else:
+                        self._pc_project_branches.append(None)
+            else:
+                raise TypeError(
+                    f"Expected a dict or list, but got a {type(project_cfg['blocks'][self.block_id]['project']['build-srcs']).__name__}"
+                )
+
         # Host user
         self._host_user = os.getlogin()
         self._host_user_id = os.getuid()
@@ -64,6 +88,15 @@ class Builder(Containerization):
         # Local git branches
         self._git_local_ref_branch = "__ref"
         self._git_local_dev_branch = "__temp"
+
+        # Block project source
+        # ToDo: Maybe this should be unified and one should merge these four variables and use only two.
+        # But I suspect that there will rarely be several project sources and that their interaction is not uniform.
+        # That is why I think it is better to keep these variables separate for now
+        self._source_repo = None
+        self._source_repos = []
+        self._local_source_dir = None
+        self._local_source_dirs = []
 
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = socks_dir
@@ -88,6 +121,8 @@ class Builder(Containerization):
         self._project_cfg_files = project_cfg_files
         # ASCII file with all patches in the order in which they are to be applied
         self._patch_list_file = self._patch_dir / "patches.cfg"
+        # Flag to remember if patches have already been applied
+        self._repo_init_done_flag = self._block_temp_dir / ".repoinitdone"
         # Flag to remember if patches have already been applied
         self._patches_applied_flag = self._block_temp_dir / ".patchesapplied"
         # File for saving the checksum of the imported, pre-built block package
@@ -359,7 +394,7 @@ class Builder(Containerization):
         else:
             return True
 
-    def _get_single_source(self) -> typing.Tuple[typing.Tuple[str, str], pathlib.Path]:
+    def _get_single_prj_src(self):
         """
         Process the source section of a block with a single source.
 
@@ -367,53 +402,41 @@ class Builder(Containerization):
             None
 
         Returns:
-            source_repo:
-                A dict containing the URL and branch of the source repo. None if the source section in the block
-                configuration does not contain a URL.
-            local_source_dir:
-                The path to the local source folder. None if the source section in the block configuration
-                contains a URL.
+            None
 
         Raises:
             None
         """
 
-        source_repo = None
-        local_source_dir = None
-
-        # Check whether this object has all mandatory attributes
-        if not hasattr(self, "_pc_project_source"):
-            raise AttributeError(
-                f"This object of class {self.__class__.__name__} does not have attribute '_pc_project_source'"
-            )
-
-        if urllib.parse.urlparse(self._pc_project_source).scheme == "file":
-            local_source_dir = pathlib.Path(urllib.parse.urlparse(self._pc_project_source).path)
-            pretty_print.print_error(
-                f"It is not yet supported to use local sources, but the following path was provided as source: {local_source_dir}"
-            )
-            sys.exit(1)
-        elif validators.url(self._pc_project_source):
-            # The sources are downloaded from git
-            if not hasattr(self, "_pc_project_branch"):
+        if urllib.parse.urlparse(self._pc_project_sources[0]).scheme == "file":
+            # Local project sources are used for this block
+            self._local_source_dir = pathlib.Path(urllib.parse.urlparse(self._pc_project_sources[0]).path)
+            if not self._local_source_dir.is_dir():
                 pretty_print.print_error(
-                    f"It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_source}"
+                    f"The following setting in blocks/{self.block_id}/project/build-srcs/source does not point to a directory: {self._pc_project_sources[0]}"
+                )
+                sys.exit(1)
+            self.pre_build_warnings.append(
+                f"The following local project source will be used for this block: {self._local_source_dir}. "
+                "SoCks will operate on this directory, create local branches, apply patches, build binaries, etc."
+            )
+        elif validators.url(self._pc_project_sources[0]):
+            # The sources must be downloaded from git
+            if self._pc_project_branches[0] is None:
+                pretty_print.print_error(
+                    f"It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_sources[0]}"
                 )
                 sys.exit(1)
             else:
-                source_repo = {"url": self._pc_project_source, "branch": self._pc_project_branch}
+                self._source_repo = {"url": self._pc_project_sources[0], "branch": self._pc_project_branches[0]}
         else:
             raise ValueError(
                 "The following string is not a valid reference to a block project source: "
-                f"{self._pc_project_source}. Only URI schemes 'https', 'http', and 'file' "
+                f"{self._pc_project_sources[0]}. Only URI schemes 'https', 'http', 'ssh', and 'file' "
                 "are supported."
             )
 
-        return source_repo, local_source_dir
-
-    def _get_multiple_sources(
-        self,
-    ) -> typing.Tuple[typing.Tuple[typing.List[str], typing.List[str]], typing.List[pathlib.Path]]:
+    def _get_multiple_prj_srcs(self):
         """
         Process the source section of a block with a multiple sources.
 
@@ -421,45 +444,44 @@ class Builder(Containerization):
             None
 
         Returns:
-            source_repos:
-                A list of dicts with all source repo URLs and the associated branches for this block. The list
-                is empty if no URL has been provided.
-            local_source_dir:
-                A list of paths to the local source folders. The list is empty if no path has been provided.
+            None
 
         Raises:
             None
         """
 
-        source_repos = []
-        local_source_dirs = []
-
         for index in range(len(self._pc_project_sources)):
             if urllib.parse.urlparse(self._pc_project_sources[index]).scheme == "file":
-                local_source_dir = pathlib.Path(urllib.parse.urlparse(self._pc_project_sources[index]).path)
-                pretty_print.print_error(
-                    f"It is not yet supported to use local sources, but the following path was provided as source: {local_source_dir}"
+                # This is an external local project source
+                self._local_source_dirs.append(
+                    pathlib.Path(urllib.parse.urlparse(self._pc_project_sources[index]).path)
                 )
-                sys.exit(1)
+                if not self._local_source_dirs[-1].is_dir():
+                    pretty_print.print_error(
+                        f"The following setting in blocks/{self.block_id}/project/build-srcs/source[{index}] does not point to a directory: {self._pc_project_sources[index]}"
+                    )
+                    sys.exit(1)
+                self.pre_build_warnings.append(
+                    f"The following local project source will be used for this block: {self._local_source_dirs[-1]}. "
+                    "SoCks will operate on this directory, create local branches, apply patches, build binaries, etc."
+                )
             elif validators.url(self._pc_project_sources[index]):
-                # This source is downloaded from git
+                # This source must be downloaded from git
                 if self._pc_project_branches[index] is None:
                     pretty_print.print_error(
                         f"It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_sources[index]}"
                     )
                     sys.exit(1)
                 else:
-                    source_repos.append(
+                    self._source_repos.append(
                         {"url": self._pc_project_sources[index], "branch": self._pc_project_branches[index]}
                     )
             else:
                 raise ValueError(
                     "The following string is not a valid reference to a block project source: "
-                    f"{self._pc_project_sources[index]}. Only URI schemes 'https', 'http', and 'file' "
+                    f"{self._pc_project_sources[index]}. Only URI schemes 'https', 'http', 'ssh', and 'file' "
                     "are supported."
                 )
-
-        return source_repos, local_source_dirs
 
     def _compose_build_info(self) -> str:
         """
@@ -539,12 +561,12 @@ class Builder(Containerization):
             None
         """
 
-        # Skip all operations if the repo already exists
-        if self._source_repo_dir.exists():
+        # Skip all operations if the repo has already been initialized
+        if self._repo_init_done_flag.exists():
             pretty_print.print_build("No need to initialize the local repo...")
             return
 
-        if self._source_repo["url"] is None:
+        if self._source_repo is not None and not isinstance(self._source_repo, dict):
             # ToDo: Maybe at some point this function should support initializing multiple repos as well, but I am not sure yet if this is really needed
             pretty_print.print_error(
                 f"This function expects a single object and not an array in blocks/{self.block_id}/project/build-srcs."
@@ -554,28 +576,44 @@ class Builder(Containerization):
         pretty_print.print_build("Initializing local repo...")
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
-        self._repo_dir.mkdir(parents=True, exist_ok=True)
 
-        # Clone the repo
-        Shell_Command_Runners.run_sh_command(
-            [
-                "git",
-                "clone",
-                "--recursive",
-                "--branch",
-                self._source_repo["branch"],
-                self._source_repo["url"],
-                str(self._source_repo_dir),
-            ]
-        )
-        # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-        Shell_Command_Runners.run_sh_command(
-            ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_ref_branch]
-        )
-        # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-        Shell_Command_Runners.run_sh_command(
-            ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_dev_branch]
-        )
+        # Check if the source code of this block project is online and needs to be downloaded
+        if self._source_repo is not None:
+            self._repo_dir.mkdir(parents=True, exist_ok=True)
+            # Clone the repo
+            Shell_Command_Runners.run_sh_command(
+                [
+                    "git",
+                    "clone",
+                    "--recursive",
+                    "--branch",
+                    self._source_repo["branch"],
+                    self._source_repo["url"],
+                    str(self._source_repo_dir),
+                ]
+            )
+
+        results = Shell_Command_Runners.get_sh_results(["git", "-C", str(self._source_repo_dir), "branch", "-a"])
+        if not (
+            f"  {self._git_local_ref_branch}" in results.stdout.splitlines()
+            or f"* {self._git_local_ref_branch}" in results.stdout.splitlines()
+        ):
+            print("In if")
+            # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
+            Shell_Command_Runners.run_sh_command(
+                ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_ref_branch]
+            )
+        if not (
+            f"  {self._git_local_dev_branch}" in results.stdout.splitlines()
+            or f"* {self._git_local_dev_branch}" in results.stdout.splitlines()
+        ):
+            # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
+            Shell_Command_Runners.run_sh_command(
+                ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_dev_branch]
+            )
+
+        # Create the flag if it doesn't exist and update the timestamps
+        self._repo_init_done_flag.touch()
 
     def create_patches(self):
         """
@@ -1051,6 +1089,12 @@ class Builder(Containerization):
         Raises:
             None
         """
+
+        if not str(self._repo_dir).startswith(str(self._block_temp_dir)):
+            pretty_print.print_clean(
+                f"An external project directory is used for block '{self.block_id}'. It will not be cleaned."
+            )
+            return
 
         if not self._repo_dir.exists():
             pretty_print.print_clean("No need to clean the repo directory...")
