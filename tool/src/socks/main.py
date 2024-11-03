@@ -242,6 +242,22 @@ def main():
     else:
         active_blocks = [target_block]
 
+    # If necessary, issue warnings before building and ask the user for permission
+    pre_build_warnings = []
+    for block in active_blocks:
+        builder_name = project_cfg["blocks"][block]["builder"]
+        builder = builders[builder_name]
+        for warning in builder.pre_build_warnings:
+            pre_build_warnings.append(f"Block '{builder.block_id}': " + warning)
+    if pre_build_warnings:
+        for warning in pre_build_warnings:
+            pretty_print.print_warning(warning)
+        print(f"\nPlease read the warnings above carefully. Do you really want to continue? (y/n) ", end="")
+        answer = input("")
+        if answer.lower() not in ["y", "Y", "yes", "Yes"]:
+            pretty_print.print_clean("Abborted...")
+            sys.exit(1)
+
     # Execute the command for all active blocks
     for block in active_blocks:
         builder_name = project_cfg["blocks"][block]["builder"]

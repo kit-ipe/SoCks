@@ -30,18 +30,10 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         )
 
         # Import project configuration
-        self._pc_project_sources = []
-        self._pc_project_branches = []
-        for item in project_cfg["blocks"][self.block_id]["project"]["build-srcs"]:
-            self._pc_project_sources.append(item["source"])
-            if "branch" in item:
-                self._pc_project_branches.append(item["branch"])
-            else:
-                self._pc_project_branches.append(None)
         self._pc_project_name = project_cfg["blocks"][self.block_id]["project"]["name"]
 
-        # Find sources for this block
-        self._source_repos, self._local_source_dirs = self._get_multiple_sources()
+        # Find project sources for this block
+        self._get_multiple_prj_srcs()
 
         self._ipbb_work_dir_name = "ipbb-work"
 
@@ -98,7 +90,11 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             f"cd {self._ipbb_work_dir}"
         )
 
-        # ToDo: It is also possible to use local repos with 'ipbb add symlink ...'. This needs to be implemented if we want to support local block sources.
+        # Add local repositories
+        for path in self._local_source_dirs:
+            init_ipbb_env_commands = init_ipbb_env_commands + f" && ipbb add symlink {path}"
+
+        # Add online repositories
         for index in range(len(self._source_repos)):
             if not self._source_repos[index]["branch"].startswith(("-b ", "-r ")):
                 pretty_print.print_error(
@@ -112,9 +108,13 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
 
         init_ipbb_env_commands = init_ipbb_env_commands + "'"
 
+        local_source_mounts = []
+        for path in self._local_source_dirs:
+            local_source_mounts.append((path, "Z"))
+
         self.run_containerizable_sh_command(
             command=init_ipbb_env_commands,
-            dirs_to_mount=[(self._repo_dir, "Z")],
+            dirs_to_mount=[(self._repo_dir, "Z")] + local_source_mounts,
             custom_params=["-v", "$SSH_AUTH_SOCK:/ssh-auth-sock", "--env", "SSH_AUTH_SOCK=/ssh-auth-sock"],
         )
 
@@ -157,9 +157,13 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             "LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado generate-project'"
         )
 
+        local_source_mounts = []
+        for path in self._local_source_dirs:
+            local_source_mounts.append((path, "Z"))
+
         self.run_containerizable_sh_command(
             command=create_vivado_project_commands,
-            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")],
+            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")] + local_source_mounts,
         )
 
     def build_vivado_project(self):
@@ -220,14 +224,47 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             "LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado bitfile package'"
         )
 
+        local_source_mounts = []
+        for path in self._local_source_dirs:
+            local_source_mounts.append((path, "Z"))
+
         self.run_containerizable_sh_command(
             command=vivado_build_commands,
-            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")],
+            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")] + local_source_mounts,
         )
 
         # Create symlinks to the output files
         for item in (self._ipbb_work_dir / "proj" / self._pc_project_name / "package" / "src").glob("*"):
             (self._output_dir / item.name).symlink_to(item)
+
+    def start_container(self):
+        """
+        Starts an interactive container with which the block can be built.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self.check_amd_tools(required_tools=["vivado"])
+
+        potential_mounts = [
+            (self._xsa_dir, "Z"),
+            (pathlib.Path(self._amd_tools_path), "ro"),
+            (self._repo_dir, "Z"),
+            (self._work_dir, "Z"),
+            (self._output_dir, "Z"),
+        ]
+
+        for path in self._local_source_dirs:
+            potential_mounts.append((path, "Z"))
+
+        super(Builder, self).start_container(potential_mounts=potential_mounts)
 
     def start_vivado_gui(self):
         """

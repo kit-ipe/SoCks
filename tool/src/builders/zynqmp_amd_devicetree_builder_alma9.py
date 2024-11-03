@@ -32,23 +32,26 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             block_description=block_description,
         )
 
-        # Import project configuration
-        self._pc_project_source = project_cfg["blocks"][self.block_id]["project"]["build-srcs"]["source"]
-        if "branch" in project_cfg["blocks"][self.block_id]["project"]["build-srcs"]:
-            self._pc_project_branch = project_cfg["blocks"][self.block_id]["project"]["build-srcs"]["branch"]
-
-        # Find sources for this block
-        self._source_repo, self._local_source_dir = self._get_single_source()
+        # Find project sources for this block
+        self._get_single_prj_src()
 
         # Project directories
-        self._source_repo_dir = (
-            self._repo_dir
-            / f"{pathlib.Path(urllib.parse.urlparse(url=self._source_repo['url']).path).stem}-{self._source_repo['branch']}"
-        )
         self._dt_incl_dir = self._block_src_dir / "dt_includes"
         self._dt_overlay_dir = self._block_src_dir / "dt_overlays"
         self._base_work_dir = self._work_dir / "base"
         self._overlay_work_dir = self._work_dir / "overlays"
+        if self._local_source_dir is not None:
+            # Local project sources are used for this block
+            self._repo_dir = self._local_source_dir
+            self._source_repo_dir = self._local_source_dir
+        elif self._source_repo is not None:
+            # Online project sources are used for this block
+            self._source_repo_dir = (
+                self._repo_dir
+                / f"{pathlib.Path(urllib.parse.urlparse(url=self._source_repo['url']).path).stem}-{self._source_repo['branch']}"
+            )
+        else:
+            raise ValueError(f"No project source for block '{self.block_id}'")
 
         # Project files
         # ASCII file with all devicetree includes for the base devicetree
