@@ -37,7 +37,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         )
 
         # Find project sources for this block
-        self._get_single_prj_src()
+        self._set_single_prj_src()
 
         self._rootfs_name = f"petalinux_zynqmp_{self._pc_prj_name}"
 

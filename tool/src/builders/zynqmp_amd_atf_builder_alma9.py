@@ -31,7 +31,7 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
         )
 
         # Find project sources for this block
-        self._get_single_prj_src()
+        self._set_single_prj_src()
 
         # Project directories
         if self._local_source_dir is not None:

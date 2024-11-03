@@ -34,7 +34,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         self._pc_project_name = project_cfg["blocks"][self.block_id]["project"]["name"]
 
         # Find project sources for this block
-        self._get_single_prj_src()
+        self._set_single_prj_src()
 
         # Project directories
         if self._local_source_dir is not None:

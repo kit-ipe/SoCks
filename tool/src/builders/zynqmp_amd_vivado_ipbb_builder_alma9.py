@@ -33,7 +33,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         self._pc_project_name = project_cfg["blocks"][self.block_id]["project"]["name"]
 
         # Find project sources for this block
-        self._get_multiple_prj_srcs()
+        self._set_multiple_prj_srcs()
 
         self._ipbb_work_dir_name = "ipbb-work"
 

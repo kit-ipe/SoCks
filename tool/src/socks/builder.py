@@ -394,7 +394,7 @@ class Builder(Containerization):
         else:
             return True
 
-    def _get_single_prj_src(self):
+    def _set_single_prj_src(self):
         """
         Process the source section of a block with a single source.
 
@@ -436,7 +436,7 @@ class Builder(Containerization):
                 "are supported."
             )
 
-    def _get_multiple_prj_srcs(self):
+    def _set_multiple_prj_srcs(self):
         """
         Process the source section of a block with a multiple sources.
 
