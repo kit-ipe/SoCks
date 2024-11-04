@@ -51,7 +51,8 @@
           "properties": {
             "version": {
               "description": "Version of the toolset to use",
-              "type": "number"
+              "type": "string",
+              "pattern": "\\d\\d\\d\\d\\..*"
             },
             "maxThreadsVivado": {
               "description": "Maximum number of jobs to be execute simultaneously by Vivado",

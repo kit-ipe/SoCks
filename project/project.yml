@@ -5,7 +5,7 @@ project:
   name: "test-project"
 externalTools:
   xilinx:
-    version: 2022.2
+    version: "2022.2"
 blocks:
   atf:
     project:

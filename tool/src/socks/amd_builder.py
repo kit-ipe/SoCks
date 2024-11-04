@@ -96,7 +96,7 @@ class AMD_Builder(Builder):
                 )
                 sys.exit(1)
             else:
-                if getattr(self, f"_amd_{tool}_path").name != str(self._pc_xilinx_version):
+                if getattr(self, f"_amd_{tool}_path").name != self._pc_xilinx_version:
                     pretty_print.print_error(
                         f"The sourced version of {tool.capitalize()} is "
                         f'\'{getattr(self, f"_amd_{tool}_path").name}\','
