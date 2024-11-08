@@ -52,7 +52,7 @@
             "version": {
               "description": "Version of the toolset to use",
               "type": "string",
-              "pattern": "\\d\\d\\d\\d\\..*"
+              "pattern": "\\d\\d\\d\\d\\.\\d"
             },
             "maxThreadsVivado": {
               "description": "Maximum number of jobs to be execute simultaneously by Vivado",
