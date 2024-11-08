@@ -2,10 +2,12 @@ import sys
 import pathlib
 import shutil
 import zipfile
+import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.amd_builder import AMD_Builder
 from socks.builder import Builder
+from builders.zynqmp_amd_image_model import ZynqMP_AMD_Image_Model
 
 
 class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
@@ -22,6 +24,13 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         block_id: str = "image",
         block_description: str = "Build the boot image for ZynqMP devices",
     ):
+
+        try:
+            self.block_configuration = ZynqMP_AMD_Image_Model(**project_cfg)
+        except pydantic.ValidationError as e:
+            for err in e.errors():
+                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
+            sys.exit(1)
 
         super().__init__(
             project_cfg=project_cfg,

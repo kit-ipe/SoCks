@@ -9,9 +9,11 @@ import urllib
 import requests
 import validators
 import tqdm
+import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.builder import Builder
+from builders.zynqmp_alma_rootfs_model import ZynqMP_Alma_RootFS_Model
 
 
 class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
@@ -28,6 +30,13 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         block_id: str = "rootfs",
         block_description: str = "Build an AlmaLinux root file system",
     ):
+
+        try:
+            self.block_configuration = ZynqMP_Alma_RootFS_Model(**project_cfg)
+        except pydantic.ValidationError as e:
+            for err in e.errors():
+                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
+            sys.exit(1)
 
         super().__init__(
             project_cfg=project_cfg,

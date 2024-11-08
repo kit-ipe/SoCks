@@ -1,0 +1,73 @@
+from pydantic import BaseModel, Field, ConfigDict, StringConstraints, model_validator
+from typing import Optional, Literal
+from typing_extensions import Annotated
+
+class SoCks_Project_Model(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    type: Literal["zynqmp"] = Field(
+        default=..., description="The unique identifier of the project type"
+    )
+    name: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9-]*$")] = Field(
+        default=..., description="The name of the project"
+    )
+
+class Make_Settings_Model(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    maxBuildThreads: Annotated[int, Field(strict=True, gt=0)] = Field(
+        default=..., description="Number of Makefile recipes to be executed simultaneously"
+    )
+
+class Xilinx_Tools_Settings_Model(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    version: Annotated[str, StringConstraints(pattern=r"\d\d\d\d\.\d")] = Field(
+        default=..., description="Version of the toolset to use"
+    )
+    maxThreadsVivado: Annotated[int, Field(strict=True, gt=0)] = Field(
+        default=..., description="Maximum number of jobs to be executed simultaneously by Vivado"
+    )
+
+class External_Tools_Settings_Model(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    containerTool: Literal["docker", "podman", "none"] = Field(
+        default=..., description="Container tool to be used"
+    )
+    make: Make_Settings_Model
+    xilinx: Xilinx_Tools_Settings_Model
+
+class Dummy_Block_Model(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+
+    builder: str = Field(
+        default=..., description="Builder class to be used"
+    )
+
+class Blocks_Model(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    atf: Dummy_Block_Model
+    devicetree: Dummy_Block_Model
+    fsbl: Dummy_Block_Model
+    kernel: Dummy_Block_Model
+    pmu_fw: Dummy_Block_Model = Field(default=..., alias="pmu-fw")
+    ramfs: Optional[Dummy_Block_Model] = None
+    rootfs: Optional[Dummy_Block_Model] = None
+    u_boot: Dummy_Block_Model = Field(default=..., alias="u-boot")
+    vivado: Dummy_Block_Model
+    image: Dummy_Block_Model
+
+    @model_validator(mode="before")
+    def any_file_system(cls, values):
+        if not any((values.get("ramfs"), values.get("rootfs"))):
+            raise ValueError("At least one file system is required. Specify 'ramfs' or 'rootfs'.")
+        return values
+
+class ZynqMP_Base_Model(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    project: SoCks_Project_Model
+    externalTools: External_Tools_Settings_Model
+    blocks: Blocks_Model

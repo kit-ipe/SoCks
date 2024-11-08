@@ -6,10 +6,12 @@ import tarfile
 import stat
 import urllib
 import validators
+import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
 from socks.builder import Builder
+from builders.zynqmp_amd_petalinux_rootfs_model import ZynqMP_AMD_PetaLinux_RootFS_Model
 
 
 class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
@@ -26,6 +28,13 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         block_id: str = "rootfs",
         block_description: str = "Build an AMD PetaLinux root file system",
     ):
+
+        try:
+            self.block_configuration = ZynqMP_AMD_PetaLinux_RootFS_Model(**project_cfg)
+        except pydantic.ValidationError as e:
+            for err in e.errors():
+                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
+            sys.exit(1)
 
         super().__init__(
             project_cfg=project_cfg,

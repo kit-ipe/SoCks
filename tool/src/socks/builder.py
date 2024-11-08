@@ -37,6 +37,9 @@ class Builder(Containerization):
         self.block_description = block_description
         self.pre_build_warnings = []
 
+        if not hasattr(self, "block_configuration"):
+            raise AttributeError("Expected member variable 'block_configuration' is missing. This variable must be created in the derived, block-specific class.")
+
         # Import project configuration
         self._pc_prj_name = project_cfg["project"]["name"]
         self._pc_container_tool = project_cfg["externalTools"]["containerTool"]

@@ -3,9 +3,11 @@ import pathlib
 import shutil
 import urllib
 import hashlib
+import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.builder import Builder
+from builders.zynqmp_amd_uboot_model import ZynqMP_AMD_UBoot_Model
 
 
 class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
@@ -22,6 +24,13 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
         block_id: str = "u-boot",
         block_description: str = "Build the official AMD/Xilinx version of U-Boot for ZynqMP devices",
     ):
+
+        try:
+            self.block_configuration = ZynqMP_AMD_UBoot_Model(**project_cfg)
+        except pydantic.ValidationError as e:
+            for err in e.errors():
+                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
+            sys.exit(1)
 
         super().__init__(
             project_cfg=project_cfg,

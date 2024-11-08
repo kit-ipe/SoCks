@@ -1,9 +1,11 @@
 import sys
 import pathlib
 import urllib
+import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.builder import Builder
+from builders.zynqmp_amd_kernel_model import ZynqMP_AMD_Kernel_Model
 
 
 class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
@@ -20,6 +22,13 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         block_id: str = "kernel",
         block_description: str = "Build the official AMD/Xilinx version of the Linux Kernel for ZynqMP devices",
     ):
+
+        try:
+            self.block_configuration = ZynqMP_AMD_Kernel_Model(**project_cfg)
+        except pydantic.ValidationError as e:
+            for err in e.errors():
+                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
+            sys.exit(1)
 
         super().__init__(
             project_cfg=project_cfg,

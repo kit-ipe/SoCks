@@ -1,9 +1,11 @@
 import sys
 import pathlib
 import urllib
+import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.amd_builder import AMD_Builder
+from builders.zynqmp_amd_vivado_hog_model import ZynqMP_AMD_Vivado_Hog_Model
 
 
 class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
@@ -20,6 +22,13 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         block_id: str = "vivado",
         block_description: str = "Build an AMD/Xilinx Vivado Project with HDL on git (Hog)",
     ):
+
+        try:
+            self.block_configuration = ZynqMP_AMD_Vivado_Hog_Model(**project_cfg)
+        except pydantic.ValidationError as e:
+            for err in e.errors():
+                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
+            sys.exit(1)
 
         super().__init__(
             project_cfg=project_cfg,

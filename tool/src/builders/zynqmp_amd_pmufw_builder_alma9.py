@@ -2,10 +2,12 @@ import sys
 import pathlib
 import shutil
 import hashlib
+import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
 from socks.amd_builder import AMD_Builder
+from builders.zynqmp_amd_pmufw_model import ZynqMP_AMD_PMUFW_Model
 
 
 class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
@@ -22,6 +24,13 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
         block_id: str = "pmu-fw",
         block_description: str = "Build the Platform Management Unit (PMU) Firmware for ZynqMP devices",
     ):
+
+        try:
+            self.block_configuration = ZynqMP_AMD_PMUFW_Model(**project_cfg)
+        except pydantic.ValidationError as e:
+            for err in e.errors():
+                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
+            sys.exit(1)
 
         super().__init__(
             project_cfg=project_cfg,
