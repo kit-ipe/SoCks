@@ -97,7 +97,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         for index in range(len(self._source_repos)):
             if not self._source_repos[index]["branch"].startswith(("-b ", "-r ")):
                 pretty_print.print_error(
-                    f"Entries in blocks/{self.block_id}/project/build-srcs[N]/branch have to start with '-b ' for branches and tags or with '-r ' for commit ids."
+                    f"Entries in blocks/{self.block_id}/project/build_srcs[N]/branch have to start with '-b ' for branches and tags or with '-r ' for commit ids."
                 )
                 sys.exit(1)
             init_ipbb_env_commands = (

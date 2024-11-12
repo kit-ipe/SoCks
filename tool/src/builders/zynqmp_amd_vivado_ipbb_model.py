@@ -9,7 +9,6 @@ class ZynqMP_AMD_Vivado_IPBB_Block_Project_Model(Block_Project_Model):
 
     build_srcs: List[Build_Srcs_Model] = Field(
         default=...,
-        alias="build-srcs",
         description="An array of source objects"
     )
     name: str = Field(

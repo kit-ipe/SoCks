@@ -13,12 +13,10 @@ class ZynqMP_AMD_UBoot_Block_Project_Model(Block_Project_Model):
 
     build_srcs: Build_Srcs_Model = Field(
         default=...,
-        alias="build-srcs",
         description="A single source object"
     )
     add_build_info: bool = Field(
         default=...,
-        alias="add-build-info",
         description="Switch to specify whether or not build information should be included in the block"
     )
     dependencies: ZynqMP_AMD_UBoot_Dependencies_Model = Field(
@@ -35,7 +33,6 @@ class ZynqMP_AMD_UBoot_Blocks_Model(BaseModel):
         model_config = ConfigDict(extra='ignore')
 
         u_boot: ZynqMP_AMD_UBoot_Block_Model = Field(default=...,
-            alias="u-boot",
             description="Configuration of the AMD U-Boot block for ZynqMP devices"
         )
 

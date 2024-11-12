@@ -15,7 +15,6 @@ class ZynqMP_Alma_RootFS_Block_Project_Model(Block_Project_Model):
 
     add_build_info: bool = Field(
         default=...,
-        alias="add-build-info",
         description="Switch to specify whether or not build information should be included in the block"
     )
     dependencies: ZynqMP_Alma_RootFS_Dependencies_Model = Field(

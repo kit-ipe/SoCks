@@ -20,7 +20,7 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
         project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
-        block_id: str = "pmu-fw",
+        block_id: str = "pmu_fw",
         block_description: str = "Build the Platform Management Unit (PMU) Firmware for ZynqMP devices",
     ):
 

@@ -20,7 +20,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
         project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
-        block_id: str = "u-boot",
+        block_id: str = "uboot",
         block_description: str = "Build the official AMD/Xilinx version of U-Boot for ZynqMP devices",
     ):
 

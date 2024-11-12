@@ -11,10 +11,10 @@ class ZynqMP_AMD_Image_Dependencies_Model(BaseModel):
     devicetree: str
     fsbl: str
     kernel: str
-    pmu_fw: str = Field(default=..., alias="pmu-fw")
+    pmu_fw: str
     ramfs: Optional[str] = None
     rootfs: Optional[str] = None
-    u_boot: str = Field(default=..., alias="u-boot")
+    u_boot: str
     vivado: str
 
     @model_validator(mode="before")

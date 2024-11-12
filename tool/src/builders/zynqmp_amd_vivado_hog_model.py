@@ -8,7 +8,6 @@ class ZynqMP_AMD_Vivado_Hog_Block_Project_Model(Block_Project_Model):
 
     build_srcs: Build_Srcs_Model = Field(
         default=...,
-        alias="build-srcs",
         description="A single source object"
     )
     name: str = Field(

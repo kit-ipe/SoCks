@@ -1,6 +1,6 @@
 ---
 # Property 'project' must be specified outside this default project configuration file
-externalTools:
-  containerTool: "docker"
+external_tools:
+  container_tool: "docker"
   make:
-    maxBuildThreads: 16
+    max_build_threads: 16

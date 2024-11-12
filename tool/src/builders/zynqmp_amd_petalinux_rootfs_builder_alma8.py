@@ -567,7 +567,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         # Get path of the pre-built root file system
         if self.block_cfg.project.import_src is None:
             pretty_print.print_error(
-                f"The property blocks/{self.block_id}/project/import-src is required to import the block, but it is not set."
+                f"The property blocks/{self.block_id}/project/import_src is required to import the block, but it is not set."
             )
             sys.exit(1)
         elif validators.url(self.block_cfg.project.import_src):

@@ -25,7 +25,6 @@ class ZynqMP_AMD_PMUFW_Blocks_Model(BaseModel):
         model_config = ConfigDict(extra='ignore')
 
         pmu_fw: ZynqMP_AMD_PMUFW_Block_Model = Field(default=...,
-            alias="pmu-fw",
             description="Configuration of the AMD Platform Management Unit (PMU) firmware block for ZynqMP devices"
         )
 

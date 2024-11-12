@@ -47,7 +47,7 @@ class Builder(Containerization):
                 pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
             sys.exit(1)
 
-        self.block_cfg = getattr(self.project_cfg.blocks, block_id.replace("-", "_"))
+        self.block_cfg = getattr(self.project_cfg.blocks, block_id)
 
         # Host user
         self._host_user = os.getlogin()
@@ -381,7 +381,7 @@ class Builder(Containerization):
             self._local_source_dir = pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.build_srcs.source).path)
             if not self._local_source_dir.is_dir():
                 pretty_print.print_error(
-                    f"The following setting in blocks/{self.block_id}/project/build-srcs/source does not point to a directory: {self.block_cfg.project.build_srcs.source}"
+                    f"The following setting in blocks/{self.block_id}/project/build_srcs/source does not point to a directory: {self.block_cfg.project.build_srcs.source}"
                 )
                 sys.exit(1)
             self.pre_build_warnings.append(
@@ -426,7 +426,7 @@ class Builder(Containerization):
                 )
                 if not self._local_source_dirs[-1].is_dir():
                     pretty_print.print_error(
-                        f"The following setting in blocks/{self.block_id}/project/build-srcs/source[{index}] does not point to a directory: {self.block_cfg.project.build_srcs[index].source}"
+                        f"The following setting in blocks/{self.block_id}/project/build_srcs/source[{index}] does not point to a directory: {self.block_cfg.project.build_srcs[index].source}"
                     )
                     sys.exit(1)
                 self.pre_build_warnings.append(
@@ -537,7 +537,7 @@ class Builder(Containerization):
         if self._source_repo is not None and not isinstance(self._source_repo, dict):
             # ToDo: Maybe at some point this function should support initializing multiple repos as well, but I am not sure yet if this is really needed
             pretty_print.print_error(
-                f"This function expects a single object and not an array in blocks/{self.block_id}/project/build-srcs."
+                f"This function expects a single object and not an array in blocks/{self.block_id}/project/build_srcs."
             )
             sys.exit(1)
 
@@ -914,7 +914,7 @@ class Builder(Containerization):
             if block_pkg_rel_path is None:
                 continue
             block_pkg_path = self._project_dir / block_pkg_rel_path
-            import_path = self._dependencies_dir / dependency.replace("_", "-")
+            import_path = self._dependencies_dir / dependency
             block_pkg_md5_file = self._dependencies_dir / f"block_pkg_{dependency}.md5"
 
             # Check whether the file to be imported exists
@@ -947,7 +947,7 @@ class Builder(Containerization):
                 continue
 
             # Clean directory of this dependency
-            self.clean_dependencies(dependency=dependency.replace("_", "-"))
+            self.clean_dependencies(dependency=dependency)
             import_path.mkdir(parents=True, exist_ok=True)
 
             pretty_print.print_build(f"Importing block package {block_pkg_path.name}...")
@@ -956,7 +956,7 @@ class Builder(Containerization):
             with tarfile.open(block_pkg_path, "r:*") as archive:
                 # Check whether all expected files are included
                 content = archive.getnames()
-                for pattern in self._block_deps[dependency.replace("_", "-")]:
+                for pattern in self._block_deps[dependency]:
                     matched_files = [file for file in content if re.fullmatch(pattern=pattern, string=file)]
                     # A file is missing if no file matches the pattern
                     if not matched_files:

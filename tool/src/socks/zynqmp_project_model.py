@@ -16,7 +16,7 @@ class Make_Settings_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
     max_build_threads: Annotated[int, Field(strict=True, gt=0)] = Field(
-        default=..., alias="maxBuildThreads", description="Number of Makefile recipes to be executed simultaneously"
+        default=..., description="Number of Makefile recipes to be executed simultaneously"
     )
 
 class Xilinx_Tools_Settings_Model(BaseModel):
@@ -26,14 +26,14 @@ class Xilinx_Tools_Settings_Model(BaseModel):
         default=..., description="Version of the toolset to use"
     )
     max_threads_vivado: Annotated[int, Field(strict=True, gt=0)] = Field(
-        default=..., alias="maxThreadsVivado", description="Maximum number of jobs to be executed simultaneously by Vivado"
+        default=..., description="Maximum number of jobs to be executed simultaneously by Vivado"
     )
 
 class External_Tools_Settings_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
     container_tool: Literal["docker", "podman", "none"] = Field(
-        default=..., alias="containerTool", description="Container tool to be used"
+        default=..., description="Container tool to be used"
     )
     make: Make_Settings_Model
     xilinx: Xilinx_Tools_Settings_Model
@@ -52,10 +52,10 @@ class Blocks_Model(BaseModel):
     devicetree: Dummy_Block_Model
     fsbl: Dummy_Block_Model
     kernel: Dummy_Block_Model
-    pmu_fw: Dummy_Block_Model = Field(default=..., alias="pmu-fw")
+    pmu_fw: Dummy_Block_Model
     ramfs: Optional[Dummy_Block_Model] = None
     rootfs: Optional[Dummy_Block_Model] = None
-    u_boot: Dummy_Block_Model = Field(default=..., alias="u-boot")
+    u_boot: Dummy_Block_Model
     vivado: Dummy_Block_Model
     image: Dummy_Block_Model
 
@@ -69,5 +69,5 @@ class ZynqMP_Base_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
     project: SoCks_Project_Model
-    external_tools: External_Tools_Settings_Model = Field(default=..., alias="externalTools")
+    external_tools: External_Tools_Settings_Model
     blocks: Blocks_Model

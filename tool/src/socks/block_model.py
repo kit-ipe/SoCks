@@ -15,7 +15,7 @@ class Block_Project_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
     import_src: Optional[str] = Field(
-        default=None, alias="import-src", description="URL or path to the pre-built files"
+        default=None, description="URL or path to the pre-built files"
     )
 
 class Container_Settings_Model(BaseModel):

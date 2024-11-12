@@ -3,19 +3,19 @@ import:
   - project-default.yml
 project:
   type: "zynqmp"
-externalTools:
+external_tools:
   xilinx:
     # Property 'version' must be specified outside this default project configuration file
-    maxThreadsVivado: 8
+    max_threads_vivado: 8
 blocks:
   atf:
     source: "build"
     builder: "ZynqMP_AMD_ATF_Builder_Alma9"
     project:
-      build-srcs:
+      build_srcs:
         source: "https://github.com/Xilinx/arm-trusted-firmware.git"
         branch: "xilinx-v{{externalTools/xilinx/version}}"
-      # If no 'import-src' property is specified, the block must be built locally
+      # If no 'import_src' property is specified, the block must be built locally
     container:
       image: "amd-atf-builder-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
@@ -23,10 +23,10 @@ blocks:
     source: "build"
     builder: "ZynqMP_AMD_Devicetree_Builder_Alma9"
     project:
-      build-srcs:
+      build_srcs:
         source: "https://github.com/Xilinx/device-tree-xlnx.git"
         branch: "xilinx_v{{externalTools/xilinx/version}}"
-      # If no 'import-src' property is specified, the block must be built locally
+      # If no 'import_src' property is specified, the block must be built locally
       dependencies:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
@@ -36,7 +36,7 @@ blocks:
     source: "build"
     builder: "ZynqMP_AMD_FSBL_Builder_Alma9"
     project:
-      # If no 'import-src' property is specified, the block must be built locally
+      # If no 'import_src' property is specified, the block must be built locally
       dependencies:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
@@ -46,33 +46,33 @@ blocks:
     source: "build"
     builder: "ZynqMP_AMD_Kernel_Builder_Alma9"
     project:
-      build-srcs:
+      build_srcs:
         source: "https://github.com/Xilinx/linux-xlnx.git"
         branch: "xilinx-v{{externalTools/xilinx/version}}"
-      # If no 'import-src' property is specified, the block must be built locally
-      add-build-info: false
+      # If no 'import_src' property is specified, the block must be built locally
+      add_build_info: false
     container:
       image: "kernel-builder-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
-  pmu-fw:
+  pmu_fw:
     source: "build"
     builder: "ZynqMP_AMD_PMUFW_Builder_Alma9"
     project:
-      # If no 'import-src' property is specified, the block must be built locally
+      # If no 'import_src' property is specified, the block must be built locally
       dependencies:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "amd-xilinx-tools-alma8"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
-  u-boot:
+  uboot:
     source: "build"
     builder: "ZynqMP_AMD_UBoot_Builder_Alma9"
     project:
-      build-srcs:
+      build_srcs:
         source: "https://github.com/Xilinx/u-boot-xlnx.git"
         branch: "xilinx-v{{externalTools/xilinx/version}}"
-      # If no 'import-src' property is specified, the block must be built locally
-      add-build-info: false
+      # If no 'import_src' property is specified, the block must be built locally
+      add_build_info: false
       dependencies:
         atf: "temp/atf/output/atf.tar.gz"
     container:
@@ -82,8 +82,8 @@ blocks:
     source: "build"
     # Property 'builder' must be specified outside this default project configuration file
     project:
-      # Property 'build-srcs' must be specified outside this default project configuration file
-      # If no 'import-src' property is specified, the block must be built locally
+      # Property 'build_srcs' must be specified outside this default project configuration file
+      # If no 'import_src' property is specified, the block must be built locally
     container:
       image: "amd-xilinx-tools-alma9"
       tag: "xilinx-v{{externalTools/xilinx/version}}"
@@ -91,14 +91,14 @@ blocks:
     source: "build"
     builder: "ZynqMP_AMD_Image_Builder_Alma9"
     project:
-      # If no 'import-src' property is specified, the block must be built locally
+      # If no 'import_src' property is specified, the block must be built locally
       dependencies:
         atf: "temp/atf/output/atf.tar.gz"
         devicetree: "temp/devicetree/output/devicetree.tar.gz"
         fsbl: "temp/fsbl/output/fsbl.tar.gz"
         kernel: "temp/kernel/output/kernel.tar.gz"
-        pmu-fw: "temp/pmu-fw/output/pmu-fw.tar.gz"
-        u-boot: "temp/u-boot/output/u-boot.tar.gz"
+        pmu_fw: "temp/pmu_fw/output/pmu_fw.tar.gz"
+        uboot: "temp/uboot/output/uboot.tar.gz"
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "image-builder-alma9"

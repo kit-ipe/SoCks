@@ -39,8 +39,8 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self._dt_img_path = self._dependencies_dir / "devicetree/system.dtb"
         self._fsbl_img_path = self._dependencies_dir / "fsbl/fsbl.elf"
         self._kernel_img_path = self._dependencies_dir / "kernel/Image.gz"
-        self._pmufw_img_path = self._dependencies_dir / "pmu-fw/pmufw.elf"
-        self._uboot_img_path = self._dependencies_dir / "u-boot/u-boot.elf"
+        self._pmufw_img_path = self._dependencies_dir / "pmu_fw/pmufw.elf"
+        self._uboot_img_path = self._dependencies_dir / "uboot/u-boot.elf"
         self._vivado_xsa_path = None
 
         self._sdc_image_name = f"{self.project_cfg.project.name}_sd_card.img"
@@ -58,10 +58,10 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             "devicetree": ["system.dtb"],
             "fsbl": ["fsbl.elf"],
             "kernel": ["Image.gz"],
-            "pmu-fw": ["pmufw.elf"],
+            "pmu_fw": ["pmufw.elf"],
             "ramfs": [".*.cpio.gz"],
             "rootfs": [".*.tar.xz"],
-            "u-boot": ["u-boot.elf"],
+            "uboot": ["u-boot.elf"],
             "vivado": [".*.xsa"],
         }
 
