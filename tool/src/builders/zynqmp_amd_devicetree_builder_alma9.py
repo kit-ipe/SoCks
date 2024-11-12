@@ -3,7 +3,6 @@ import pathlib
 import shutil
 import urllib
 import hashlib
-import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.amd_builder import AMD_Builder
@@ -25,16 +24,10 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         block_description: str = "Build the Devicetree for ZynqMP devices",
     ):
 
-        try:
-            self.block_configuration = ZynqMP_AMD_Devicetree_Model(**project_cfg)
-        except pydantic.ValidationError as e:
-            for err in e.errors():
-                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
-            sys.exit(1)
-
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
+            model_class=ZynqMP_AMD_Devicetree_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -88,7 +81,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
                 self.clean_block_temp,
             ]
         )
-        if self._pc_block_source == "build":
+        if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
                 [
                     self.build_container_image,
@@ -106,7 +99,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             )
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
-        elif self._pc_block_source == "import":
+        elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
     def prepare_dt_sources(self):

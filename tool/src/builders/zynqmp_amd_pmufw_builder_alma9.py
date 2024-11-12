@@ -2,7 +2,6 @@ import sys
 import pathlib
 import shutil
 import hashlib
-import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
@@ -25,16 +24,10 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
         block_description: str = "Build the Platform Management Unit (PMU) Firmware for ZynqMP devices",
     ):
 
-        try:
-            self.block_configuration = ZynqMP_AMD_PMUFW_Model(**project_cfg)
-        except pydantic.ValidationError as e:
-            for err in e.errors():
-                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
-            sys.exit(1)
-
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
+            model_class=ZynqMP_AMD_PMUFW_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -66,7 +59,7 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
                 self.clean_block_temp,
             ]
         )
-        if self._pc_block_source == "build":
+        if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
                 [
                     self.build_container_image,
@@ -80,7 +73,7 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
             self.block_cmds["build"].extend([self.build_pmufw, self.export_block_package])
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
-        elif self._pc_block_source == "import":
+        elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
     def create_pmufw_project(self):

@@ -1,7 +1,6 @@
 import sys
 import pathlib
 import urllib
-import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.builder import Builder
@@ -23,16 +22,10 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         block_description: str = "Build the official AMD/Xilinx version of the Linux Kernel for ZynqMP devices",
     ):
 
-        try:
-            self.block_configuration = ZynqMP_AMD_Kernel_Model(**project_cfg)
-        except pydantic.ValidationError as e:
-            for err in e.errors():
-                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
-            sys.exit(1)
-
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
+            model_class=ZynqMP_AMD_Kernel_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -81,7 +74,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
                 self.clean_block_temp,
             ]
         )
-        if self._pc_block_source == "build":
+        if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend([self.build_container_image, self.init_repo, self.apply_patches])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_kernel, self.export_modules, self.export_block_package])
@@ -92,7 +85,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             self.block_cmds["prep-clean-srcs"].extend(
                 [self.build_container_image, self.init_repo, self.prep_clean_srcs]
             )
-        elif self._pc_block_source == "import":
+        elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
     def run_menuconfig(self):
@@ -165,7 +158,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
 
         pretty_print.print_build("Building Linux Kernel...")
 
-        if self._pc_project_build_info_flag == True:
+        if self.block_cfg.project.add_build_info == True:
             # Add build information file
             with self._build_info_file.open("w") as f:
                 print('const char *build_info = "', file=f, end="")
@@ -179,7 +172,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             f"'cd {self._source_repo_dir} && "
             "export CROSS_COMPILE=aarch64-linux-gnu- && "
             "make ARCH=arm64 olddefconfig && "
-            f"make ARCH=arm64 -j{self._pc_make_threads}'"
+            f"make ARCH=arm64 -j{self.project_cfg.external_tools.make.max_build_threads}'"
         )
 
         self.run_containerizable_sh_command(

@@ -2,7 +2,6 @@ import sys
 import pathlib
 import shutil
 import zipfile
-import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.amd_builder import AMD_Builder
@@ -25,16 +24,10 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         block_description: str = "Build the boot image for ZynqMP devices",
     ):
 
-        try:
-            self.block_configuration = ZynqMP_AMD_Image_Model(**project_cfg)
-        except pydantic.ValidationError as e:
-            for err in e.errors():
-                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
-            sys.exit(1)
-
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
+            model_class=ZynqMP_AMD_Image_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -50,7 +43,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self._uboot_img_path = self._dependencies_dir / "u-boot/u-boot.elf"
         self._vivado_xsa_path = None
 
-        self._sdc_image_name = f"{self._pc_prj_name}_sd_card.img"
+        self._sdc_image_name = f"{self.project_cfg.project.name}_sd_card.img"
 
         # Project directories
         self._misc_dir = self._block_src_dir / "misc"
@@ -85,14 +78,14 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self.clean_block_temp,
             ]
         )
-        if self._pc_block_source == "build":
+        if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend([self.build_container_image, self.import_dependencies])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.linux_img, self.bootscr_img, self.boot_img])
             self.block_cmds["build-sd-card"].extend(self.block_cmds["build"])
             self.block_cmds["build-sd-card"].extend([self.sd_card_img])
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
-        elif self._pc_block_source == "import":
+        elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
     def start_container(self):

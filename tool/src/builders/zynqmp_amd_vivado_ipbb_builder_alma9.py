@@ -1,6 +1,5 @@
 import sys
 import pathlib
-import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.amd_builder import AMD_Builder
@@ -22,24 +21,15 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         block_description: str = "Build an AMD/Xilinx Vivado Project with IPbus Builder (IPBB)",
     ):
 
-        try:
-            self.block_configuration = ZynqMP_AMD_Vivado_IPBB_Model(**project_cfg)
-        except pydantic.ValidationError as e:
-            for err in e.errors():
-                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
-            sys.exit(1)
-
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
+            model_class=ZynqMP_AMD_Vivado_IPBB_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
             block_description=block_description,
         )
-
-        # Import project configuration
-        self._pc_project_name = project_cfg["blocks"][self.block_id]["project"]["name"]
 
         # Find project sources for this block
         self._set_multiple_prj_srcs()
@@ -59,13 +49,13 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         self.block_cmds["clean"].extend(
             [self.build_container_image, self.clean_download, self.clean_repo, self.clean_output, self.clean_block_temp]
         )
-        if self._pc_block_source == "build":
+        if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend([self.build_container_image, self.init_repo, self.create_vivado_project])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_vivado_project, self.export_block_package])
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
             self.block_cmds["start-vivado-gui"].extend([self.build_container_image, self.start_vivado_gui])
-        elif self._pc_block_source == "import":
+        elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
     def init_repo(self):
@@ -145,7 +135,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         """
 
         # Check if the Vivado project needs to be created
-        if (self._ipbb_work_dir / "proj" / self._pc_project_name).is_dir():
+        if (self._ipbb_work_dir / "proj" / self.block_cfg.project.name).is_dir():
             pretty_print.print_build("The Vivado Project already exists. It will not be recreated...")
             return
 
@@ -156,9 +146,9 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         create_vivado_project_commands = (
             "'source ~/tools/ipbb-*/env.sh && "
             f"cd {self._ipbb_work_dir} && "
-            f"ipbb toolbox check-dep vivado serenity-s1-k26c-fw:projects/{self._pc_project_name} top.dep && "
-            f"ipbb proj create vivado {self._pc_project_name} serenity-s1-k26c-fw:projects/{self._pc_project_name} && "
-            f"cd proj/{self._pc_project_name} && "
+            f"ipbb toolbox check-dep vivado serenity-s1-k26c-fw:projects/{self.block_cfg.project.name} top.dep && "
+            f"ipbb proj create vivado {self.block_cfg.project.name} serenity-s1-k26c-fw:projects/{self.block_cfg.project.name} && "
+            f"cd proj/{self.block_cfg.project.name} && "
             "export LD_LIBRARY_PATH=/opt/cactus/lib:\$$LD_LIBRARY_PATH PATH=/opt/cactus/bin/uhal/tools:\$$PATH && "
             "ipbb ipbus gendecoders -c && "
             f"export XILINXD_LICENSE_FILE={self._amd_license} && "
@@ -195,22 +185,22 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             + [
                 self._ipbb_work_dir / "src",
                 self._ipbb_work_dir / "var",
-                self._ipbb_work_dir / "proj" / self._pc_project_name / "decoders",
-                self._ipbb_work_dir / "proj" / self._pc_project_name / self._pc_project_name,
+                self._ipbb_work_dir / "proj" / self.block_cfg.project.name / "decoders",
+                self._ipbb_work_dir / "proj" / self.block_cfg.project.name / self.block_cfg.project.name,
             ],
             src_ignore_list=[
                 self._ipbb_work_dir
                 / "proj"
-                / self._pc_project_name
-                / self._pc_project_name
-                / f"{self._pc_project_name}.runs",
+                / self.block_cfg.project.name
+                / self.block_cfg.project.name
+                / f"{self.block_cfg.project.name}.runs",
                 self._ipbb_work_dir
                 / "proj"
-                / self._pc_project_name
-                / self._pc_project_name
-                / f"{self._pc_project_name}.cache",
+                / self.block_cfg.project.name
+                / self.block_cfg.project.name
+                / f"{self.block_cfg.project.name}.cache",
             ],
-            out_search_list=[self._ipbb_work_dir / "proj" / self._pc_project_name / "package"],
+            out_search_list=[self._ipbb_work_dir / "proj" / self.block_cfg.project.name / "package"],
         ):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
@@ -227,9 +217,9 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             "'source ~/tools/ipbb-*/env.sh && "
             f"export XILINXD_LICENSE_FILE={self._amd_license} && "
             f"source {self._amd_vivado_path}/settings64.sh && "
-            f"cd {self._ipbb_work_dir}/proj/{self._pc_project_name} && "
+            f"cd {self._ipbb_work_dir}/proj/{self.block_cfg.project.name} && "
             "LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado check-syntax && "
-            f"LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado synth -j{self._pc_vivado_threads} impl -j{self._pc_vivado_threads} && "
+            f"LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado synth -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} impl -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} && "
             "LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado bitfile package'"
         )
 
@@ -243,7 +233,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         )
 
         # Create symlinks to the output files
-        for item in (self._ipbb_work_dir / "proj" / self._pc_project_name / "package" / "src").glob("*"):
+        for item in (self._ipbb_work_dir / "proj" / self.block_cfg.project.name / "package" / "src").glob("*"):
             (self._output_dir / item.name).symlink_to(item)
 
     def start_container(self):
@@ -294,7 +284,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         start_vivado_gui_commands = (
             f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
             f"source {self._amd_vivado_path}/settings64.sh && "
-            f"vivado -nojournal -nolog {self._ipbb_work_dir}/proj/{self._pc_project_name}/{self._pc_project_name}/{self._pc_project_name}.xpr && "
+            f"vivado -nojournal -nolog {self._ipbb_work_dir}/proj/{self.block_cfg.project.name}/{self.block_cfg.project.name}/{self.block_cfg.project.name}.xpr && "
             f"exit'"
         )
 

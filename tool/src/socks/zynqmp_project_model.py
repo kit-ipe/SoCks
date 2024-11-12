@@ -15,8 +15,8 @@ class SoCks_Project_Model(BaseModel):
 class Make_Settings_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
-    maxBuildThreads: Annotated[int, Field(strict=True, gt=0)] = Field(
-        default=..., description="Number of Makefile recipes to be executed simultaneously"
+    max_build_threads: Annotated[int, Field(strict=True, gt=0)] = Field(
+        default=..., alias="maxBuildThreads", description="Number of Makefile recipes to be executed simultaneously"
     )
 
 class Xilinx_Tools_Settings_Model(BaseModel):
@@ -25,15 +25,15 @@ class Xilinx_Tools_Settings_Model(BaseModel):
     version: Annotated[str, StringConstraints(pattern=r"\d\d\d\d\.\d")] = Field(
         default=..., description="Version of the toolset to use"
     )
-    maxThreadsVivado: Annotated[int, Field(strict=True, gt=0)] = Field(
-        default=..., description="Maximum number of jobs to be executed simultaneously by Vivado"
+    max_threads_vivado: Annotated[int, Field(strict=True, gt=0)] = Field(
+        default=..., alias="maxThreadsVivado", description="Maximum number of jobs to be executed simultaneously by Vivado"
     )
 
 class External_Tools_Settings_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
-    containerTool: Literal["docker", "podman", "none"] = Field(
-        default=..., description="Container tool to be used"
+    container_tool: Literal["docker", "podman", "none"] = Field(
+        default=..., alias="containerTool", description="Container tool to be used"
     )
     make: Make_Settings_Model
     xilinx: Xilinx_Tools_Settings_Model
@@ -69,5 +69,5 @@ class ZynqMP_Base_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
     project: SoCks_Project_Model
-    externalTools: External_Tools_Settings_Model
+    external_tools: External_Tools_Settings_Model = Field(default=..., alias="externalTools")
     blocks: Blocks_Model
