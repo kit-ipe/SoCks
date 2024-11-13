@@ -3,7 +3,7 @@ import pathlib
 import urllib
 
 import socks.pretty_print as pretty_print
-from socks.amd_builder import AMD_Builder
+from builders.amd_builder import AMD_Builder
 from builders.zynqmp_amd_vivado_hog_model import ZynqMP_AMD_Vivado_Hog_Model
 
 

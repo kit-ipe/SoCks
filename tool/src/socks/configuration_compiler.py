@@ -1,8 +1,6 @@
 import typing
 import sys
 import pathlib
-import json
-import jsonschema
 import yaml
 import re
 

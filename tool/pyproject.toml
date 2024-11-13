@@ -14,7 +14,6 @@ license = { file = "COPYING" }
 requires-python = ">= 3.10"
 dependencies = [
     "pyyaml>=5.4.1",
-    "jsonschema>=4.23.0",
     "python-dateutil>=2.8.1",
     "requests>=2.25.1",
     "validators>=0.33.0",
@@ -24,7 +23,7 @@ dependencies = [
 ]
 
 [tool.setuptools.package-data]
-socks = ["container/*.containerfile", "schemas/*.schema.json", "templates/**/*"]
+socks = ["container/*.containerfile", "templates/**/*"]
 
 [tool.black]
 line-length = 120

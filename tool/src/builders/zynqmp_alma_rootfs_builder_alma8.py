@@ -11,7 +11,7 @@ import validators
 import tqdm
 
 import socks.pretty_print as pretty_print
-from socks.builder import Builder
+from builders.builder import Builder
 from builders.zynqmp_alma_rootfs_model import ZynqMP_Alma_RootFS_Model
 
 

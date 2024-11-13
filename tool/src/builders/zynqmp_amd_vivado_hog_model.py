@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 
-from socks.block_model import Block_Model, Block_Project_Model, Build_Srcs_Model
+from builders.block_model import Block_Model, Block_Project_Model, Build_Srcs_Model
 from socks.zynqmp_base_model import ZynqMP_Base_Model
 
 class ZynqMP_AMD_Vivado_Hog_Block_Project_Model(Block_Project_Model):

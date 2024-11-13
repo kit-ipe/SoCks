@@ -5,7 +5,7 @@ import shutil
 import sys
 
 import socks.pretty_print as pretty_print
-from socks.builder import Builder
+from builders.builder import Builder
 
 
 class AMD_Builder(Builder):

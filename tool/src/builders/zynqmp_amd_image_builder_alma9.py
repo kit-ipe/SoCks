@@ -4,8 +4,8 @@ import shutil
 import zipfile
 
 import socks.pretty_print as pretty_print
-from socks.amd_builder import AMD_Builder
-from socks.builder import Builder
+from builders.amd_builder import AMD_Builder
+from builders.builder import Builder
 from builders.zynqmp_amd_image_model import ZynqMP_AMD_Image_Model
 
 

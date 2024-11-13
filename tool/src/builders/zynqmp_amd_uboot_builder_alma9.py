@@ -5,7 +5,7 @@ import urllib
 import hashlib
 
 import socks.pretty_print as pretty_print
-from socks.builder import Builder
+from builders.builder import Builder
 from builders.zynqmp_amd_uboot_model import ZynqMP_AMD_UBoot_Model
 
 

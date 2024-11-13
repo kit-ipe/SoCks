@@ -2,7 +2,7 @@ import sys
 import pathlib
 
 import socks.pretty_print as pretty_print
-from socks.amd_builder import AMD_Builder
+from builders.amd_builder import AMD_Builder
 from builders.zynqmp_amd_vivado_ipbb_model import ZynqMP_AMD_Vivado_IPBB_Model
 
 
