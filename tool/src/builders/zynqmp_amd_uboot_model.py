@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 
 from socks.block_model import Block_Model, Block_Project_Model, Build_Srcs_Model
-from socks.zynqmp_project_model import ZynqMP_Base_Model
+from socks.zynqmp_base_model import ZynqMP_Base_Model
 
 class ZynqMP_AMD_UBoot_Dependencies_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
@@ -32,7 +32,7 @@ class ZynqMP_AMD_UBoot_Block_Model(Block_Model):
 class ZynqMP_AMD_UBoot_Blocks_Model(BaseModel):
         model_config = ConfigDict(extra='ignore')
 
-        u_boot: ZynqMP_AMD_UBoot_Block_Model = Field(default=...,
+        uboot: ZynqMP_AMD_UBoot_Block_Model = Field(default=...,
             description="Configuration of the AMD U-Boot block for ZynqMP devices"
         )
 

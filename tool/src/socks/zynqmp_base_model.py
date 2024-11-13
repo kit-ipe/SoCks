@@ -2,10 +2,10 @@ from pydantic import BaseModel, Field, ConfigDict, StringConstraints, model_vali
 from typing import Optional, Literal
 from typing_extensions import Annotated
 
-class SoCks_Project_Model(BaseModel):
+class Project_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
-    type: Literal["zynqmp"] = Field(
+    type: Literal["ZynqMP"] = Field(
         default=..., description="The unique identifier of the project type"
     )
     name: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9-]*$")] = Field(
@@ -55,7 +55,7 @@ class Blocks_Model(BaseModel):
     pmu_fw: Dummy_Block_Model
     ramfs: Optional[Dummy_Block_Model] = None
     rootfs: Optional[Dummy_Block_Model] = None
-    u_boot: Dummy_Block_Model
+    uboot: Dummy_Block_Model
     vivado: Dummy_Block_Model
     image: Dummy_Block_Model
 
@@ -68,6 +68,6 @@ class Blocks_Model(BaseModel):
 class ZynqMP_Base_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
-    project: SoCks_Project_Model
+    project: Project_Model
     external_tools: External_Tools_Settings_Model
     blocks: Blocks_Model

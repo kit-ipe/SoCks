@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import Optional
 
 from socks.block_model import Block_Model, Block_Project_Model
-from socks.zynqmp_project_model import ZynqMP_Base_Model
+from socks.zynqmp_base_model import ZynqMP_Base_Model
 
 class ZynqMP_AMD_Image_Dependencies_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
@@ -14,7 +14,7 @@ class ZynqMP_AMD_Image_Dependencies_Model(BaseModel):
     pmu_fw: str
     ramfs: Optional[str] = None
     rootfs: Optional[str] = None
-    u_boot: str
+    uboot: str
     vivado: str
 
     @model_validator(mode="before")

@@ -2,9 +2,12 @@ import typing
 import sys
 import pathlib
 import importlib
+import pkgutil
+import inspect
 import copy
 import argparse
 import yaml
+import pydantic
 
 import socks
 import socks.pretty_print as pretty_print
@@ -92,7 +95,7 @@ def sort_blocks(blocks: typing.List[str], project_cfg: dict):
 # Set tool and project directory
 socks_dir = pathlib.Path(
     importlib.resources.files(socks)
-)  # ToDo: Check if this works if the tool is installed with pip
+)
 project_dir = pathlib.Path.cwd()
 
 # Set root project configuration file
@@ -110,29 +113,63 @@ project_cfg, project_cfg_files = Configuration_Compiler.compile(
     root_cfg_file=project_cfg_root_file, socks_dir=socks_dir, project_dir=project_dir
 )
 
+# Check project type and find respective module
+project_model_suffix = "_Base_Model"
+project_model_class_name = project_cfg['project']['type'] + project_model_suffix
+try:
+    project_model_module = importlib.import_module("socks." + project_model_class_name.lower())
+except ImportError:
+    available_prj_model_classes = []
+    # Iterate over all modules in the socks package
+    for _, module_name, _ in pkgutil.walk_packages(path=[str(socks_dir)], prefix="socks."):
+        # Find modules that end with the project model suffix
+        if module_name.endswith(project_model_suffix.lower()):
+            module = importlib.import_module(module_name)
+            # Find classes that end with the project model suffix
+            classes = [cls for name, cls in inspect.getmembers(module, inspect.isclass) if name.endswith(project_model_suffix)]
+            available_prj_model_classes.extend(classes)
+
+    supported_prj_types = [cls.__name__.split(project_model_suffix)[0] for cls in available_prj_model_classes]
+
+    pretty_print.print_error(f"Project type '{project_cfg['project']['type']}' is not supported (No project model class '{project_model_class_name}' available).")
+    pretty_print.print_error("Available options are: " + ", ".join(supported_prj_types))
+    sys.exit(1)
+
+# Get access to the project model class
+project_model_class = getattr(project_model_module, project_model_class_name)
+
+# Initialize project configuration model
+try:
+    project_cfg_model = project_model_class(**project_cfg)
+except pydantic.ValidationError as e:
+    for err in e.errors():
+        print(f"Error: {err['msg']} when analyzing {' -> '.join(err['loc'])}")
+    sys.exit(1)
+
 # Create builder objects
 builders = {}
-for block0, block_dict0 in project_cfg["blocks"].items():
-    builder_class_name = block_dict0["builder"]
-    builder_module_name = builder_class_name.lower()
+for block in project_cfg_model.blocks.model_fields:
+    block_cfg = getattr(project_cfg_model.blocks, block)
+    if block_cfg is None:
+        continue
     try:
-        module = importlib.import_module("builders." + builder_module_name)
+        module = importlib.import_module(f"builders.{block_cfg.builder.lower()}")
         # Get access to the builder class
-        builder_class = getattr(module, builder_class_name)
+        builder_class = getattr(module, block_cfg.builder)
         # Create a project configuration object for the builder that only contains information that is intended for this builder, i.e. remove all information for other builders
         builder_project_cfg = copy.deepcopy(project_cfg)
-        for block1, block_dict1 in project_cfg["blocks"].items():
-            if block1 != block0:
-                builder_project_cfg["blocks"].pop(block1)
+        for block_i, block_dict_i in project_cfg["blocks"].items():
+            if block_i != block:
+                builder_project_cfg["blocks"].pop(block_i)
         # Add builder object to dict
-        builders[builder_class_name] = builder_class(
+        builders[block_cfg.builder] = builder_class(
             project_cfg=builder_project_cfg,
             project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
         )
     except ImportError:
-        pretty_print.print_error(f"No builder class {builder_class_name} available")
+        pretty_print.print_error(f"No builder class {block_cfg.builder} available")
         sys.exit(1)
 
 # A complete list of all commands that SoCks supports as an interaction option with blocks, including a description

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 
 from socks.block_model import Block_Model, Block_Project_Model
-from socks.zynqmp_project_model import ZynqMP_Base_Model
+from socks.zynqmp_base_model import ZynqMP_Base_Model
 
 class ZynqMP_Alma_RootFS_Dependencies_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
