@@ -1,6 +1,7 @@
 import typing
 import sys
 import pathlib
+import importlib.resources
 import importlib
 import pkgutil
 import inspect
