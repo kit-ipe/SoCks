@@ -293,8 +293,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         dt_overlays_build_commands = (
             f"'cd {self._overlay_work_dir} && "
             "for file in *.dtsi; do "
-            '   name=$(printf "${file}" | awk -F/ "{print \$(NF)}" | '
-            'awk -F. "{print \$(NF-1)}") && '
+            "   name=$(printf \"${file}\" | awk -F/ \"{print \$(NF)}\" | awk -F. \"{print \$(NF-1)}\") && "
             f"  gcc -I {includes_dir} -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp "
             "-o ${name}_res.dtsi ${name}.dtsi && "
             "   dtc -O dtb -o ${name}.dtbo -@ ${name}_res.dtsi; "

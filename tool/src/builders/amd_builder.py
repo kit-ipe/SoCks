@@ -93,14 +93,15 @@ class AMD_Builder(Builder):
         for tool in required_tools:
             if getattr(self, f"_amd_{tool}_path") is None:
                 pretty_print.print_error(
-                    f"{tool.capitalize()} could not be found. " f"Please source {tool.capitalize()}."
+                    f"{tool.capitalize()} could not be found. "
+                    f"Please source {tool.capitalize()} {self.project_cfg.external_tools.xilinx.version}."
                 )
                 sys.exit(1)
             else:
                 if getattr(self, f"_amd_{tool}_path").name != self.project_cfg.external_tools.xilinx.version:
                     pretty_print.print_error(
                         f"The sourced version of {tool.capitalize()} is "
-                        f'\'{getattr(self, f"_amd_{tool}_path").name}\','
+                        f"'{getattr(self, f'_amd_{tool}_path').name}',"
                         f" but this project requires version '{self.project_cfg.external_tools.xilinx.version}'."
                     )
                     sys.exit(1)

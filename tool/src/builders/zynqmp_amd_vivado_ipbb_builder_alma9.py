@@ -153,7 +153,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             "ipbb ipbus gendecoders -c && "
             f"export XILINXD_LICENSE_FILE={self._amd_license} && "
             f"source {self._amd_vivado_path}/settings64.sh && "
-            "LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado generate-project'"
+            "ipbb vivado generate-project'"
         )
 
         local_source_mounts = []
@@ -218,9 +218,9 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             f"export XILINXD_LICENSE_FILE={self._amd_license} && "
             f"source {self._amd_vivado_path}/settings64.sh && "
             f"cd {self._ipbb_work_dir}/proj/{self.block_cfg.project.name} && "
-            "LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado check-syntax && "
-            f"LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado synth -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} impl -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} && "
-            "LD_PRELOAD=/lib64/libudev.so.1 ipbb vivado bitfile package'"
+            "ipbb vivado check-syntax && "
+            f"ipbb vivado synth -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} impl -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} && "
+            "ipbb vivado bitfile package'"
         )
 
         local_source_mounts = []

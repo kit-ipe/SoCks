@@ -36,7 +36,7 @@ blocks:
           branch: "-b main"
       name: "s1-kria"
     container:
-      image: "ipbb-builder-alma9"
+      image: "ipbb-builder-alma8"
   image:
     project:
       dependencies:

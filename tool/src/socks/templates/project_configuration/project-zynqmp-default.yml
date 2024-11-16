@@ -30,7 +30,7 @@ blocks:
       dependencies:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
-      image: "amd-xilinx-tools-alma9"
+      image: "amd-xilinx-tools-alma8"
       tag: "xilinx-v{{external_tools/xilinx/version}}"
   fsbl:
     source: "build"
@@ -85,7 +85,7 @@ blocks:
       # Property 'build_srcs' must be specified outside this default project configuration file
       # If no 'import_src' property is specified, the block must be built locally
     container:
-      image: "amd-xilinx-tools-alma9"
+      image: "amd-xilinx-tools-alma8"
       tag: "xilinx-v{{external_tools/xilinx/version}}"
   image:
     source: "build"

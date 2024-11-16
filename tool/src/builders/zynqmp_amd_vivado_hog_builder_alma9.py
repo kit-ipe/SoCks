@@ -99,7 +99,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             f"source {self._amd_vivado_path}/settings64.sh && "
             f"git config --global --add safe.directory {self._source_repo_dir} && "
             f"git config --global --add safe.directory {self._source_repo_dir}/Hog && "
-            f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}'"
+            f"{self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}'"
         )
 
         self.run_containerizable_sh_command(
@@ -148,7 +148,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             f"source {self._amd_vivado_path}/settings64.sh && "
             f"git config --global --add safe.directory {self._source_repo_dir} && "
             f"git config --global --add safe.directory {self._source_repo_dir}/Hog && "
-            f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}'"
+            f"{self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}'"
         )
 
         self.run_containerizable_sh_command(
