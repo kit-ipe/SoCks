@@ -3,7 +3,8 @@ import pathlib
 import urllib
 
 import socks.pretty_print as pretty_print
-from socks.builder import Builder
+from builders.builder import Builder
+from builders.zynqmp_amd_atf_model import ZynqMP_AMD_ATF_Model
 
 
 class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
@@ -24,6 +25,7 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
+            model_class=ZynqMP_AMD_ATF_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -60,13 +62,13 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
                 self.clean_block_temp,
             ]
         )
-        if self._pc_block_source == "build":
+        if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend([self.build_container_image, self.init_repo, self.apply_patches])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_atf, self.export_block_package])
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
-        elif self._pc_block_source == "import":
+        elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
     def build_atf(self):

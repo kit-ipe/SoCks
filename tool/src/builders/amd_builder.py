@@ -5,7 +5,7 @@ import shutil
 import sys
 
 import socks.pretty_print as pretty_print
-from socks.builder import Builder
+from builders.builder import Builder
 
 
 class AMD_Builder(Builder):
@@ -17,6 +17,7 @@ class AMD_Builder(Builder):
         self,
         project_cfg: dict,
         project_cfg_files: list,
+        model_class,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str,
@@ -26,16 +27,16 @@ class AMD_Builder(Builder):
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
+            model_class=model_class,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
             block_description=block_description,
         )
 
-        # Import project configuration
-        self._pc_xilinx_version = project_cfg["externalTools"]["xilinx"]["version"]
-        self._pc_vivado_threads = project_cfg["externalTools"]["xilinx"]["maxThreadsVivado"]
-
+        # These variables are initialized with the function check_amd_tools() as soon as AMD Xilinx tools are needed.
+        # This allows people to use all features of socks that do not require AMD Xilinx tools also when they
+        # do not have the AMD Xilinx tools installed.
         self._amd_vivado_path = None
         self._amd_vitis_path = None
         self._amd_tools_path = None
@@ -52,7 +53,7 @@ class AMD_Builder(Builder):
         """
         Collects and checks AMD Xilinx tools setup information from the host environment. This function should
         only be called immediately before one of the AMD Xilinx tools is used and not in the constructor of a class.
-        This allows people to use all features of socks that no not require AMD Xilinx tools also when they
+        This allows people to use all features of socks that do not require AMD Xilinx tools also when they
         do not have the AMD Xilinx tools installed.
 
         Args:
@@ -96,11 +97,11 @@ class AMD_Builder(Builder):
                 )
                 sys.exit(1)
             else:
-                if getattr(self, f"_amd_{tool}_path").name != self._pc_xilinx_version:
+                if getattr(self, f"_amd_{tool}_path").name != self.project_cfg.external_tools.xilinx.version:
                     pretty_print.print_error(
                         f"The sourced version of {tool.capitalize()} is "
                         f'\'{getattr(self, f"_amd_{tool}_path").name}\','
-                        f" but this project requires version '{self._pc_xilinx_version}'."
+                        f" but this project requires version '{self.project_cfg.external_tools.xilinx.version}'."
                     )
                     sys.exit(1)
                 self._amd_tools_path = getattr(self, f"_amd_{tool}_path").parent.parent

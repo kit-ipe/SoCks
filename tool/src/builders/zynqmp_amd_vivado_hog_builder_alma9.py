@@ -3,7 +3,8 @@ import pathlib
 import urllib
 
 import socks.pretty_print as pretty_print
-from socks.amd_builder import AMD_Builder
+from builders.amd_builder import AMD_Builder
+from builders.zynqmp_amd_vivado_hog_model import ZynqMP_AMD_Vivado_Hog_Model
 
 
 class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
@@ -24,14 +25,12 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
+            model_class=ZynqMP_AMD_Vivado_Hog_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
             block_description=block_description,
         )
-
-        # Import project configuration
-        self._pc_project_name = project_cfg["blocks"][self.block_id]["project"]["name"]
 
         # Find project sources for this block
         self._set_single_prj_src()
@@ -63,13 +62,13 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
                 self.clean_block_temp,
             ]
         )
-        if self._pc_block_source == "build":
+        if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend([self.build_container_image, self.init_repo, self.create_vivado_project])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_vivado_project, self.export_block_package])
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
             self.block_cmds["start-vivado-gui"].extend([self.build_container_image, self.start_vivado_gui])
-        elif self._pc_block_source == "import":
+        elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
     def create_vivado_project(self):
@@ -87,7 +86,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         """
 
         # Check if the Vivado project needs to be created
-        if (self._source_repo_dir / "Projects" / self._pc_project_name).is_dir():
+        if (self._source_repo_dir / "Projects" / self.block_cfg.project.name).is_dir():
             pretty_print.print_build("The Vivado Project already exists. It will not be recreated...")
             return
 
@@ -100,7 +99,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             f"source {self._amd_vivado_path}/settings64.sh && "
             f"git config --global --add safe.directory {self._source_repo_dir} && "
             f"git config --global --add safe.directory {self._source_repo_dir}/Hog && "
-            f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do CREATE {self._pc_project_name}'"
+            f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}'"
         )
 
         self.run_containerizable_sh_command(
@@ -128,7 +127,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             + [
                 self._source_repo_dir / "Top",
                 self._source_repo_dir / "Hog",
-                self._source_repo_dir / f"lib_{self._pc_project_name}",
+                self._source_repo_dir / f"lib_{self.block_cfg.project.name}",
             ],
             out_search_list=[self._source_repo_dir / "bin"],
         ):
@@ -149,7 +148,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             f"source {self._amd_vivado_path}/settings64.sh && "
             f"git config --global --add safe.directory {self._source_repo_dir} && "
             f"git config --global --add safe.directory {self._source_repo_dir}/Hog && "
-            f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do WORKFLOW {self._pc_project_name}'"
+            f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}'"
         )
 
         self.run_containerizable_sh_command(
@@ -158,7 +157,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         )
 
         # Create symlinks to the output files
-        xsa_files = list(self._source_repo_dir.glob(f"bin/{self._pc_project_name}-*/{self._pc_project_name}-*.xsa"))
+        xsa_files = list(self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.xsa"))
         if len(xsa_files) != 1:
             pretty_print.print_error(
                 f"Unexpected number of {len(xsa_files)} *.xsa files in output direct. Expected was 1."
@@ -185,7 +184,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         start_vivado_gui_commands = (
             f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
             f"source {self._amd_vivado_path}/settings64.sh && "
-            f"vivado -nojournal -nolog {self._source_repo_dir}/Projects/{self._pc_project_name}/{self._pc_project_name}.xpr && "
+            f"vivado -nojournal -nolog {self._source_repo_dir}/Projects/{self.block_cfg.project.name}/{self.block_cfg.project.name}.xpr && "
             f"exit'"
         )
 

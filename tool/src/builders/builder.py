@@ -13,6 +13,7 @@ import tarfile
 import re
 import hashlib
 import time
+import pydantic
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
@@ -28,6 +29,7 @@ class Builder(Containerization):
         self,
         project_cfg: dict,
         project_cfg_files: list,
+        model_class,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str,
@@ -37,49 +39,15 @@ class Builder(Containerization):
         self.block_description = block_description
         self.pre_build_warnings = []
 
-        # Import project configuration
-        self._pc_prj_name = project_cfg["project"]["name"]
-        self._pc_container_tool = project_cfg["externalTools"]["containerTool"]
-        self._pc_make_threads = project_cfg["externalTools"]["make"]["maxBuildThreads"]
-        self._pc_block_source = project_cfg["blocks"][self.block_id]["source"]
-        self._pc_container_image = project_cfg["blocks"][self.block_id]["container"]["image"]
-        self._pc_container_tag = project_cfg["blocks"][self.block_id]["container"]["tag"]
-        self._pc_project = project_cfg["blocks"][self.block_id]["project"]
+        # Initialize block model
+        try:
+            self.project_cfg = model_class(**project_cfg)
+        except pydantic.ValidationError as e:
+            for err in e.errors():
+                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
+            sys.exit(1)
 
-        self._pc_project_prebuilt = None
-        if "import-src" in self._pc_project:
-            self._pc_project_prebuilt = project_cfg["blocks"][self.block_id]["project"]["import-src"]
-
-        self._pc_project_build_info_flag = None
-        if "add-build-info" in self._pc_project:
-            self._pc_project_build_info_flag = project_cfg["blocks"][self.block_id]["project"]["add-build-info"]
-
-        self._pc_project_dependencies = None
-        if "dependencies" in self._pc_project:
-            self._pc_project_dependencies = project_cfg["blocks"][self.block_id]["project"]["dependencies"]
-
-        self._pc_project_sources = []
-        self._pc_project_branches = []
-        if "build-srcs" in self._pc_project:
-            if isinstance(project_cfg["blocks"][self.block_id]["project"]["build-srcs"], dict):
-                self._pc_project_sources.append(project_cfg["blocks"][self.block_id]["project"]["build-srcs"]["source"])
-                if "branch" in project_cfg["blocks"][self.block_id]["project"]["build-srcs"]:
-                    self._pc_project_branches.append(
-                        project_cfg["blocks"][self.block_id]["project"]["build-srcs"]["branch"]
-                    )
-                else:
-                    self._pc_project_branches.append(None)
-            elif isinstance(project_cfg["blocks"][self.block_id]["project"]["build-srcs"], list):
-                for item in project_cfg["blocks"][self.block_id]["project"]["build-srcs"]:
-                    self._pc_project_sources.append(item["source"])
-                    if "branch" in item:
-                        self._pc_project_branches.append(item["branch"])
-                    else:
-                        self._pc_project_branches.append(None)
-            else:
-                raise TypeError(
-                    f"Expected a dict or list, but got a {type(project_cfg['blocks'][self.block_id]['project']['build-srcs']).__name__}"
-                )
+        self.block_cfg = getattr(self.project_cfg.blocks, block_id)
 
         # Host user
         self._host_user = os.getlogin()
@@ -129,9 +97,9 @@ class Builder(Containerization):
         self._source_pb_md5_file = self._work_dir / "source_pb.md5"
 
         # Containerization
-        container_image = f"{self._pc_container_image}:{self._pc_container_tag}"
+        container_image = f"{self.block_cfg.container.image}:{self.block_cfg.container.tag}"
         super().__init__(
-            container_tool=self._pc_container_tool,
+            container_tool=self.project_cfg.external_tools.container_tool,
             container_image=container_image,
             container_file=self._container_dir / f"{container_image}.containerfile",
         )
@@ -408,31 +376,31 @@ class Builder(Containerization):
             None
         """
 
-        if urllib.parse.urlparse(self._pc_project_sources[0]).scheme == "file":
+        if urllib.parse.urlparse(self.block_cfg.project.build_srcs.source).scheme == "file":
             # Local project sources are used for this block
-            self._local_source_dir = pathlib.Path(urllib.parse.urlparse(self._pc_project_sources[0]).path)
+            self._local_source_dir = pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.build_srcs.source).path)
             if not self._local_source_dir.is_dir():
                 pretty_print.print_error(
-                    f"The following setting in blocks/{self.block_id}/project/build-srcs/source does not point to a directory: {self._pc_project_sources[0]}"
+                    f"The following setting in blocks/{self.block_id}/project/build_srcs/source does not point to a directory: {self.block_cfg.project.build_srcs.source}"
                 )
                 sys.exit(1)
             self.pre_build_warnings.append(
                 f"The following local project source will be used for this block: {self._local_source_dir}. "
                 "SoCks will operate on this directory, create local branches, apply patches, build binaries, etc."
             )
-        elif validators.url(self._pc_project_sources[0]):
+        elif validators.url(self.block_cfg.project.build_srcs.source):
             # The sources must be downloaded from git
-            if self._pc_project_branches[0] is None:
+            if self.block_cfg.project.build_srcs.branch is None:
                 pretty_print.print_error(
-                    f"It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_sources[0]}"
+                    f"It is necessary to specify a branch for each git repo, but no branch was specified for: {self.block_cfg.project.build_srcs.source}"
                 )
                 sys.exit(1)
             else:
-                self._source_repo = {"url": self._pc_project_sources[0], "branch": self._pc_project_branches[0]}
+                self._source_repo = {"url": self.block_cfg.project.build_srcs.source, "branch": self.block_cfg.project.build_srcs.branch}
         else:
             raise ValueError(
                 "The following string is not a valid reference to a block project source: "
-                f"{self._pc_project_sources[0]}. Only URI schemes 'https', 'http', 'ssh', and 'file' "
+                f"{self.block_cfg.project.build_srcs.source}. Only URI schemes 'https', 'http', 'ssh', and 'file' "
                 "are supported."
             )
 
@@ -450,36 +418,36 @@ class Builder(Containerization):
             None
         """
 
-        for index in range(len(self._pc_project_sources)):
-            if urllib.parse.urlparse(self._pc_project_sources[index]).scheme == "file":
+        for index in range(len(self.block_cfg.project.build_srcs)):
+            if urllib.parse.urlparse(self.block_cfg.project.build_srcs[index].source).scheme == "file":
                 # This is an external local project source
                 self._local_source_dirs.append(
-                    pathlib.Path(urllib.parse.urlparse(self._pc_project_sources[index]).path)
+                    pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.build_srcs[index].source).path)
                 )
                 if not self._local_source_dirs[-1].is_dir():
                     pretty_print.print_error(
-                        f"The following setting in blocks/{self.block_id}/project/build-srcs/source[{index}] does not point to a directory: {self._pc_project_sources[index]}"
+                        f"The following setting in blocks/{self.block_id}/project/build_srcs/source[{index}] does not point to a directory: {self.block_cfg.project.build_srcs[index].source}"
                     )
                     sys.exit(1)
                 self.pre_build_warnings.append(
                     f"The following local project source will be used for this block: {self._local_source_dirs[-1]}. "
                     "SoCks will operate on this directory, create local branches, apply patches, build binaries, etc."
                 )
-            elif validators.url(self._pc_project_sources[index]):
+            elif validators.url(self.block_cfg.project.build_srcs[index].source):
                 # This source must be downloaded from git
-                if self._pc_project_branches[index] is None:
+                if self.block_cfg.project.build_srcs[index].branch is None:
                     pretty_print.print_error(
-                        f"It is necessary to specify a branch for each git repo, but no branch was specified for: {self._pc_project_sources[index]}"
+                        f"It is necessary to specify a branch for each git repo, but no branch was specified for: {self.block_cfg.project.build_srcs[index].source}"
                     )
                     sys.exit(1)
                 else:
                     self._source_repos.append(
-                        {"url": self._pc_project_sources[index], "branch": self._pc_project_branches[index]}
+                        {"url": self.block_cfg.project.build_srcs[index].source, "branch": self.block_cfg.project.build_srcs[index].branch}
                     )
             else:
                 raise ValueError(
                     "The following string is not a valid reference to a block project source: "
-                    f"{self._pc_project_sources[index]}. Only URI schemes 'https', 'http', 'ssh', and 'file' "
+                    f"{self.block_cfg.project.build_srcs[index].source}. Only URI schemes 'https', 'http', 'ssh', and 'file' "
                     "are supported."
                 )
 
@@ -569,7 +537,7 @@ class Builder(Containerization):
         if self._source_repo is not None and not isinstance(self._source_repo, dict):
             # ToDo: Maybe at some point this function should support initializing multiple repos as well, but I am not sure yet if this is really needed
             pretty_print.print_error(
-                f"This function expects a single object and not an array in blocks/{self.block_id}/project/build-srcs."
+                f"This function expects a single object and not an array in blocks/{self.block_id}/project/build_srcs."
             )
             sys.exit(1)
 
@@ -744,18 +712,18 @@ class Builder(Containerization):
             download_progress.t.update(downloaded - download_progress.t.n)
 
         # Send a HEAD request to get the HTTP headers
-        response = requests.head(self._pc_project_prebuilt, allow_redirects=True)
+        response = requests.head(self.block_cfg.project.import_src, allow_redirects=True)
 
         if response.status_code == 404:
             # File not found
             pretty_print.print_error(
-                f"The following file could not be downloaded: {self._pc_project_prebuilt}\nStatus code {response.status_code} (File not found)"
+                f"The following file could not be downloaded: {self.block_cfg.project.import_src}\nStatus code {response.status_code} (File not found)"
             )
             sys.exit(1)
         elif response.status_code != 200:
             # Unexpected status code
             pretty_print.print_error(
-                f"The following file could not be downloaded: {self._pc_project_prebuilt}\nUnexpected status code {response.status_code}"
+                f"The following file could not be downloaded: {self.block_cfg.project.import_src}\nUnexpected status code {response.status_code}"
             )
             sys.exit(1)
 
@@ -764,7 +732,7 @@ class Builder(Containerization):
         if last_mod_online:
             last_mod_online_timestamp = parser.parse(last_mod_online).timestamp()
         else:
-            pretty_print.print_error(f"No 'Last-Modified' header found for {self._pc_project_prebuilt}")
+            pretty_print.print_error(f"No 'Last-Modified' header found for {self.block_cfg.project.import_src}")
             sys.exit(1)
 
         # Get timestamp of the downloaded file, if any
@@ -791,9 +759,9 @@ class Builder(Containerization):
 
         # Download the file
         download_progress.t = None
-        filename = self._pc_project_prebuilt.rpartition("/")[2]
+        filename = self.block_cfg.project.import_src.rpartition("/")[2]
         urllib.request.urlretrieve(
-            url=self._pc_project_prebuilt, filename=self._download_dir / filename, reporthook=download_progress
+            url=self.block_cfg.project.import_src, filename=self._download_dir / filename, reporthook=download_progress
         )
         if download_progress.t:
             download_progress.t.close()
@@ -814,15 +782,15 @@ class Builder(Containerization):
         """
 
         # Get path of the pre-built block package
-        if self._pc_project_prebuilt is None:
+        if self.block_cfg.project.import_src is None:
             pretty_print.print_error(
                 f"The property blocks/{self.block_id}/project/pre-built is required to "
                 "import the block, but it is not set."
             )
             sys.exit(1)
-        elif urllib.parse.urlparse(self._pc_project_prebuilt).scheme == "file":
-            prebuilt_block_package = pathlib.Path(urllib.parse.urlparse(self._pc_project_prebuilt).path)
-        elif validators.url(self._pc_project_prebuilt):
+        elif urllib.parse.urlparse(self.block_cfg.project.import_src).scheme == "file":
+            prebuilt_block_package = pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.import_src).path)
+        elif validators.url(self.block_cfg.project.import_src):
             self._download_prebuilt()
             downloads = list(self._download_dir.glob("*"))
             # Check if there is more than one file in the download directory
@@ -833,7 +801,7 @@ class Builder(Containerization):
         else:
             raise ValueError(
                 "The following string is not a valid reference to a block package: "
-                f"{self._pc_project_prebuilt}. Only URI schemes 'https', 'http', and 'file' "
+                f"{self.block_cfg.project.import_src}. Only URI schemes 'https', 'http', and 'file' "
                 "are supported."
             )
 
@@ -929,7 +897,7 @@ class Builder(Containerization):
     def import_dependencies(self):
         """
         Imports all dependencies needed to build this block.
-        Dependencies are plock backages exported from other blocks.
+        Dependencies are block backages exported from other blocks.
 
         Args:
             None
@@ -941,10 +909,13 @@ class Builder(Containerization):
             None
         """
 
-        for block_id, block_pkg_path_str in self._pc_project_dependencies.items():
-            block_pkg_path = self._project_dir / block_pkg_path_str
-            import_path = self._dependencies_dir / block_id
-            block_pkg_md5_file = self._dependencies_dir / f"block_pkg_{block_id}.md5"
+        for dependency in self.block_cfg.project.dependencies.model_fields:
+            block_pkg_rel_path = getattr(self.block_cfg.project.dependencies, dependency)
+            if block_pkg_rel_path is None:
+                continue
+            block_pkg_path = self._project_dir / block_pkg_rel_path
+            import_path = self._dependencies_dir / dependency
+            block_pkg_md5_file = self._dependencies_dir / f"block_pkg_{dependency}.md5"
 
             # Check whether the file to be imported exists
             if not block_pkg_path.is_file():
@@ -976,7 +947,7 @@ class Builder(Containerization):
                 continue
 
             # Clean directory of this dependency
-            self.clean_dependencies(dependency=block_id)
+            self.clean_dependencies(dependency=dependency)
             import_path.mkdir(parents=True, exist_ok=True)
 
             pretty_print.print_build(f"Importing block package {block_pkg_path.name}...")
@@ -985,7 +956,7 @@ class Builder(Containerization):
             with tarfile.open(block_pkg_path, "r:*") as archive:
                 # Check whether all expected files are included
                 content = archive.getnames()
-                for pattern in self._block_deps[block_id]:
+                for pattern in self._block_deps[dependency]:
                     matched_files = [file for file in content if re.fullmatch(pattern=pattern, string=file)]
                     # A file is missing if no file matches the pattern
                     if not matched_files:

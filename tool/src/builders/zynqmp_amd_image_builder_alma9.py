@@ -4,8 +4,9 @@ import shutil
 import zipfile
 
 import socks.pretty_print as pretty_print
-from socks.amd_builder import AMD_Builder
-from socks.builder import Builder
+from builders.amd_builder import AMD_Builder
+from builders.builder import Builder
+from builders.zynqmp_amd_image_model import ZynqMP_AMD_Image_Model
 
 
 class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
@@ -26,6 +27,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
+            model_class=ZynqMP_AMD_Image_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -37,11 +39,11 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self._dt_img_path = self._dependencies_dir / "devicetree/system.dtb"
         self._fsbl_img_path = self._dependencies_dir / "fsbl/fsbl.elf"
         self._kernel_img_path = self._dependencies_dir / "kernel/Image.gz"
-        self._pmufw_img_path = self._dependencies_dir / "pmu-fw/pmufw.elf"
-        self._uboot_img_path = self._dependencies_dir / "u-boot/u-boot.elf"
+        self._pmufw_img_path = self._dependencies_dir / "pmu_fw/pmufw.elf"
+        self._uboot_img_path = self._dependencies_dir / "uboot/u-boot.elf"
         self._vivado_xsa_path = None
 
-        self._sdc_image_name = f"{self._pc_prj_name}_sd_card.img"
+        self._sdc_image_name = f"{self.project_cfg.project.name}_sd_card.img"
 
         # Project directories
         self._misc_dir = self._block_src_dir / "misc"
@@ -56,10 +58,10 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             "devicetree": ["system.dtb"],
             "fsbl": ["fsbl.elf"],
             "kernel": ["Image.gz"],
-            "pmu-fw": ["pmufw.elf"],
+            "pmu_fw": ["pmufw.elf"],
             "ramfs": [".*.cpio.gz"],
             "rootfs": [".*.tar.xz"],
-            "u-boot": ["u-boot.elf"],
+            "uboot": ["u-boot.elf"],
             "vivado": [".*.xsa"],
         }
 
@@ -76,14 +78,14 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self.clean_block_temp,
             ]
         )
-        if self._pc_block_source == "build":
+        if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend([self.build_container_image, self.import_dependencies])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.linux_img, self.bootscr_img, self.boot_img])
             self.block_cmds["build-sd-card"].extend(self.block_cmds["build"])
             self.block_cmds["build-sd-card"].extend([self.sd_card_img])
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
-        elif self._pc_block_source == "import":
+        elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
     def start_container(self):

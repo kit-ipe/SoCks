@@ -5,7 +5,8 @@ import urllib
 import hashlib
 
 import socks.pretty_print as pretty_print
-from socks.amd_builder import AMD_Builder
+from builders.amd_builder import AMD_Builder
+from builders.zynqmp_amd_devicetree_model import ZynqMP_AMD_Devicetree_Model
 
 
 class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
@@ -26,6 +27,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
+            model_class=ZynqMP_AMD_Devicetree_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -79,7 +81,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
                 self.clean_block_temp,
             ]
         )
-        if self._pc_block_source == "build":
+        if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
                 [
                     self.build_container_image,
@@ -97,7 +99,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             )
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
-        elif self._pc_block_source == "import":
+        elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
     def prepare_dt_sources(self):
