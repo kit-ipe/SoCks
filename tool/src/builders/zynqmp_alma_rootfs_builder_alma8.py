@@ -145,11 +145,9 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         pretty_print.print_build("Building the base root file system...")
 
-        # In the last step, the service auditd.service is deactivated because it breaks things
         base_rootfs_build_commands = (
             f"'cd {self._repo_dir} && "
-            f"python3 mkrootfs.py --root={self._build_dir} --arch={self._target_arch} --extra=extra_rpms.txt --releasever={self.block_cfg.release} && "
-            f"rm -f {self._build_dir}/etc/systemd/system/multi-user.target.wants/auditd.service'"
+            f"python3 mkrootfs.py --root={self._build_dir} --arch={self._target_arch} --extra=extra_rpms.txt --releasever={self.block_cfg.release}'"
         )
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
