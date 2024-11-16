@@ -31,9 +31,6 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             block_description=block_description,
         )
 
-        # Find project sources for this block
-        self._set_multiple_prj_srcs()
-
         self._ipbb_work_dir_name = "ipbb-work"
 
         # Project directories

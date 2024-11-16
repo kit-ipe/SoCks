@@ -34,9 +34,6 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             block_description=block_description,
         )
 
-        # Find project sources for this block
-        self._set_single_prj_src()
-
         # Project directories
         self._dt_incl_dir = self._block_src_dir / "dt_includes"
         self._dt_overlay_dir = self._block_src_dir / "dt_overlays"

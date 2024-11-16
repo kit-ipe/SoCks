@@ -49,15 +49,7 @@ class Builder(Containerization):
 
         self.block_cfg = getattr(self.project_cfg.blocks, block_id)
 
-        # Host user
-        self._host_user = os.getlogin()
-        self._host_user_id = os.getuid()
-
-        # Local git branches
-        self._git_local_ref_branch = "__ref"
-        self._git_local_dev_branch = "__temp"
-
-        # Block project source
+        # Find project sources for this block
         # ToDo: Maybe this should be unified and one should merge these four variables and use only two.
         # But I suspect that there will rarely be several project sources and that their interaction is not uniform.
         # That is why I think it is better to keep these variables separate for now
@@ -65,6 +57,19 @@ class Builder(Containerization):
         self._source_repos = []
         self._local_source_dir = None
         self._local_source_dirs = []
+        if hasattr(self.block_cfg.project, "build_srcs"):
+            if isinstance(self.block_cfg.project.build_srcs, list):
+                self._set_multiple_prj_srcs()
+            else:
+                self._set_single_prj_src()
+
+        # Host user
+        self._host_user = os.getlogin()
+        self._host_user_id = os.getuid()
+
+        # Local git branches
+        self._git_local_ref_branch = "__ref"
+        self._git_local_dev_branch = "__temp"
 
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = socks_dir
@@ -406,7 +411,7 @@ class Builder(Containerization):
 
     def _set_multiple_prj_srcs(self):
         """
-        Process the source section of a block with a multiple sources.
+        Process the source section of a block with multiple sources.
 
         Args:
             None

@@ -32,9 +32,6 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             block_description=block_description,
         )
 
-        # Find project sources for this block
-        self._set_single_prj_src()
-
         # Project directories
         if self._local_source_dir is not None:
             # Local project sources are used for this block
