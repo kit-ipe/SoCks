@@ -50,18 +50,11 @@ class Builder(Containerization):
         self.block_cfg = getattr(self.project_cfg.blocks, block_id)
 
         # Find project sources for this block
-        # ToDo: Maybe this should be unified and one should merge these four variables and use only two.
-        # But I suspect that there will rarely be several project sources and that their interaction is not uniform.
-        # That is why I think it is better to keep these variables separate for now
-        self._source_repo = None
-        self._source_repos = []
-        self._local_source_dir = None
-        self._local_source_dirs = []
         if hasattr(self.block_cfg.project, "build_srcs"):
             if isinstance(self.block_cfg.project.build_srcs, list):
-                self._set_multiple_prj_srcs()
+                self._local_source_dirs, self._source_repos = self._eval_mult_prj_srcs()
             else:
-                self._set_single_prj_src()
+                self._local_source_dir, self._source_repo = self._eval_single_prj_src()
 
         # Host user
         self._host_user = os.getlogin()
@@ -385,7 +378,7 @@ class Builder(Containerization):
         else:
             return True
 
-    def _set_single_prj_src(self):
+    def _eval_single_prj_src(self) -> typing.Tuple[pathlib.Path, dict]:
         """
         Process the source section of a block with a single source.
 
@@ -396,19 +389,19 @@ class Builder(Containerization):
             None
 
         Raises:
-            None
+            ValueError: If the block configuration does not contain a valid reference to a block project source
         """
 
         if urllib.parse.urlparse(self.block_cfg.project.build_srcs.source).scheme == "file":
             # Local project sources are used for this block
-            self._local_source_dir = pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.build_srcs.source).path)
-            if not self._local_source_dir.is_dir():
+            local_source_dir = pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.build_srcs.source).path)
+            if not local_source_dir.is_dir():
                 pretty_print.print_error(
                     f"The following setting in blocks/{self.block_id}/project/build_srcs/source does not point to a directory: {self.block_cfg.project.build_srcs.source}"
                 )
                 sys.exit(1)
             self.pre_build_warnings.append(
-                f"The following local project source will be used for this block: {self._local_source_dir}. "
+                f"The following local project source will be used for this block: {local_source_dir}. "
                 "SoCks will operate on this directory, create local branches, apply patches, build binaries, etc."
             )
         elif validators.url(self.block_cfg.project.build_srcs.source):
@@ -419,7 +412,7 @@ class Builder(Containerization):
                 )
                 sys.exit(1)
             else:
-                self._source_repo = {"url": self.block_cfg.project.build_srcs.source, "branch": self.block_cfg.project.build_srcs.branch}
+                source_repo = {"url": self.block_cfg.project.build_srcs.source, "branch": self.block_cfg.project.build_srcs.branch}
         else:
             raise ValueError(
                 "The following string is not a valid reference to a block project source: "
@@ -427,7 +420,9 @@ class Builder(Containerization):
                 "are supported."
             )
 
-    def _set_multiple_prj_srcs(self):
+        return local_source_dir, source_repo
+
+    def _eval_mult_prj_srcs(self) -> typing.Tuple[typing.List[pathlib.Path], typing.List[dict]]:
         """
         Process the source section of a block with multiple sources.
 
@@ -438,22 +433,25 @@ class Builder(Containerization):
             None
 
         Raises:
-            None
+            ValueError: If the block configuration does not contain a valid reference to a block project source
         """
+
+        source_repos = []
+        local_source_dirs = []
 
         for index in range(len(self.block_cfg.project.build_srcs)):
             if urllib.parse.urlparse(self.block_cfg.project.build_srcs[index].source).scheme == "file":
                 # This is an external local project source
-                self._local_source_dirs.append(
+                local_source_dirs.append(
                     pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.build_srcs[index].source).path)
                 )
-                if not self._local_source_dirs[-1].is_dir():
+                if not local_source_dirs[-1].is_dir():
                     pretty_print.print_error(
                         f"The following setting in blocks/{self.block_id}/project/build_srcs/source[{index}] does not point to a directory: {self.block_cfg.project.build_srcs[index].source}"
                     )
                     sys.exit(1)
                 self.pre_build_warnings.append(
-                    f"The following local project source will be used for this block: {self._local_source_dirs[-1]}. "
+                    f"The following local project source will be used for this block: {local_source_dirs[-1]}. "
                     "SoCks will operate on this directory, create local branches, apply patches, build binaries, etc."
                 )
             elif validators.url(self.block_cfg.project.build_srcs[index].source):
@@ -464,7 +462,7 @@ class Builder(Containerization):
                     )
                     sys.exit(1)
                 else:
-                    self._source_repos.append(
+                    source_repos.append(
                         {"url": self.block_cfg.project.build_srcs[index].source, "branch": self.block_cfg.project.build_srcs[index].branch}
                     )
             else:
@@ -473,6 +471,8 @@ class Builder(Containerization):
                     f"{self.block_cfg.project.build_srcs[index].source}. Only URI schemes 'https', 'http', 'ssh', and 'file' "
                     "are supported."
                 )
+
+        return local_source_dirs, source_repos
 
     def _compose_build_info(self) -> str:
         """
