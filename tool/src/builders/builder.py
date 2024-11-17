@@ -120,7 +120,7 @@ class Builder(Containerization):
         self._source_pb_md5_file = self._work_dir / "source_pb.md5"
 
         # Containerization
-        container_image = f"{self.block_cfg.container.image}:{self.block_cfg.container.tag}"
+        container_image = f"{self.block_cfg.container.image}:socks"
         super().__init__(
             container_tool=self.project_cfg.external_tools.container_tool,
             container_image=container_image,

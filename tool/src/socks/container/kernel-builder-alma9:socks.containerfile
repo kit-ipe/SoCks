@@ -1,4 +1,4 @@
-FROM almalinux:8
+FROM almalinux:9
 
 # Build-time variables
 ARG user_name=root
@@ -9,7 +9,7 @@ USER root
 
 # Enable Power Tools repo
 RUN dnf -y install 'dnf-command(config-manager)'
-RUN dnf config-manager --set-enabled powertools
+RUN dnf config-manager --set-enabled crb
 
 # Enable EPEL repo
 RUN dnf -y install epel-release
@@ -22,6 +22,9 @@ RUN dnf -y install gcc make bash binutils flex bison dwarves util-linux kmod e2f
 
 # Install additionally required packages
 RUN dnf -y install ncurses-devel openssl-devel
+
+# Install packages required to build U-Boot
+RUN dnf -y install dtc
 
 # Install cross compiler
 RUN dnf -y install gcc-aarch64-linux-gnu

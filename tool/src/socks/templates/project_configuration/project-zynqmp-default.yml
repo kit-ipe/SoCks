@@ -17,7 +17,7 @@ blocks:
         branch: "xilinx-v{{external_tools/xilinx/version}}"
       # If no 'import_src' property is specified, the block must be built locally
     container:
-      image: "amd-atf-builder-alma9"
+      image: "atf-builder-alma9"
       tag: "xilinx-v{{external_tools/xilinx/version}}"
   devicetree:
     source: "build"
@@ -76,7 +76,7 @@ blocks:
       dependencies:
         atf: "temp/atf/output/atf.tar.gz"
     container:
-      image: "u-boot-builder-alma9"
+      image: "kernel-builder-alma9"
       tag: "xilinx-v{{external_tools/xilinx/version}}"
   vivado:
     source: "build"
@@ -101,5 +101,5 @@ blocks:
         uboot: "temp/uboot/output/uboot.tar.gz"
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
-      image: "image-builder-alma9"
+      image: "amd-image-builder-alma9"
       tag: "xilinx-v{{external_tools/xilinx/version}}"

@@ -17,11 +17,17 @@ RUN dnf -y install epel-release
 # Install development tools
 RUN dnf -y group install "Development Tools"
 
+# Install packages officially required to build the kernel
+RUN dnf -y install gcc make bash binutils flex bison dwarves util-linux kmod e2fsprogs xfsprogs squashfs-tools nfs-utils procps-ng mcelog iptables openssl bc cpio tar
+
+# Install additionally required packages
+RUN dnf -y install ncurses-devel openssl-devel
+
+# Install packages required to build U-Boot
+RUN dnf -y install dtc
+
 # Install cross compiler
-RUN dnf -y install wget
-RUN wget -P /app/tools/ https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-aarch64-none-elf.tar.xz
-RUN tar -xJf /app/tools/gcc-arm-11.2-2022.02-x86_64-aarch64-none-elf.tar.xz -C /app/tools
-ENV PATH="$PATH:/app/tools/gcc-arm-11.2-2022.02-x86_64-aarch64-none-elf/bin"
+RUN dnf -y install gcc-aarch64-linux-gnu
 
 # Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
 RUN getent group $user_name || groupadd --gid $user_id $user_name
