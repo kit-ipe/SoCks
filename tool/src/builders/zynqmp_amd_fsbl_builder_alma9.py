@@ -34,9 +34,6 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
             block_description=block_description,
         )
 
-        # Project directories
-        self._source_repo_dir = self._repo_dir / "runtime-generated"
-
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.

@@ -82,12 +82,30 @@ class Builder(Containerization):
         self._block_src_dir = self._project_src_dir / self.block_id
         self._block_temp_dir = self._project_temp_dir / self.block_id
         self._patch_dir = self._block_src_dir / "patches"
-        self._repo_dir = self._block_temp_dir / "repo"
-        self._source_repo_dir = None
         self._download_dir = self._block_temp_dir / "download"
         self._work_dir = self._block_temp_dir / "work"
         self._output_dir = self._block_temp_dir / "output"
         self._dependencies_dir = self._block_temp_dir / "dependencies"
+        if self._local_source_dir is not None:
+            # Local project sources are used for this block
+            self._repo_dir = self._local_source_dir
+            self._source_repo_dir = self._local_source_dir
+        elif self._source_repo is not None:
+            # Online project sources are used for this block
+            self._repo_dir = self._block_temp_dir / "repo"
+            self._source_repo_dir = self._repo_dir / (
+                pathlib.Path(urllib.parse.urlparse(url=self._source_repo['url']).path).stem
+                + "-"
+                + self._source_repo['branch'])
+        elif self._source_repos or self._local_source_dirs:
+            # This block uses several project sources. In this case, the directory structure cannot be
+            # completely standardized. The required project directories must be created in the respective builder.
+            self._repo_dir = self._block_temp_dir / "repo"
+            self._source_repo_dir = None
+        else:
+            # This block does not need any external sources
+            self._repo_dir = self._block_temp_dir / "repo"
+            self._source_repo_dir = self._repo_dir / "runtime-generated"
 
         # Project files
         # A list of all project configuration files used. These files should only be used to determine whether a rebuild is necessary!
