@@ -50,6 +50,13 @@ class Builder(Containerization):
         self.block_cfg = getattr(self.project_cfg.blocks, block_id)
 
         # Find project sources for this block
+        # ToDo: Maybe this should be unified and one should merge these four variables and use only two.
+        # But I suspect that there will rarely be several project sources and that their interaction is not uniform.
+        # That is why I think it is better to keep these variables separate for now
+        self._local_source_dir = None
+        self._local_source_dirs = []
+        self._source_repo = None
+        self._source_repos = []
         if hasattr(self.block_cfg.project, "build_srcs"):
             if isinstance(self.block_cfg.project.build_srcs, list):
                 self._local_source_dirs, self._source_repos = self._eval_mult_prj_srcs()
@@ -392,6 +399,9 @@ class Builder(Containerization):
             ValueError: If the block configuration does not contain a valid reference to a block project source
         """
 
+        local_source_dir = None
+        source_repo = None
+
         if urllib.parse.urlparse(self.block_cfg.project.build_srcs.source).scheme == "file":
             # Local project sources are used for this block
             local_source_dir = pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.build_srcs.source).path)
@@ -436,8 +446,8 @@ class Builder(Containerization):
             ValueError: If the block configuration does not contain a valid reference to a block project source
         """
 
-        source_repos = []
         local_source_dirs = []
+        source_repos = []
 
         for index in range(len(self.block_cfg.project.build_srcs)):
             if urllib.parse.urlparse(self.block_cfg.project.build_srcs[index].source).scheme == "file":
