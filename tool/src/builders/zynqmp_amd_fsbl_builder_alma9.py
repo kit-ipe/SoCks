@@ -117,22 +117,22 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Creating the FSBL project...")
 
-        create_fsbl_project_commands = (
-            f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
-            f"source {self._amd_vitis_path}/settings64.sh && "
-            f"SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa) && "
-            'printf "set hwdsgn [hsi open_hw_design ${SOURCE_XSA_PATH}]'
-            f'    \r\nhsi generate_app -hw \$hwdsgn -os standalone -proc psu_cortexa53_0 -app zynqmp_fsbl -sw fsbl -dir {self._source_repo_dir}" > {self._work_dir}/generate_fsbl_prj.tcl && '
-            f"xsct -nodisp {self._work_dir}/generate_fsbl_prj.tcl && "
-            f"git -C {self._source_repo_dir} init --initial-branch=main && "
-            f'git -C {self._source_repo_dir} config user.email "container-user@example.com" && '
-            f'git -C {self._source_repo_dir} config user.name "container-user" && '
-            f"git -C {self._source_repo_dir} add {self._source_repo_dir}/. && "
-            f'git -C {self._source_repo_dir} commit --quiet -m "Initial commit"\''
-        )
+        create_fsbl_project_commands = [
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vitis_path}/settings64.sh",
+            f"SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa)",
+            "printf \"set hwdsgn [hsi open_hw_design ${SOURCE_XSA_PATH}]"
+            f"    \r\nhsi generate_app -hw \$hwdsgn -os standalone -proc psu_cortexa53_0 -app zynqmp_fsbl -sw fsbl -dir {self._source_repo_dir}\" > {self._work_dir}/generate_fsbl_prj.tcl",
+            f"xsct -nodisp {self._work_dir}/generate_fsbl_prj.tcl",
+            f"git -C {self._source_repo_dir} init --initial-branch=main",
+            f"git -C {self._source_repo_dir} config user.email 'container-user@example.com'",
+            f"git -C {self._source_repo_dir} config user.name 'container-user'",
+            f"git -C {self._source_repo_dir} add {self._source_repo_dir}/.",
+            f"git -C {self._source_repo_dir} commit --quiet -m 'Initial commit'"
+        ]
 
         self.run_containerizable_sh_command(
-            command=create_fsbl_project_commands,
+            commands=create_fsbl_project_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
                 (self._xsa_dir, "Z"),
@@ -182,16 +182,16 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Building the FSBL...")
 
-        fsbl_build_commands = (
-            f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
-            f"source {self._amd_vitis_path}/settings64.sh && "
-            f"cd {self._source_repo_dir} && "
-            "make clean && "
-            "make'"
-        )
+        fsbl_build_commands = [
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vitis_path}/settings64.sh",
+            f"cd {self._source_repo_dir}",
+            "make clean",
+            "make"
+        ]
 
         self.run_containerizable_sh_command(
-            command=fsbl_build_commands,
+            commands=fsbl_build_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
                 (self._xsa_dir, "Z"),

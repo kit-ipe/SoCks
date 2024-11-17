@@ -128,20 +128,20 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Preparing devicetree sources...")
 
-        prep_dt_srcs_commands = (
-            f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
-            f"source {self._amd_vitis_path}/settings64.sh && "
-            f"SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa) && "
-            'printf "hsi open_hw_design ${SOURCE_XSA_PATH}'
+        prep_dt_srcs_commands = [
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vitis_path}/settings64.sh",
+            f"SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa)",
+            "printf \"hsi open_hw_design ${SOURCE_XSA_PATH}"
             f"    \r\nhsi set_repo_path {self._source_repo_dir} "
             "    \r\nhsi create_sw_design device-tree -os device_tree -proc psu_cortexa53_0 "
             f"    \r\nhsi generate_target -dir {self._base_work_dir} "
-            f'    \r\nhsi close_hw_design [hsi current_hw_design]" > {self._base_work_dir}/generate_dts_prj.tcl && '
-            f"xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl'"
-        )
+            f"    \r\nhsi close_hw_design [hsi current_hw_design]\" > {self._base_work_dir}/generate_dts_prj.tcl",
+            f"xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl"
+        ]
 
         self.run_containerizable_sh_command(
-            command=prep_dt_srcs_commands,
+            commands=prep_dt_srcs_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
                 (self._xsa_dir, "Z"),
@@ -195,14 +195,14 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
                                 dts_top_file.write(incl_line)
 
         # The *.dts file created by gcc is for humans difficult to read. Therefore, in the last step, it is replaced by one created with the devicetree compiler.
-        dt_build_commands = (
-            f"'cd {self._base_work_dir} && "
-            "gcc -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -o system.dts system-top.dts && "
-            "dtc -I dts -O dtb -@ -o system.dtb system.dts && "
-            "dtc -I dtb -O dts -o system.dts system.dtb'"
-        )
+        dt_build_commands = [
+            f"cd {self._base_work_dir}",
+            "gcc -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -o system.dts system-top.dts",
+            "dtc -I dts -O dtb -@ -o system.dtb system.dts",
+            "dtc -I dtb -O dts -o system.dts system.dtb"
+        ]
 
-        self.run_containerizable_sh_command(command=dt_build_commands, dirs_to_mount=[(self._base_work_dir, "Z")])
+        self.run_containerizable_sh_command(commands=dt_build_commands, dirs_to_mount=[(self._base_work_dir, "Z")])
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -275,18 +275,18 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         for overlay in self._dt_overlay_dir.glob("*.dtsi"):
             shutil.copy(overlay, self._overlay_work_dir / overlay.name)
 
-        dt_overlays_build_commands = (
-            f"'cd {self._overlay_work_dir} && "
+        dt_overlays_build_commands = [
+            f"cd {self._overlay_work_dir}",
             "for file in *.dtsi; do "
             "   name=$(printf \"${file}\" | awk -F/ \"{print \$(NF)}\" | awk -F. \"{print \$(NF-1)}\") && "
             f"  gcc -I {includes_dir} -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp "
             "-o ${name}_res.dtsi ${name}.dtsi && "
             "   dtc -O dtb -o ${name}.dtbo -@ ${name}_res.dtsi; "
-            "done'"
-        )
+            "done"
+        ]
 
         self.run_containerizable_sh_command(
-            command=dt_overlays_build_commands, dirs_to_mount=[(self._overlay_work_dir, "Z")]
+            commands=dt_overlays_build_commands, dirs_to_mount=[(self._overlay_work_dir, "Z")]
         )
 
         self._output_dir.mkdir(parents=True, exist_ok=True)

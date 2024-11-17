@@ -145,14 +145,14 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         pretty_print.print_build("Building the base root file system...")
 
-        base_rootfs_build_commands = (
-            f"'cd {self._repo_dir} && "
-            f"python3 mkrootfs.py --root={self._build_dir} --arch={self._target_arch} --extra=extra_rpms.txt --releasever={self.block_cfg.release}'"
-        )
+        base_rootfs_build_commands = [
+            f"cd {self._repo_dir}",
+            f"python3 mkrootfs.py --root={self._build_dir} --arch={self._target_arch} --extra=extra_rpms.txt --releasever={self.block_cfg.release}"
+        ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
-            command=base_rootfs_build_commands,
+            commands=base_rootfs_build_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
         )
@@ -191,14 +191,14 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         pretty_print.print_build("Adding predefined file system layers...")
 
-        add_fs_layers_commands = (
-            f'\'cd {self._repo_dir / "predefined_fs_layers"} && '
-            f'for dir in ./*; do "$dir"/install_layer.sh {self._build_dir}/; done\''
-        )
+        add_fs_layers_commands = [
+            f"cd {self._repo_dir / 'predefined_fs_layers'}",
+            f"for dir in ./*; do \"$dir\"/install_layer.sh {self._build_dir}/; done"
+        ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
-            command=add_fs_layers_commands,
+            commands=add_fs_layers_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
         )
@@ -234,15 +234,15 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         pretty_print.print_build("Adding users...")
 
-        add_users_commands = (
-            f'\'cp -r {self._repo_dir / "users"} {self._build_dir / "tmp"} && '
-            f"chroot {self._build_dir} /bin/bash /tmp/users/add_users.sh && "
-            f"rm -rf {self._build_dir}/tmp/users'"
-        )
+        add_users_commands = [
+            f"cp -r {self._repo_dir / 'users'} {self._build_dir / 'tmp'}",
+            f"chroot {self._build_dir} /bin/bash /tmp/users/add_users.sh",
+            f"rm -rf {self._build_dir}/tmp/users"
+        ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
-            command=add_users_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")], run_as_root=True
+            commands=add_users_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")], run_as_root=True
         )
 
         # Create the flag if it doesn't exist and update the timestamps
@@ -284,20 +284,20 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         pretty_print.print_build("Adding Kernel Modules...")
 
-        add_kmodules_commands = (
-            f"'cd {self._work_dir} && "
-            f"tar -xzf {kmods_archive} && "
-            f"chown -R root:root lib && "
-            f"chmod -R 000 lib && "
-            f"chmod -R u=rwX,go=rX lib && "
-            f"rm -rf {self._build_dir}/lib/modules/* && "
-            f"mv lib/modules/* {self._build_dir}/lib/modules/ && "
-            f"rm -rf lib'"
-        )
+        add_kmodules_commands = [
+            f"cd {self._work_dir}",
+            f"tar -xzf {kmods_archive}",
+            f"chown -R root:root lib",
+            f"chmod -R 000 lib",
+            f"chmod -R u=rwX,go=rX lib",
+            f"rm -rf {self._build_dir}/lib/modules/*",
+            f"mv lib/modules/* {self._build_dir}/lib/modules/",
+            f"rm -rf lib"
+        ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
-            command=add_kmodules_commands,
+            commands=add_kmodules_commands,
             dirs_to_mount=[(self._dependencies_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
         )
@@ -376,17 +376,17 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         for file in (self._dependencies_dir / "devicetree").glob("*.dtbo"):
             shutil.copy(file, self._work_dir / file.name)
 
-        add_pl_commands = (
-            f"'chown -R root:root {self._work_dir}/system.bit {self._work_dir}/*.dtbo && "
-            f"chmod -R u=rw,go=r {self._work_dir}/system.bit {self._work_dir}/*.dtbo && "
-            f"mv {self._work_dir}/system.bit {self._build_dir}/lib/firmware/ && "
-            f"mkdir -p {self._build_dir}/etc/dt-overlays && "
-            f"mv {self._work_dir}/*.dtbo {self._build_dir}/etc/dt-overlays/'"
-        )
+        add_pl_commands = [
+            f"chown -R root:root {self._work_dir}/system.bit {self._work_dir}/*.dtbo",
+            f"chmod -R u=rw,go=r {self._work_dir}/system.bit {self._work_dir}/*.dtbo",
+            f"mv {self._work_dir}/system.bit {self._build_dir}/lib/firmware/",
+            f"mkdir -p {self._build_dir}/etc/dt-overlays",
+            f"mv {self._work_dir}/*.dtbo {self._build_dir}/etc/dt-overlays/"
+        ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
-            command=add_pl_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")], run_as_root=True
+            commands=add_pl_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")], run_as_root=True
         )
 
         # Save checksum in file
@@ -427,24 +427,24 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 print("# Filesystem build info (autogenerated)\n\n", file=f, end="")
                 print(self._compose_build_info(), file=f, end="")
 
-            add_build_info_commands = (
-                f"'mv {self._build_info_file} {self._build_dir}/etc/fs_build_info && "
-                f"chmod 0444 {self._build_dir}/etc/fs_build_info'"
-            )
+            add_build_info_commands = [
+                f"mv {self._build_info_file} {self._build_dir}/etc/fs_build_info",
+                f"chmod 0444 {self._build_dir}/etc/fs_build_info"
+            ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.run_containerizable_sh_command(
-                command=add_build_info_commands,
+                commands=add_build_info_commands,
                 dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
                 run_as_root=True,
             )
         else:
             # Remove existing build information file
-            clean_build_info_commands = f"'rm -f {self._build_dir}/etc/fs_build_info'"
+            clean_build_info_commands = [f"rm -f {self._build_dir}/etc/fs_build_info"]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.run_containerizable_sh_command(
-                command=clean_build_info_commands,
+                commands=clean_build_info_commands,
                 dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
                 run_as_root=True,
             )
@@ -459,17 +459,17 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         # --xz	872M	real	17m59.080s
         # -I pxz	887M	real	3m43.987s
         # -I pigz	1.3G	real	0m20.747s
-        archive_build_commands = (
-            f"'cd {self._build_dir} && "
-            f'tar -I pxz --numeric-owner -p -cf  {self._output_dir / f"{archive_name}.tar.xz"} ./ && '
+        archive_build_commands = [
+            f"cd {self._build_dir}",
+            f"tar -I pxz --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.tar.xz'} ./",
             f"if id {self._host_user} >/dev/null 2>&1; then "
-            f'    chown -R {self._host_user}:{self._host_user} {self._output_dir / f"{archive_name}.tar.xz"}; '
-            f"fi'"
-        )
+            f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.tar.xz'}; "
+            f"fi"
+        ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
-            command=archive_build_commands,
+            commands=archive_build_commands,
             dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
             run_as_root=True,
         )
@@ -566,14 +566,14 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             # Extract rootfs archive to the work directory
             archive.extract(member=prebuilt_rootfs_archive, path=self._work_dir)
 
-        extract_pb_rootfs_commands = (
-            f"'mkdir -p {self._build_dir} && "
-            f"tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._build_dir}'"
-        )
+        extract_pb_rootfs_commands = [
+            f"mkdir -p {self._build_dir}",
+            f"tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._build_dir}"
+        ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
-            command=extract_pb_rootfs_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
+            commands=extract_pb_rootfs_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
         )
 
         # Save checksum in file

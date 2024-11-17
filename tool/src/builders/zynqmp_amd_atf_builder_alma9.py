@@ -82,14 +82,14 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
 
         pretty_print.print_build("Building the ATF...")
 
-        atf_build_commands = (
-            f"'cd {self._source_repo_dir} && "
-            "make distclean && "
-            "make CROSS_COMPILE=aarch64-none-elf- PLAT=zynqmp RESET_TO_BL31=1 ZYNQMP_CONSOLE=cadence0'"
-        )
+        atf_build_commands = [
+            f"cd {self._source_repo_dir}",
+            "make distclean",
+            "make CROSS_COMPILE=aarch64-none-elf- PLAT=zynqmp RESET_TO_BL31=1 ZYNQMP_CONSOLE=cadence0"
+        ]
 
         self.run_containerizable_sh_command(
-            command=atf_build_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+            commands=atf_build_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )
 
         # Create symlinks to the output files

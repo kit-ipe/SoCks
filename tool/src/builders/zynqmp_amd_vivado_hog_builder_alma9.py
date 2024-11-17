@@ -77,16 +77,16 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Creating the Vivado Project...")
 
-        create_vivado_project_commands = (
-            f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
-            f"source {self._amd_vivado_path}/settings64.sh && "
-            f"git config --global --add safe.directory {self._source_repo_dir} && "
-            f"git config --global --add safe.directory {self._source_repo_dir}/Hog && "
-            f"{self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}'"
-        )
+        create_vivado_project_commands = [
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vivado_path}/settings64.sh",
+            f"git config --global --add safe.directory {self._source_repo_dir}",
+            f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
+            f"{self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}"
+        ]
 
         self.run_containerizable_sh_command(
-            command=create_vivado_project_commands,
+            commands=create_vivado_project_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._output_dir, "Z")],
         )
 
@@ -125,17 +125,17 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Building the Vivado Project...")
 
-        vivado_build_commands = (
-            f"'rm -rf {self._source_repo_dir}/bin"
-            f"export XILINXD_LICENSE_FILE={self._amd_license} && "
-            f"source {self._amd_vivado_path}/settings64.sh && "
-            f"git config --global --add safe.directory {self._source_repo_dir} && "
-            f"git config --global --add safe.directory {self._source_repo_dir}/Hog && "
-            f"{self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}'"
-        )
+        vivado_build_commands = [
+            f"rm -rf {self._source_repo_dir}/bin",
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vivado_path}/settings64.sh",
+            f"git config --global --add safe.directory {self._source_repo_dir}",
+            f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
+            f"{self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}"
+        ]
 
         self.run_containerizable_sh_command(
-            command=vivado_build_commands,
+            commands=vivado_build_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._output_dir, "Z")],
         )
 
@@ -164,15 +164,15 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
 
         self.check_amd_tools(required_tools=["vivado"])
 
-        start_vivado_gui_commands = (
-            f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
-            f"source {self._amd_vivado_path}/settings64.sh && "
-            f"vivado -nojournal -nolog {self._source_repo_dir}/Projects/{self.block_cfg.project.name}/{self.block_cfg.project.name}.xpr && "
-            f"exit'"
-        )
+        start_vivado_gui_commands = [
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vivado_path}/settings64.sh",
+            f"vivado -nojournal -nolog {self._source_repo_dir}/Projects/{self.block_cfg.project.name}/{self.block_cfg.project.name}.xpr",
+            f"exit"
+        ]
 
         self.start_gui_container(
-            start_gui_command=start_vivado_gui_commands,
+            start_gui_commands=start_vivado_gui_commands,
             potential_mounts=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
                 (self._repo_dir, "Z"),

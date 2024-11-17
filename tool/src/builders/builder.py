@@ -1018,7 +1018,7 @@ class Builder(Containerization):
 
         super().start_container(potential_mounts=potential_mounts)
 
-    def _run_menuconfig(self, menuconfig_commands: str):
+    def _run_menuconfig(self, menuconfig_commands: typing.List[str]):
         """
         Opens the menuconfig tool to enable interactive configuration of the project.
 
@@ -1040,10 +1040,10 @@ class Builder(Containerization):
         pretty_print.print_build("Opening configuration menu...")
 
         self.run_containerizable_sh_command(
-            command=menuconfig_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+            commands=menuconfig_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )
 
-    def _prep_clean_srcs(self, prep_srcs_commands: str):
+    def _prep_clean_srcs(self, prep_srcs_commands: typing.List[str]):
         """
         This function is intended to create a new, clean Linux kernel or U-Boot project. After the creation of the project you should create a patch that includes .gitignore and .config.
 
@@ -1067,7 +1067,7 @@ class Builder(Containerization):
             sys.exit(1)
 
         self.run_containerizable_sh_command(
-            command=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+            commands=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )
 
     def clean_repo(self):
@@ -1110,9 +1110,9 @@ class Builder(Containerization):
 
         pretty_print.print_clean("Cleaning repo directory...")
 
-        cleaning_commands = f'"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true"'
+        cleaning_commands = [f"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true"]
 
-        self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._repo_dir, "Z")])
+        self.run_containerizable_sh_command(commands=cleaning_commands, dirs_to_mount=[(self._repo_dir, "Z")])
 
         # Remove flag
         self._patches_applied_flag.unlink(missing_ok=True)
@@ -1140,9 +1140,9 @@ class Builder(Containerization):
 
         pretty_print.print_clean("Cleaning output directory...")
 
-        cleaning_commands = f'"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true"'
+        cleaning_commands = [f"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true"]
 
-        self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._output_dir, "Z")])
+        self.run_containerizable_sh_command(commands=cleaning_commands, dirs_to_mount=[(self._output_dir, "Z")])
 
         # Remove empty output directory
         self._output_dir.rmdir()
@@ -1171,10 +1171,10 @@ class Builder(Containerization):
         else:
             pretty_print.print_clean("Cleaning work directory...")
 
-        cleaning_commands = f'"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true"'
+        cleaning_commands = [f"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true"]
 
         self.run_containerizable_sh_command(
-            command=cleaning_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=as_root
+            commands=cleaning_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=as_root
         )
 
         # Remove empty work directory
@@ -1200,9 +1200,9 @@ class Builder(Containerization):
 
         pretty_print.print_clean("Cleaning download directory...")
 
-        cleaning_commands = f'"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true"'
+        cleaning_commands = [f"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true"]
 
-        self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._download_dir, "Z")])
+        self.run_containerizable_sh_command(commands=cleaning_commands, dirs_to_mount=[(self._download_dir, "Z")])
 
         # Remove empty download directory
         self._download_dir.rmdir()
@@ -1234,12 +1234,12 @@ class Builder(Containerization):
         else:
             pretty_print.print_clean(f"Cleaning dependencies subdirectory {dependency}...")
 
-        cleaning_commands = (
-            f'"rm -rf {self._dependencies_dir}/{dependency}/* '
-            f'{self._dependencies_dir}/{dependency}/.* 2> /dev/null || true"'
-        )
+        cleaning_commands = [
+            f"rm -rf {self._dependencies_dir}/{dependency}/* "
+            f"{self._dependencies_dir}/{dependency}/.* 2> /dev/null || true"
+        ]
 
-        self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._dependencies_dir, "Z")])
+        self.run_containerizable_sh_command(commands=cleaning_commands, dirs_to_mount=[(self._dependencies_dir, "Z")])
 
         # Remove empty download directory
         if dependency == "":
@@ -1265,9 +1265,9 @@ class Builder(Containerization):
 
         pretty_print.print_clean(f"Cleaning temp directory of block {self.block_id}...")
 
-        cleaning_commands = f'"rm -rf {self._block_temp_dir}/* {self._block_temp_dir}/.* 2> /dev/null || true"'
+        cleaning_commands = [f"rm -rf {self._block_temp_dir}/* {self._block_temp_dir}/.* 2> /dev/null || true"]
 
-        self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._block_temp_dir, "Z")])
+        self.run_containerizable_sh_command(commands=cleaning_commands, dirs_to_mount=[(self._block_temp_dir, "Z")])
 
         # Remove empty temp directory
         self._block_temp_dir.rmdir()

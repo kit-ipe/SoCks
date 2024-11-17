@@ -164,22 +164,19 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Building Linux Image...")
 
-        linux_img_build_commands = (
-            f"'cp {self._misc_dir}/image.its.tpl {self._work_dir}/image.its && "
-            f'sed -i "s:<KERNEL_IMG_PATH>:{self._kernel_img_path}:g;" {self._work_dir}/image.its && '
-            f'sed -i "s:<DT_IMG_PATH>:{self._dt_img_path}:g;" {self._work_dir}/image.its && '
-        )
+        linux_img_build_commands = [
+            f"cp {self._misc_dir}/image.its.tpl {self._work_dir}/image.its",
+            f"sed -i \"s:<KERNEL_IMG_PATH>:{self._kernel_img_path}:g;\" {self._work_dir}/image.its",
+            f"sed -i \"s:<DT_IMG_PATH>:{self._dt_img_path}:g;\" {self._work_dir}/image.its"
+        ]
         if ramfs_archives:
-            linux_img_build_commands = (
-                linux_img_build_commands
-                + f'sed -i "s:<RAMFS_IMG_PATH>:{ramfs_archives[0]}:g;" {self._work_dir}/image.its && '
+            linux_img_build_commands.append(
+                f"sed -i \"s:<RAMFS_IMG_PATH>:{ramfs_archives[0]}:g;\" {self._work_dir}/image.its"
             )
-        linux_img_build_commands = (
-            linux_img_build_commands + f"mkimage -f {self._work_dir}/image.its {self._output_dir}/image.ub'"
-        )
+        linux_img_build_commands.append(f"mkimage -f {self._work_dir}/image.its {self._output_dir}/image.ub")
 
         self.run_containerizable_sh_command(
-            command=linux_img_build_commands,
+            commands=linux_img_build_commands,
             dirs_to_mount=[
                 (self._misc_dir, "Z"),
                 (self._dependencies_dir, "Z"),
@@ -213,12 +210,12 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Building boot.scr...")
 
-        bootscr_img_build_commands = (
-            f"'mkimage -c none -A arm -T script -d {self._misc_dir}/boot.cmd {self._output_dir}/boot.scr'"
-        )
+        bootscr_img_build_commands = [
+            f"mkimage -c none -A arm -T script -d {self._misc_dir}/boot.cmd {self._output_dir}/boot.scr"
+        ]
 
         self.run_containerizable_sh_command(
-            command=bootscr_img_build_commands, dirs_to_mount=[(self._misc_dir, "Z"), (self._output_dir, "Z")]
+            commands=bootscr_img_build_commands, dirs_to_mount=[(self._misc_dir, "Z"), (self._output_dir, "Z")]
         )
 
     def boot_img(self):
@@ -284,23 +281,23 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             bit_file = self._work_dir / "system.bit"
             temp_bit_file.rename(bit_file)
 
-        boot_img_build_commands = (
-            f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
-            f"source {self._amd_vitis_path}/settings64.sh && "
-            f"cp {self._misc_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif && "
-            f'sed -i "s:<FSBL_PATH>:{self._fsbl_img_path}:g;" {self._work_dir}/bootgen.bif && '
-            f'sed -i "s:<PMUFW_PATH>:{self._pmufw_img_path}:g;" {self._work_dir}/bootgen.bif && '
-            f'sed -i "s:<PLBIT_PATH>:{bit_file}:g;" {self._work_dir}/bootgen.bif && '
-            f'sed -i "s:<ATF_PATH>:{self._atf_img_path}:g;" {self._work_dir}/bootgen.bif && '
-            f'sed -i "s:<DTB_PATH>:{self._dt_img_path}:g;" {self._work_dir}/bootgen.bif && '
-            f'sed -i "s:<UBOOT_PATH>:{self._uboot_img_path}:g;" {self._work_dir}/bootgen.bif && '
-            f'sed -i "s:<LINUX_PATH>:{self._output_dir / "image.ub"}:g;" {self._work_dir}/bootgen.bif && '
-            f'sed -i "s:<BSCR_PATH>:{self._output_dir / "boot.scr"}:g;" {self._work_dir}/bootgen.bif && '
-            f"bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN -w'"
-        )
+        boot_img_build_commands = [
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vitis_path}/settings64.sh",
+            f"cp {self._misc_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif",
+            f"sed -i \"s:<FSBL_PATH>:{self._fsbl_img_path}:g;\" {self._work_dir}/bootgen.bif",
+            f"sed -i \"s:<PMUFW_PATH>:{self._pmufw_img_path}:g;\" {self._work_dir}/bootgen.bif",
+            f"sed -i \"s:<PLBIT_PATH>:{bit_file}:g;\" {self._work_dir}/bootgen.bif",
+            f"sed -i \"s:<ATF_PATH>:{self._atf_img_path}:g;\" {self._work_dir}/bootgen.bif",
+            f"sed -i \"s:<DTB_PATH>:{self._dt_img_path}:g;\" {self._work_dir}/bootgen.bif",
+            f"sed -i \"s:<UBOOT_PATH>:{self._uboot_img_path}:g;\" {self._work_dir}/bootgen.bif",
+            f"sed -i \"s:<LINUX_PATH>:{self._output_dir / 'image.ub'}:g;\" {self._work_dir}/bootgen.bif",
+            f"sed -i \"s:<BSCR_PATH>:{self._output_dir / 'boot.scr'}:g;\" {self._work_dir}/bootgen.bif",
+            f"bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN -w"
+        ]
 
         self.run_containerizable_sh_command(
-            command=boot_img_build_commands,
+            commands=boot_img_build_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
                 (self._misc_dir, "Z"),
@@ -349,23 +346,23 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build(f"Building SD card image {self._sdc_image_name} (This may take a few minutes)...")
 
-        sdc_img_build_commands = (
-            f"'rm -f {self._output_dir}/{self._sdc_image_name} && "
+        sdc_img_build_commands = [
+            f"rm -f {self._output_dir}/{self._sdc_image_name}",
             f"guestfish -N {self._output_dir}/{self._sdc_image_name}=bootroot:vfat:ext4:6G:500M -- "
             f"    set-label /dev/sda1 BOOT : "
             f"    set-label /dev/sda2 ROOTFS : "
             f"    mkmountpoint /p1 : "
             f"    mount /dev/sda1 /p1 : "
             f"    copy-in {self._output_dir}/image.ub {self._output_dir}/boot.scr {self._output_dir}/BOOT.BIN /p1/ : "
-        )
+        ]
         if rootfs_archives:
-            sdc_img_build_commands = (
-                sdc_img_build_commands + f"    mkmountpoint /p2 : "
+            sdc_img_build_commands[-1] = (
+                sdc_img_build_commands[-1] + f"    mkmountpoint /p2 : "
                 f"    mount /dev/sda2 /p2 : "
                 f"    tar-in {rootfs_archives[0]} /p2/ compress:xz acls:true : "
             )
-        sdc_img_build_commands = sdc_img_build_commands + f"    umount-all'"
+        sdc_img_build_commands[-1] = sdc_img_build_commands[-1] + f"    umount-all"
 
         self.run_containerizable_sh_command(
-            command=sdc_img_build_commands, dirs_to_mount=[(self._dependencies_dir, "Z"), (self._output_dir, "Z")]
+            commands=sdc_img_build_commands, dirs_to_mount=[(self._dependencies_dir, "Z"), (self._output_dir, "Z")]
         )

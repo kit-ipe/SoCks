@@ -85,11 +85,11 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             None
         """
 
-        menuconfig_commands = (
-            f"'cd {self._source_repo_dir} && "
-            "export CROSS_COMPILE=aarch64-linux-gnu- && "
-            "make ARCH=arm64 menuconfig'"
-        )
+        menuconfig_commands = [
+            f"cd {self._source_repo_dir}",
+            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            "make ARCH=arm64 menuconfig"
+        ]
 
         super()._run_menuconfig(menuconfig_commands=menuconfig_commands)
 
@@ -107,12 +107,12 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             None
         """
 
-        prep_srcs_commands = (
-            f"'cd {self._source_repo_dir} && "
-            "export CROSS_COMPILE=aarch64-linux-gnu- && "
-            "make ARCH=arm64 xilinx_zynqmp_defconfig && "
-            'printf "\n# Do not ignore the config file\n!.config\n" >> .gitignore\''
-        )
+        prep_srcs_commands = [
+            f"cd {self._source_repo_dir}",
+            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            "make ARCH=arm64 xilinx_zynqmp_defconfig",
+            "printf \"\n# Do not ignore the config file\n!.config\n\" >> .gitignore"
+        ]
 
         super()._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
 
@@ -151,15 +151,15 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             # Remove existing build information file
             self._build_info_file.unlink(missing_ok=True)
 
-        kernel_build_commands = (
-            f"'cd {self._source_repo_dir} && "
-            "export CROSS_COMPILE=aarch64-linux-gnu- && "
-            "make ARCH=arm64 olddefconfig && "
-            f"make ARCH=arm64 -j{self.project_cfg.external_tools.make.max_build_threads}'"
-        )
+        kernel_build_commands = [
+            f"cd {self._source_repo_dir}",
+            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            "make ARCH=arm64 olddefconfig",
+            f"make ARCH=arm64 -j{self.project_cfg.external_tools.make.max_build_threads}"
+        ]
 
         self.run_containerizable_sh_command(
-            command=kernel_build_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+            commands=kernel_build_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )
 
         # Create symlink to the output files
@@ -198,15 +198,15 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
 
         pretty_print.print_build("Exporting Kernel Modules...")
 
-        export_modules_commands = (
-            f"'cd {self._source_repo_dir} && "
-            "export CROSS_COMPILE=aarch64-linux-gnu- && "
-            f"make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir} && "
-            f"find {self._output_dir}/lib -type l -delete && "
-            f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._output_dir}/kernel_modules.tar.gz {self._output_dir}/lib && "
-            f"rm -rf {self._output_dir}/lib'"
-        )
+        export_modules_commands = [
+            f"cd {self._source_repo_dir}",
+            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            f"make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir}",
+            f"find {self._output_dir}/lib -type l -delete",
+            f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._output_dir}/kernel_modules.tar.gz {self._output_dir}/lib",
+            f"rm -rf {self._output_dir}/lib"
+        ]
 
         self.run_containerizable_sh_command(
-            command=export_modules_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+            commands=export_modules_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )

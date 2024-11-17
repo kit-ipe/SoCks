@@ -193,9 +193,9 @@ class AMD_Builder(Builder):
         if self._xsa_dir.exists():
             pretty_print.print_clean("Cleaning source_xsa directory...")
 
-            cleaning_commands = f'"rm -rf {self._xsa_dir}/* {self._xsa_dir}/.* 2> /dev/null || true"'
+            cleaning_commands = [f"rm -rf {self._xsa_dir}/* {self._xsa_dir}/.* 2> /dev/null || true"]
 
-            self.run_containerizable_sh_command(command=cleaning_commands, dirs_to_mount=[(self._xsa_dir, "Z")])
+            self.run_containerizable_sh_command(commands=cleaning_commands, dirs_to_mount=[(self._xsa_dir, "Z")])
 
             # Remove empty source_xsa directory
             self._xsa_dir.rmdir()

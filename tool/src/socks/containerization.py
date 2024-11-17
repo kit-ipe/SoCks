@@ -181,18 +181,19 @@ class Containerization:
 
     def run_containerizable_sh_command(
         self,
-        command: str,
+        commands: typing.List[str],
         dirs_to_mount: typing.List[typing.Tuple[pathlib.Path, str]] = [],
         custom_params: typing.List[str] = [],
         run_as_root: bool = False,
+        print_commands: bool = False,
     ):
         """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
         Runs a sh command in a container or directly on the host system.
 
         Args:
-            command:
-                The command to execute.
+            commands:
+                List of commands to execute.
             dirs_to_mount:
                 A list of tuples that represent directories to be mounted into the container. Each tuple contains a
                 path and a string with the correspondig docker/podman volume mount options.
@@ -200,6 +201,8 @@ class Containerization:
                 Additional custom parameters that are passed to the containerization tool.
             run_as_root:
                 Set to True if the command is to be run as root user.
+            print_commands:
+                Set to True to print every shell command before it is executed in the container
 
         Returns:
             None
@@ -208,8 +211,17 @@ class Containerization:
             ValueError: If argument 'command' does not start and end with a single quote
         """
 
-        if not command.startswith(("'", '"')) or not command.endswith(("'", '"')):
-            raise ValueError("Argument 'command' must start and end with a single or double quote.")
+        # Assemble command string for container
+        comp_commands = "'"
+        if print_commands:
+            comp_commands = comp_commands + "trap \"echo \\\"container> \$BASH_COMMAND\\\"\" DEBUG && "
+        for i, command in enumerate(commands):
+            if i == len(commands) - 1:
+                # The last element of the list is treated differently
+                comp_commands = comp_commands + command
+            else:
+                comp_commands = comp_commands + command + " && "
+        comp_commands = comp_commands + "'"
 
         if self._container_tool in ("docker", "podman"):
             mounts = " ".join([f"-v {i[0]}:{i[0]}:{i[1]}" for i in dirs_to_mount])
@@ -218,12 +230,12 @@ class Containerization:
             Shell_Command_Runners.run_sh_command(
                 [self._container_tool, "run", "--rm", "-it", user_opt, mounts]
                 + custom_params
-                + [self._container_image, "sh", "-c", command]
+                + [self._container_image, "sh", "-c", comp_commands]
             )
         elif self._container_tool == "none":
             # Run commands without using a container
             sudo_opt = "sudo" if run_as_root else ""
-            Shell_Command_Runners.run_sh_command([sudo_opt, "sh", "-c", command])
+            Shell_Command_Runners.run_sh_command([sudo_opt, "sh", "-c", comp_commands])
 
     def enable_multiarch(self):
         """
@@ -298,14 +310,14 @@ class Containerization:
             Containerization._err_container_feature(f"{inspect.getframeinfo(inspect.currentframe()).function}()")
 
     def start_gui_container(
-        self, start_gui_command: str, potential_mounts: typing.List[typing.Tuple[pathlib.Path, str]]
+        self, start_gui_commands: typing.List[str], potential_mounts: typing.List[typing.Tuple[pathlib.Path, str]]
     ):
         """
         Starts an interactive container with which the block can be built.
 
         Args:
-            start_gui_command:
-                Commands to be used to start the GUI in the container.
+            start_gui_commands:
+                List of commands to be used to start the GUI in the container.
             potential_mounts:
                 List of all directories that could be mounted in the container.
                 Existing directories are mounted, non-existing directories are ignored.
@@ -325,6 +337,16 @@ class Containerization:
             )
             sys.exit(1)
 
+        # Assemble command string for container
+        comp_commands = "'"
+        for i, command in enumerate(start_gui_commands):
+            if i == len(start_gui_commands) - 1:
+                # The last element of the list is treated differently
+                comp_commands = comp_commands + command
+            else:
+                comp_commands = comp_commands + command + " && "
+        comp_commands = comp_commands + "'"
+
         # Check which mounts (resp. directories) are available on the host system
         existing_mounts = [mount for mount in potential_mounts if mount[0].is_dir()]
         mounts = " ".join([f"--share {i[0]}:{i[1]}" if i[1] == "ro" else f"--share {i[0]}" for i in existing_mounts])
@@ -343,7 +365,7 @@ class Containerization:
                     "--user=RETAIN",
                     mounts,
                     self._container_image,
-                    f"--runasuser={start_gui_command}",
+                    f"--runasuser={comp_commands}",
                 ]
             )
         elif self._container_tool == "podman":
@@ -359,7 +381,7 @@ class Containerization:
                     "--user=RETAIN",
                     mounts,
                     self._container_image,
-                    f"--runasuser={start_gui_command}",
+                    f"--runasuser={comp_commands}",
                 ]
             )
         elif self._container_tool == "none":

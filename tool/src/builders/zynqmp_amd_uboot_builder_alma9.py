@@ -103,12 +103,12 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
             None
         """
 
-        menuconfig_commands = (
-            f"'cd {self._source_repo_dir} && "
-            "export CROSS_COMPILE=aarch64-linux-gnu- && "
-            "export ARCH=aarch64 && "
-            "make menuconfig'"
-        )
+        menuconfig_commands = [
+            f"cd {self._source_repo_dir}",
+            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            "export ARCH=aarch64",
+            "make menuconfig"
+        ]
 
         super()._run_menuconfig(menuconfig_commands=menuconfig_commands)
 
@@ -126,13 +126,13 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
             None
         """
 
-        prep_srcs_commands = (
-            f"'cd {self._source_repo_dir} && "
-            "export CROSS_COMPILE=aarch64-linux-gnu- && "
-            "export ARCH=aarch64 && "
-            "make xilinx_zynqmp_virt_defconfig && "
-            'printf "\n# Do not ignore the config file\n!.config\n" >> .gitignore\''
-        )
+        prep_srcs_commands = [
+            f"cd {self._source_repo_dir}",
+            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            "export ARCH=aarch64",
+            "make xilinx_zynqmp_virt_defconfig",
+            "printf \"\n# Do not ignore the config file\n!.config\n\" >> .gitignore"
+        ]
 
         super()._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
 
@@ -208,16 +208,16 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
             # Remove existing build information file
             self._build_info_file.unlink(missing_ok=True)
 
-        uboot_build_commands = (
-            f"'cd {self._source_repo_dir} && "
-            "export CROSS_COMPILE=aarch64-linux-gnu- && "
-            "export ARCH=aarch64 && "
-            "make olddefconfig && "
-            f"make -j{self.project_cfg.external_tools.make.max_build_threads}'"
-        )
+        uboot_build_commands = [
+            f"cd {self._source_repo_dir}",
+            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            "export ARCH=aarch64",
+            "make olddefconfig",
+            f"make -j{self.project_cfg.external_tools.make.max_build_threads}"
+        ]
 
         self.run_containerizable_sh_command(
-            command=uboot_build_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+            commands=uboot_build_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )
 
         # Create symlink to the output file

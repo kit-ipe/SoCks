@@ -79,16 +79,16 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Initializing the IPBB environment...")
 
-        init_ipbb_env_commands = (
-            "'source ~/tools/ipbb-*/env.sh && "
-            f"cd {self._repo_dir} && "
-            f"ipbb init {self._ipbb_work_dir_name} && "
+        init_ipbb_env_commands = [
+            "source ~/tools/ipbb-*/env.sh",
+            f"cd {self._repo_dir}",
+            f"ipbb init {self._ipbb_work_dir_name}",
             f"cd {self._ipbb_work_dir}"
-        )
+        ]
 
         # Add local repositories
         for path in self._local_source_dirs:
-            init_ipbb_env_commands = init_ipbb_env_commands + f" && ipbb add symlink {path}"
+            init_ipbb_env_commands.append(f"ipbb add symlink {path}")
 
         # Add online repositories
         for index in range(len(self._source_repos)):
@@ -97,19 +97,16 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
                     f"Entries in blocks/{self.block_id}/project/build_srcs[N]/branch have to start with '-b ' for branches and tags or with '-r ' for commit ids."
                 )
                 sys.exit(1)
-            init_ipbb_env_commands = (
-                init_ipbb_env_commands
-                + f" && ipbb add git {self._source_repos[index]['url']} {self._source_repos[index]['branch']}"
+            init_ipbb_env_commands.append(
+                f"ipbb add git {self._source_repos[index]['url']} {self._source_repos[index]['branch']}"
             )
-
-        init_ipbb_env_commands = init_ipbb_env_commands + "'"
 
         local_source_mounts = []
         for path in self._local_source_dirs:
             local_source_mounts.append((path, "Z"))
 
         self.run_containerizable_sh_command(
-            command=init_ipbb_env_commands,
+            commands=init_ipbb_env_commands,
             dirs_to_mount=[(self._repo_dir, "Z")] + local_source_mounts,
             custom_params=["-v", "$SSH_AUTH_SOCK:/ssh-auth-sock", "--env", "SSH_AUTH_SOCK=/ssh-auth-sock"],
         )
@@ -140,25 +137,25 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Creating the Vivado Project...")
 
-        create_vivado_project_commands = (
-            "'source ~/tools/ipbb-*/env.sh && "
-            f"cd {self._ipbb_work_dir} && "
-            f"ipbb toolbox check-dep vivado serenity-s1-k26c-fw:projects/{self.block_cfg.project.name} top.dep && "
-            f"ipbb proj create vivado {self.block_cfg.project.name} serenity-s1-k26c-fw:projects/{self.block_cfg.project.name} && "
-            f"cd proj/{self.block_cfg.project.name} && "
-            "export LD_LIBRARY_PATH=/opt/cactus/lib:\$$LD_LIBRARY_PATH PATH=/opt/cactus/bin/uhal/tools:\$$PATH && "
-            "ipbb ipbus gendecoders -c && "
-            f"export XILINXD_LICENSE_FILE={self._amd_license} && "
-            f"source {self._amd_vivado_path}/settings64.sh && "
-            "ipbb vivado generate-project'"
-        )
+        create_vivado_project_commands = [
+            "source ~/tools/ipbb-*/env.sh",
+            f"cd {self._ipbb_work_dir}",
+            f"ipbb toolbox check-dep vivado serenity-s1-k26c-fw:projects/{self.block_cfg.project.name} top.dep",
+            f"ipbb proj create vivado {self.block_cfg.project.name} serenity-s1-k26c-fw:projects/{self.block_cfg.project.name}",
+            f"cd proj/{self.block_cfg.project.name}",
+            "export LD_LIBRARY_PATH=/opt/cactus/lib:\$$LD_LIBRARY_PATH PATH=/opt/cactus/bin/uhal/tools:\$$PATH",
+            "ipbb ipbus gendecoders -c",
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vivado_path}/settings64.sh",
+            "ipbb vivado generate-project"
+        ]
 
         local_source_mounts = []
         for path in self._local_source_dirs:
             local_source_mounts.append((path, "Z"))
 
         self.run_containerizable_sh_command(
-            command=create_vivado_project_commands,
+            commands=create_vivado_project_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")] + local_source_mounts,
         )
 
@@ -210,22 +207,22 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Building the Vivado Project...")
 
-        vivado_build_commands = (
-            "'source ~/tools/ipbb-*/env.sh && "
-            f"export XILINXD_LICENSE_FILE={self._amd_license} && "
-            f"source {self._amd_vivado_path}/settings64.sh && "
-            f"cd {self._ipbb_work_dir}/proj/{self.block_cfg.project.name} && "
-            "ipbb vivado check-syntax && "
-            f"ipbb vivado synth -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} impl -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} && "
-            "ipbb vivado bitfile package'"
-        )
+        vivado_build_commands = [
+            "source ~/tools/ipbb-*/env.sh",
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vivado_path}/settings64.sh",
+            f"cd {self._ipbb_work_dir}/proj/{self.block_cfg.project.name}",
+            "ipbb vivado check-syntax",
+            f"ipbb vivado synth -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} impl -j{self.project_cfg.external_tools.xilinx.max_threads_vivado}",
+            "ipbb vivado bitfile package"
+        ]
 
         local_source_mounts = []
         for path in self._local_source_dirs:
             local_source_mounts.append((path, "Z"))
 
         self.run_containerizable_sh_command(
-            command=vivado_build_commands,
+            commands=vivado_build_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")] + local_source_mounts,
         )
 
@@ -278,15 +275,15 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
 
         self.check_amd_tools(required_tools=["vivado"])
 
-        start_vivado_gui_commands = (
-            f"'export XILINXD_LICENSE_FILE={self._amd_license} && "
-            f"source {self._amd_vivado_path}/settings64.sh && "
-            f"vivado -nojournal -nolog {self._ipbb_work_dir}/proj/{self.block_cfg.project.name}/{self.block_cfg.project.name}/{self.block_cfg.project.name}.xpr && "
-            f"exit'"
-        )
+        start_vivado_gui_commands = [
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vivado_path}/settings64.sh",
+            f"vivado -nojournal -nolog {self._ipbb_work_dir}/proj/{self.block_cfg.project.name}/{self.block_cfg.project.name}/{self.block_cfg.project.name}.xpr",
+            f"exit"
+        ]
 
         self.start_gui_container(
-            start_gui_command=start_vivado_gui_commands,
+            start_gui_commands=start_vivado_gui_commands,
             potential_mounts=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
                 (self._repo_dir, "Z"),
