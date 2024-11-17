@@ -127,6 +127,15 @@ class Builder(Containerization):
             container_file=self._container_dir / f"{container_image}.containerfile",
         )
 
+        # Check whether the user has modified the patches since they were applied
+        if self._patch_dir.exists() and self._patches_applied_flag.exists() and Builder._check_rebuild_required(
+            src_search_list=[self._patch_dir],
+            out_search_list=[self._patches_applied_flag],
+        ):
+            pretty_print.print_error(f"It seems that the patches for block '{self.block_id}' have changed since "
+                f"they were applied. This is an unexpected state. Please clean and rebuild block '{self.block_id}'.")
+            sys.exit(1)
+
     @staticmethod
     def _find_last_modified_file(
         search_list: typing.List[pathlib.Path], ignore_list: typing.List[pathlib.Path] = None
@@ -643,6 +652,7 @@ class Builder(Containerization):
                 f"^{self._git_local_ref_branch}",
             ]
         )
+
         if not result_new_commits.stdout:
             pretty_print.print_warning("No commits found that can be used as sources for patches.")
             return
@@ -661,12 +671,14 @@ class Builder(Containerization):
                 self._git_local_ref_branch,
             ]
         )
+
         # Add newly created patches to self._patch_list_file
         for line in result_new_patches.stdout.splitlines():
             new_patch = line.rpartition("/")[2]
             print(f"Patch {new_patch} was created")
             with self._patch_list_file.open("a") as f:
                 print(new_patch, file=f, end="\n")
+
         # Synchronize the branches ref and dev to be able to detect new commits in the future
         Shell_Command_Runners.run_sh_command(
             ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_ref_branch], visible_lines=0
@@ -677,6 +689,11 @@ class Builder(Containerization):
         Shell_Command_Runners.run_sh_command(
             ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
         )
+
+        # Update the timestamp of the patches applied flag, if it exists. Otherwise, SoCks assumes
+        # that the user has modified the patches since they were applied.
+        if self._patches_applied_flag.is_file():
+            self._patches_applied_flag.touch()
 
     def apply_patches(self):
         """

@@ -336,7 +336,6 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             src_search_list=self._project_cfg_files
             + [
                 self._block_src_dir / "src",
-                self._patch_dir,
                 self._source_repo_dir / "sources",
                 self._source_repo_dir / "build" / "conf",
                 self._source_repo_dir / "build" / "workspace",

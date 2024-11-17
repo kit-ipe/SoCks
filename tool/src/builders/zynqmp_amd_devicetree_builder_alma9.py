@@ -170,7 +170,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
 
         # Check whether the devicetree needs to be built
         if not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuild_required(
-            src_search_list=[self._dt_incl_dir, self._patch_dir, self._source_repo_dir],
+            src_search_list=[self._dt_incl_dir, self._source_repo_dir],
             out_search_list=[self._base_work_dir / "system.dtb"],
         ):
             pretty_print.print_build("No need to rebuild the devicetree. No altered source files detected...")
