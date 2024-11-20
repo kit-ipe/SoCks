@@ -24,7 +24,6 @@ dependencies = [
 
 [tool.setuptools.package-data]
 socks = ["container/*.containerfile", "templates/**/*"]
-builders = ["resources/*"]
 
 [tool.black]
 line-length = 120
