@@ -17,13 +17,10 @@ import argparse
 import errno
 import crypt
 import augeas
+import csv
 
 # Get directory (absolute path)  and filename of mkrootfs.py
 dirname, filename = os.path.split(os.path.abspath(__file__))
-
-# Set path of the DNF config (lists repos that can be used by DNF)
-dnf_conf=dirname+'/dnf_build_time.conf'
-print("DNF config path: " + dnf_conf)
 
 # Function for running shell command
 def run_cmd(command):
@@ -56,6 +53,7 @@ FORMAT = '%(levelname)s : %(message)s'
 parser.add_argument('-v', '--verbose',      action='store_true',    help='verbose output')
 parser.add_argument('-r', '--root',         nargs=1,                help='directory of new rootfs')
 parser.add_argument('-a', '--arch',         nargs=1,                help='architecture of target')
+parser.add_argument('-c', '--dnfconf',      nargs=1,                help='dnf configuration file')
 parser.add_argument('-e', '--extra',        nargs=1,                help='file with a list of extra packages to be installed')
 parser.add_argument('-rv','--releasever',   nargs=1,                help='release version of the OS. Default is 8.7')
 
@@ -79,12 +77,24 @@ if arch not in ["armv7hl","aarch64"]:
    print("Invalid CPU architecture")
    exit(-1)
 if args['extra'] is not None:
-	extra_pkgs_file = open(args['extra'][0],"r")
-	extra_pkgs=[]
-	for x in extra_pkgs_file:
-		x=x.replace("\n", "")
-		extra_pkgs.append(x)
-	extra_pkgs_file.close()
+    extra_pkgs_file=args['extra'][0]
+    print("Extra RPM packages are read from: " + extra_pkgs_file)
+    with open(extra_pkgs_file, "r", newline="") as csvfile:
+        extra_pkgs_raw = csv.reader(csvfile)
+        extra_pkgs=[]
+        for i, pkg in enumerate(extra_pkgs_raw):
+            line = i+1
+            if len(pkg) != 1:
+                print(f"ERROR: Line {line} in {args['extra'][0]} has more than 1 column.")
+                sys.exit(1)
+            pkg[0] = pkg[0].replace("\n", "")
+            extra_pkgs.append(pkg[0])
+if args['dnfconf'] is not None:
+    dnf_conf=args['dnfconf'][0]
+    print("DNF config path: " + dnf_conf)
+else:
+    print("A dnf configuration file must be provided")
+    exit(-1)
 if args['releasever'] is not None:
     rv=args['releasever'][0]
     print("Building AlmaLinux release version " + rv)

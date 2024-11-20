@@ -14,10 +14,12 @@ import re
 import hashlib
 import time
 import pydantic
+import importlib.resources
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
 from socks.containerization import Containerization
+import builders
 
 
 class Builder(Containerization):
@@ -74,6 +76,8 @@ class Builder(Containerization):
         # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
         self._socks_dir = socks_dir
         self._container_dir = self._socks_dir / "container"
+        self._builders_dir = pathlib.Path(importlib.resources.files(builders))
+        self._builders_res_dir = self._builders_dir / "resources"
 
         # Project directories
         self._project_dir = project_dir

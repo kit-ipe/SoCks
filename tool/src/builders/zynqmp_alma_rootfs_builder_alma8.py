@@ -132,8 +132,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         # Check whether the base root file system needs to be built
         if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._repo_dir],
-            src_ignore_list=[self._repo_dir / "predefined_fs_layers", self._repo_dir / "users"],
+            src_search_list=self._project_cfg_files + [self._repo_dir / "dnf_build_time.conf", self._repo_dir / "extra_rpms.csv"],
             out_search_list=[self._work_dir],
         ):
             pretty_print.print_build(
@@ -143,12 +142,29 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         self._work_dir.mkdir(parents=True, exist_ok=True)
 
+        dnf_conf_file = self._repo_dir / "dnf_build_time.conf"
+        if not dnf_conf_file.is_file():
+            pretty_print.print_error(f"The following dnf configuration file is required: {dnf_conf_file}")
+            sys.exit(1)
+
+        # Copy the build script to the working directory so that it is accessible from the container.
+        build_script = self._work_dir / "mk_alma_rootfs.py"
+        shutil.copy(self._builders_res_dir / build_script.name, build_script)
+
         pretty_print.print_build("Building the base root file system...")
 
-        base_rootfs_build_commands = [
-            f"cd {self._repo_dir}",
-            f"python3 mkrootfs.py --root={self._build_dir} --arch={self._target_arch} --extra=extra_rpms.txt --releasever={self.block_cfg.release}"
-        ]
+        extra_rpms_file = self._repo_dir / "extra_rpms.csv"
+        if extra_rpms_file.is_file():
+            base_rootfs_build_commands = [
+                f"python3 {build_script} --root={self._build_dir} --arch={self._target_arch} --dnfconf={dnf_conf_file} --extra={extra_rpms_file} --releasever={self.block_cfg.release}"
+            ]
+        else:
+            pretty_print.print_warning(
+                f"File {extra_rpms_file} not found. No additional rpm packages will be installed."
+            )
+            base_rootfs_build_commands = [
+                f"python3 {build_script} --root={self._build_dir} --arch={self._target_arch} --dnfconf={dnf_conf_file} --releasever={self.block_cfg.release}"
+            ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
@@ -181,9 +197,16 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
             sys.exit(1)
 
+        layer_conf_dir = self._repo_dir / "predefined_fs_layers"
+
         # Check whether the predefined file system layers need to be added
+        if not layer_conf_dir.is_dir():
+            pretty_print.print_warning(
+                f"Directory {layer_conf_dir} not found. No predefined file system layers will be added."
+            )
+            return
         if self._pfs_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
-            src_search_list=[self._repo_dir / "predefined_fs_layers"], out_search_list=[self._work_dir]
+            src_search_list=[layer_conf_dir], out_search_list=[self._work_dir]
         ):
             pretty_print.print_build(
                 "No need to add predefined file system layers. No altered source files detected..."
@@ -193,7 +216,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         pretty_print.print_build("Adding predefined file system layers...")
 
         add_pd_layers_commands = [
-            f"cd {self._repo_dir / 'predefined_fs_layers'}",
+            f"cd {layer_conf_dir}",
             f"for dir in ./*; do \"$dir\"/install_layer.sh {self._build_dir}/; done"
         ]
 
@@ -229,13 +252,13 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         layer_conf_file = self._repo_dir / "build_time_fs_layer.csv"
 
         # Check whether the layer needs to be added
-        if not (layer_conf_file).is_file():
+        if not layer_conf_file.is_file():
             pretty_print.print_warning(
                 f"File {layer_conf_file} not found. No files and directories created at build time will be added."
             )
             return
         if self._btfs_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
-            src_search_list=[self._dependencies_dir], out_search_list=[self._work_dir]
+            src_search_list=[self._dependencies_dir, layer_conf_file], out_search_list=[self._work_dir]
         ):
             pretty_print.print_build(
                 "No need to add external files and directories created at build time. No altered source files detected..."
@@ -245,7 +268,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         pretty_print.print_build("Adding external files and directories created at build time...")
 
         add_bt_layer_commands = []
-        with open(layer_conf_file, newline='') as csvfile:
+        with open(layer_conf_file, "r", newline="") as csvfile:
             layer_conf = csv.reader(csvfile)
             for i, row in enumerate(layer_conf):
                 line = i+1
@@ -297,9 +320,16 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
             sys.exit(1)
 
+        user_conf_dir = self._repo_dir / "users"
+
         # Check whether users need to be added
+        if not user_conf_dir.is_dir():
+            pretty_print.print_warning(
+                f"Directory {user_conf_dir} not found. No users will be added."
+            )
+            return
         if self._users_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
-            src_search_list=[self._repo_dir / "users"], out_search_list=[self._work_dir]
+            src_search_list=[user_conf_dir], out_search_list=[self._work_dir]
         ):
             pretty_print.print_build("No need to add users. No altered source files detected...")
             return
@@ -307,7 +337,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         pretty_print.print_build("Adding users...")
 
         add_users_commands = [
-            f"cp -r {self._repo_dir / 'users'} {self._build_dir / 'tmp'}",
+            f"cp -r {user_conf_dir} {self._build_dir / 'tmp'}",
             f"chroot {self._build_dir} /bin/bash /tmp/users/add_users.sh",
             f"rm -rf {self._build_dir}/tmp/users"
         ]
