@@ -143,10 +143,17 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         xsa_files = list(self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.xsa"))
         if len(xsa_files) != 1:
             pretty_print.print_error(
-                f"Unexpected number of {len(xsa_files)} *.xsa files in output direct. Expected was 1."
+                f"Unexpected number of {len(xsa_files)} *.xsa files in output directory. Expected was 1."
             )
             sys.exit(1)
         (self._output_dir / xsa_files[0].name).symlink_to(xsa_files[0])
+        bit_files = list(self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.bit"))
+        if len(bit_files) != 1:
+            pretty_print.print_error(
+                f"Unexpected number of {len(bit_files)} *.bit files in output directory. Expected was 1."
+            )
+            sys.exit(1)
+        (self._output_dir / bit_files[0].name).symlink_to(bit_files[0])
 
     def start_vivado_gui(self):
         """

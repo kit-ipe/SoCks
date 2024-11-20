@@ -3,7 +3,7 @@ import pathlib
 import shutil
 import hashlib
 import tarfile
-import zipfile
+import csv
 from dateutil import parser
 import urllib
 import requests
@@ -52,12 +52,12 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         self._build_info_file = self._work_dir / "fs_build_info"
         # Flag to remember if predefined file system layers have already been added
         self._pfs_added_flag = self._work_dir / ".pfsladded"
+        # Flag to remember if the build time file system layer has already been added
+        self._btfs_added_flag = self._work_dir / ".btfsladded"
         # Flag to remember if users have already been added
         self._users_added_flag = self._work_dir / ".usersadded"
         # File for saving the checksum of the Kernel module archive used
         self._source_kmods_md5_file = self._work_dir / "source_kmodules.md5"
-        # File for saving the checksum of the XSA archive used
-        self._source_xsa_md5_file = self._work_dir / "source_xsa.md5"
 
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
@@ -67,7 +67,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         self._block_deps = {
             "kernel": ["kernel_modules.tar.gz"],
             "devicetree": ["system.dtb", "system.dts"],
-            "vivado": [".*.xsa"],
+            "vivado": [".*.xsa", ".*.bit"],
         }
 
         # The user can use block commands to interact with the block.
@@ -89,10 +89,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             self.block_cmds["build"].extend(
                 [
                     self.build_base_rootfs,
-                    self.add_fs_layers,
+                    self.add_pd_layers,
                     self.add_users,
                     self.add_kmodules,
-                    self.add_pl,
+                    self.add_bt_layer,
                     self.build_archive,
                     self.export_block_package,
                 ]
@@ -107,10 +107,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             self.block_cmds["build"].extend(
                 [
                     self.import_prebuilt,
-                    self.add_fs_layers,
+                    self.add_pd_layers,
                     self.add_users,
                     self.add_kmodules,
-                    self.add_pl,
+                    self.add_bt_layer,
                     self.build_archive,
                     self.export_block_package,
                 ]
@@ -159,9 +159,10 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         # Remove flags
         self._pfs_added_flag.unlink(missing_ok=True)
+        self._btfs_added_flag.unlink(missing_ok=True)
         self._users_added_flag.unlink(missing_ok=True)
 
-    def add_fs_layers(self):
+    def add_pd_layers(self):
         """
         Adds predefined file system layers to the root file system.
 
@@ -191,20 +192,91 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         pretty_print.print_build("Adding predefined file system layers...")
 
-        add_fs_layers_commands = [
+        add_pd_layers_commands = [
             f"cd {self._repo_dir / 'predefined_fs_layers'}",
             f"for dir in ./*; do \"$dir\"/install_layer.sh {self._build_dir}/; done"
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
-            commands=add_fs_layers_commands,
+            commands=add_pd_layers_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
         )
 
         # Create the flag if it doesn't exist and update the timestamps
         self._pfs_added_flag.touch()
+
+    def add_bt_layer(self):
+        """
+        Adds external files and directories created at build time.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check whether a RootFS is present
+        if not self._build_dir.is_dir():
+            pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
+            sys.exit(1)
+
+        layer_conf_file = self._repo_dir / "build_time_fs_layer.csv"
+
+        # Check whether the layer needs to be added
+        if not (layer_conf_file).is_file():
+            pretty_print.print_warning(
+                f"File {layer_conf_file} not found. No files and directories created at build time will be added."
+            )
+            return
+        if self._btfs_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
+            src_search_list=[self._dependencies_dir], out_search_list=[self._work_dir]
+        ):
+            pretty_print.print_build(
+                "No need to add external files and directories created at build time. No altered source files detected..."
+            )
+            return
+
+        pretty_print.print_build("Adding external files and directories created at build time...")
+
+        add_bt_layer_commands = []
+        with open(layer_conf_file, newline='') as csvfile:
+            layer_conf = csv.reader(csvfile)
+            for i, row in enumerate(layer_conf):
+                line = i+1
+                if len(row) != 6:
+                    pretty_print.print_error(f"Line {line} in {layer_conf_file} does not have 6 columns.")
+                    sys.exit(1)
+                block, src_item, dest_path, dest_item, og, permissions = row
+                if block not in self._block_deps.keys():
+                    pretty_print.print_error(f"The block in line {line} in {layer_conf_file} is invalid.")
+                    sys.exit(1)
+                srcs = (self._dependencies_dir / block).glob(src_item)
+                if not srcs:
+                    pretty_print.print_error(f"The source in line {line} in {layer_conf_file} could not be found.")
+                    sys.exit(1)
+                add_bt_layer_commands.append(f"mkdir -p {self._build_dir}/{dest_path}")
+                for src in srcs:
+                    add_bt_layer_commands.append(f"cp -r {src} {self._build_dir}/{dest_path}/{dest_item}")
+                    if og:
+                        add_bt_layer_commands.append(f"chown -R {og} {self._build_dir}/{dest_path}/{dest_item}")
+                    if permissions:
+                        add_bt_layer_commands.append(f"chmod -R {permissions} {self._build_dir}/{dest_path}/{dest_item}")
+
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.run_containerizable_sh_command(
+            commands=add_bt_layer_commands,
+            dirs_to_mount=[(self._repo_dir, "Z"), (self._dependencies_dir, "Z"), (self._work_dir, "Z")],
+            run_as_root=True,
+        )
+
+        # Create the flag if it doesn't exist and update the timestamps
+        self._btfs_added_flag.touch()
 
     def add_users(self):
         """
@@ -305,93 +377,6 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         # Save checksum in file
         with self._source_kmods_md5_file.open("w") as f:
             print(md5_new_file, file=f, end="")
-
-    def add_pl(self):
-        """
-        Adds configuration files for the programmable logic (PL).
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        # Check whether a RootFS is present
-        if not self._build_dir.is_dir():
-            pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
-            sys.exit(1)
-
-        xsa_files = list((self._dependencies_dir / "vivado").glob("*.xsa"))
-
-        # Check if there is more than one XSA file in the xsa directory
-        if len(xsa_files) != 1:
-            pretty_print.print_error(f'Not exactly one XSA archive in {self._dependencies_dir / "vivado"}.')
-            sys.exit(1)
-
-        # Calculate md5 of the provided file
-        md5_new_xsa_file = hashlib.md5(xsa_files[0].read_bytes()).hexdigest()
-        # Read md5 of previously used XSA archive, if any
-        md5_existsing_xsa_file = 0
-        if self._source_xsa_md5_file.is_file():
-            with self._source_xsa_md5_file.open("r") as f:
-                md5_existsing_xsa_file = f.read()
-
-        # Check if the PL files need to be added
-        if (
-            md5_existsing_xsa_file == md5_new_xsa_file
-            and (self._build_dir / "etc/dt-overlays").is_dir()
-            and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
-                src_search_list=[self._dependencies_dir / "devicetree"],
-                out_search_list=[self._build_dir / "etc/dt-overlays"],
-            )
-        ):
-            pretty_print.print_build(
-                "No need to add files for the programmable logic (PL). No altered source files detected..."
-            )
-            return
-
-        pretty_print.print_build("Adding files for the programmable logic (PL)...")
-
-        # Extract .bit file from XSA archive
-        bit_file = None
-        with zipfile.ZipFile(xsa_files[0], "r") as archive:
-            # Find all .bit files in the archive
-            bit_files = [file for file in archive.namelist() if file.endswith(".bit")]
-            # Check if there is more than one bit file
-            if len(bit_files) != 1:
-                pretty_print.print_error(f"Not exactly one *.bit archive in {xsa_files[0]}.")
-                sys.exit(1)
-            # Extract the single .bit file
-            archive.extract(bit_files[0], path=str(self._work_dir))
-            # Rename the extracted file
-            temp_bit_file = self._work_dir / bit_files[0]
-            bit_file = self._work_dir / "system.bit"
-            temp_bit_file.rename(bit_file)
-
-        # Copy all device tree overlays
-        for file in (self._dependencies_dir / "devicetree").glob("*.dtbo"):
-            shutil.copy(file, self._work_dir / file.name)
-
-        add_pl_commands = [
-            f"chown -R root:root {self._work_dir}/system.bit {self._work_dir}/*.dtbo",
-            f"chmod -R u=rw,go=r {self._work_dir}/system.bit {self._work_dir}/*.dtbo",
-            f"mv {self._work_dir}/system.bit {self._build_dir}/lib/firmware/",
-            f"mkdir -p {self._build_dir}/etc/dt-overlays",
-            f"mv {self._work_dir}/*.dtbo {self._build_dir}/etc/dt-overlays/"
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
-            commands=add_pl_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")], run_as_root=True
-        )
-
-        # Save checksum in file
-        with self._source_xsa_md5_file.open("w") as f:
-            print(md5_new_xsa_file, file=f, end="")
 
     def build_archive(self, prebuilt: bool = False):
         """

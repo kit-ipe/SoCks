@@ -33,7 +33,7 @@ class External_Tools_Settings_Model(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
     container_tool: Literal["docker", "podman", "none"] = Field(
-        default=..., description="Container tool to be used"
+        default=..., description="Container management tool to be used"
     )
     make: Make_Settings_Model
     xilinx: Xilinx_Tools_Settings_Model

@@ -1,0 +1,3 @@
+vivado,*.bit,/lib/firmware,serenity_s1_k26_pl.bit,root:root,"u=rw,go=r"
+devicetree,*.dtbo,/etc/dt-overlays,,root:root,"u=rwX,go=rX"
+vivado,addrtab,/etc/serenity,zynq-addrtab,,
