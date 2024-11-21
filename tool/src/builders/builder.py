@@ -14,6 +14,7 @@ import re
 import hashlib
 import time
 import pydantic
+import csv
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
@@ -118,6 +119,8 @@ class Builder(Containerization):
         self._patches_applied_flag = self._block_temp_dir / ".patchesapplied"
         # File for saving the checksum of the imported, pre-built block package
         self._source_pb_md5_file = self._work_dir / "source_pb.md5"
+        # Logfile to store timestamps
+        self._timestamp_logfile = self._block_temp_dir / ".timestamps.csv"
 
         # Containerization
         container_image = f"{self.block_cfg.container.image}:socks"
@@ -232,6 +235,7 @@ class Builder(Containerization):
     def _check_rebuild_required(
         src_search_list: typing.List[pathlib.Path],
         src_ignore_list: typing.List[pathlib.Path] = None,
+        out_timestamp: float = None,
         out_search_list: typing.List[pathlib.Path] = None,
         out_ignore_list: typing.List[pathlib.Path] = None,
     ) -> bool:
@@ -245,6 +249,10 @@ class Builder(Containerization):
             src_ignore_list:
                 List of directories and files to be ignored when searching
                 for the most recently modified source file.
+            out_timestamp:
+                Timestamp of the last modification of output files. If this
+                parameter is provided, the parameters out_search_list and
+                out_ignore_list are ignored.
             out_search_list:
                 List of directories and files to be searched for the most
                 recently modified output file.
@@ -275,17 +283,24 @@ class Builder(Containerization):
         latest_src_file = Builder._find_last_modified_file(search_list=src_search_list, ignore_list=src_ignore_list)
 
         # Find last modified output file
-        if out_search_list:
+        if out_search_list and out_timestamp is None:
             latest_out_file = Builder._find_last_modified_file(search_list=out_search_list, ignore_list=out_ignore_list)
         else:
             latest_out_file = None
 
+        latest_src_mod = None
+        if latest_src_file:
+            latest_src_mod = latest_src_file.stat(follow_symlinks=False).st_mtime
+
+        latest_out_mod = None
+        if out_timestamp is not None:
+            latest_out_mod = out_timestamp
+        elif latest_out_file:
+            latest_out_mod = latest_out_file.stat(follow_symlinks=False).st_mtime
+
         # If there are source and output files, check whether a rebuild is required
-        if latest_src_file and latest_out_file:
-            return (
-                latest_src_file.stat(follow_symlinks=False).st_mtime
-                > latest_out_file.stat(follow_symlinks=False).st_mtime
-            )
+        if latest_src_mod is not None and latest_out_mod is not None:
+            return (latest_src_mod > latest_out_mod)
 
         # A rebuild is required if source or output files are missing
         else:
@@ -394,6 +409,118 @@ class Builder(Containerization):
         else:
             return True
 
+    def _log_timestamp(self, identifier: str):
+        """
+        Creates or updates a timestamp in a timestamp csv file.
+
+        Args:
+            identifier:
+                Identifier of the timestamp.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        logs = []
+        log_found = False
+        timestamp = time.time()
+
+        # Read the existing logs from the file (if it exists)
+        try:
+            with open(self._timestamp_logfile, mode='r', newline='') as file:
+                reader = csv.reader(file)
+                logs = list(reader)
+        except FileNotFoundError:
+            pass  # If the file doesn't exist, we'll create it later
+
+        # Check if we need to update an existing log with the identifier
+        for i, row in enumerate(logs):
+            if row[0] == identifier:
+                logs[i] = [identifier, timestamp]
+                log_found = True
+                break
+
+        # If the log was not found, create a new one
+        if not log_found:
+            logs.append([identifier, timestamp])
+
+        # Write all logs back to the CSV file
+        with open(self._timestamp_logfile, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerows(logs)
+
+    def _get_logged_timestamp(self, identifier: str) -> float:
+        """
+        Reads a timestamp from a timestamp csv file.
+
+        Args:
+            identifier:
+                Identifier of the timestamp.
+
+        Returns:
+            The timestamp if it was found. Otherwise 0.
+
+        Raises:
+            ValueError:
+                If the identifier cannot be found in the file
+        """
+
+        timestamp = 0.0
+
+        # Read the existing logs from the file
+        try:
+            with open(self._timestamp_logfile, mode='r', newline='') as file:
+                reader = csv.reader(file)
+                logs = list(reader)
+        except FileNotFoundError:
+            return timestamp # It is okay if the file does not exist
+
+        # Find the timestamp
+        for row in logs:
+            if row[0] == identifier:
+                timestamp = float(row[1])
+                break
+
+        return timestamp
+
+    def _del_logged_timestamp(self, identifier: str):
+        """
+        Delete a timestamp in a timestamp csv file.
+
+        Args:
+            identifier:
+                Identifier of the timestamp.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        logs = []
+
+        # Read the existing logs from the file (if it exists)
+        try:
+            with open(self._timestamp_logfile, mode='r', newline='') as file:
+                reader = csv.reader(file)
+                logs = list(reader)
+        except FileNotFoundError:
+            return  # It is okay if the file does not exist
+
+        # Check if we need to update an existing log with the identifier
+        for i, row in enumerate(logs):
+            if row[0] == identifier:
+                del logs[i]
+
+        # Write all logs back to the CSV file
+        with open(self._timestamp_logfile, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerows(logs)
+
     def _eval_single_prj_src(self) -> typing.Tuple[pathlib.Path, dict]:
         """
         Process the source section of a block with a single source.
@@ -405,7 +532,8 @@ class Builder(Containerization):
             None
 
         Raises:
-            ValueError: If the block configuration does not contain a valid reference to a block project source
+            ValueError:
+                If the block configuration does not contain a valid reference to a block project source
         """
 
         local_source_dir = None
@@ -452,7 +580,8 @@ class Builder(Containerization):
             None
 
         Raises:
-            ValueError: If the block configuration does not contain a valid reference to a block project source
+            ValueError:
+                If the block configuration does not contain a valid reference to a block project source
         """
 
         local_source_dirs = []

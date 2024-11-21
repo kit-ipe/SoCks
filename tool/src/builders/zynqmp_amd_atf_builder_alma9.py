@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import urllib
+import inspect
 
 import socks.pretty_print as pretty_print
 from builders.builder import Builder
@@ -72,10 +73,7 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
         if not ZynqMP_AMD_ATF_Builder_Alma9._check_rebuild_required(
             src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "build"],
-            out_search_list=[
-                self._source_repo_dir / "build/zynqmp/release/bl31/bl31.elf",
-                self._source_repo_dir / "build/zynqmp/release/bl31.bin",
-            ],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild the ATF. No altered source files detected...")
             return
@@ -97,3 +95,6 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
         (self._output_dir / "bl31.elf").symlink_to(self._source_repo_dir / "build/zynqmp/release/bl31/bl31.elf")
         (self._output_dir / "bl31.bin").unlink(missing_ok=True)
         (self._output_dir / "bl31.bin").symlink_to(self._source_repo_dir / "build/zynqmp/release/bl31.bin")
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
