@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, StringConstraints
+from typing_extensions import Annotated
 
 from builders.block_model import Block_Model, Block_Project_Model
 from socks.zynqmp_base_model import ZynqMP_Base_Model
@@ -25,7 +26,7 @@ class ZynqMP_Alma_RootFS_Block_Project_Model(Block_Project_Model):
 class ZynqMP_Alma_RootFS_Block_Model(Block_Model):
     model_config = ConfigDict(extra='forbid', strict=True)
 
-    release: str = Field(
+    release: Annotated[str, StringConstraints(pattern=r"^[0-9.]+$")] = Field(
         default=..., description="Release version of the OS to be built"
     )
     project: ZynqMP_Alma_RootFS_Block_Project_Model

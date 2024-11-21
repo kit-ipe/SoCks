@@ -1,6 +1,5 @@
 import sys
 import pathlib
-import shutil
 import hashlib
 import tarfile
 import csv
@@ -44,7 +43,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         self._target_arch = "aarch64"
 
         # Project directories
-        self._repo_dir = self._block_src_dir / "src"
+        self._repo_dir = self._block_src_dir / "config"
         self._build_dir = self._work_dir / self._rootfs_name
 
         # Project files
@@ -130,10 +129,13 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             None
         """
 
+        dnf_conf_file = self._repo_dir / "dnf_build_time.conf"
+        extra_pkgs_file = self._repo_dir / "extra_rpms.csv"
+        mod_base_install_script = self._repo_dir / "mod_base_install.sh"
+
         # Check whether the base root file system needs to be built
         if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._repo_dir],
-            src_ignore_list=[self._repo_dir / "predefined_fs_layers", self._repo_dir / "users"],
+            src_search_list=self._project_cfg_files + [dnf_conf_file, extra_pkgs_file, mod_base_install_script],
             out_search_list=[self._work_dir],
         ):
             pretty_print.print_build(
@@ -143,12 +145,48 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
 
         self._work_dir.mkdir(parents=True, exist_ok=True)
 
+        if not dnf_conf_file.is_file():
+            pretty_print.print_error(f"The following dnf configuration file is required: {dnf_conf_file}")
+            sys.exit(1)
+
+        extra_pkgs=[]
+        if extra_pkgs_file.is_file():
+            with open(extra_pkgs_file, "r", newline="") as csvfile:
+                extra_pkgs_raw = csv.reader(csvfile)
+                for i, pkg in enumerate(extra_pkgs_raw):
+                    line = i+1
+                    if len(pkg) != 1:
+                        print(f"ERROR: Line {line} in {extra_pkgs_file} has more than 1 column.")
+                        sys.exit(1)
+                    pkg[0] = pkg[0].replace("\n", "")
+                    extra_pkgs.append(pkg[0])
+        else:
+            pretty_print.print_warning(f"File {extra_pkgs_file} not found. No additional rpm packages will be installed.")
+
         pretty_print.print_build("Building the base root file system...")
 
+        dnf_base_command = f"dnf -y --nodocs --verbose -c {dnf_conf_file} --releasever={self.block_cfg.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
         base_rootfs_build_commands = [
-            f"cd {self._repo_dir}",
-            f"python3 mkrootfs.py --root={self._build_dir} --arch={self._target_arch} --extra=extra_rpms.txt --releasever={self.block_cfg.release}"
+            dnf_base_command + "clean all", # Clean all cache files generated from repository metadata
+            dnf_base_command + "update", # Update all the installed packages
+            "printf \"\nInstall the base os via dnf group install...\n\n\"",
+            dnf_base_command + "groupinstall --with-optional \"Minimal Install\"" # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
         ]
+
+        if mod_base_install_script.is_file():
+            base_rootfs_build_commands.extend([
+                "printf \"\nCall user-defined script to make changes to the base os...\n\n\"",
+                f"chmod a+x {mod_base_install_script}",
+                f"{mod_base_install_script} {self._target_arch} {self.block_cfg.release} {dnf_conf_file} {self._build_dir}"
+            ])
+        else:
+            pretty_print.print_warning(f"File {mod_base_install_script} not found. No user-defined changes are made to the base os.")
+
+        if extra_pkgs:
+            base_rootfs_build_commands.extend([
+                "printf \"\nInstalling user defined packages...\n\n\"",
+                dnf_base_command + "install " + ' '.join(extra_pkgs)
+        ])
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(

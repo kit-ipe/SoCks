@@ -12,10 +12,9 @@ do
     info_array=($line)
 
     info_array_size=${#info_array[@]}
-    if [ ${info_array_size} -ne 2 ]
-    then
-	echo "$info_array is invalid"
-	exit 1
+    if [ ${info_array_size} -ne 2 ]; then
+        echo "$info_array is invalid"
+        exit 1
     fi
 
     username=${info_array[0]}
@@ -23,14 +22,12 @@ do
 
     echo "Setting up user: $username"
 
-    if [ $username != "root" ]
-    then
-	useradd -m $username
-	chown -R $username:$username /home/$username 
+    if [ $username != "root" ]; then
+        useradd -m $username
+        usermod -a -G wheel $username
+        usermod -a -G dialout $username
     fi
     usermod -p $password_hash $username
-    usermod -a -G wheel $username
-    usermod -a -G dialout $username
     
 done < "$user_info_file"
 
