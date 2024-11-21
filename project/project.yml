@@ -43,8 +43,8 @@ blocks:
         rootfs: "temp/rootfs/output/rootfs.tar.gz"
   rootfs:
     source: "build"
-    builder: "ZynqMP_Alma_RootFS_Builder_Alma8"
-    release: "8"
+    builder: "ZynqMP_AlmaLinux_RootFS_Builder"
+    release: "9"
     project:
       add_build_info: false
       # If no 'import_src' property is specified, the block must be built locally
@@ -53,5 +53,5 @@ blocks:
         devicetree: "temp/devicetree/output/devicetree.tar.gz"
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
-      image: "alma8-rootfs-builder-alma8"
+      image: "alma9-rootfs-builder-alma9"
       tag: "v1.0"

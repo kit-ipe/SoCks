@@ -26,6 +26,7 @@ dnf_default_parameters="-y --nodocs --verbose -c $dnf_conf_file --releasever=$re
 
 # Remove packages that we do not need
 printf "\nRemoving unneeded packages...\n\n"
+dnf $dnf_default_parameters remove iw*firmware* --setopt=tsflags=noscripts
 dnf $dnf_default_parameters autoremove
 
 # Install GPG key for CERN repos in the container
@@ -49,7 +50,7 @@ fi
 dnf $dnf_default_parameters install epel-release
 dnf -y --nodocs --verbose --releasever=$release_ver --forcearch=$target_arch --installroot=$install_root config-manager --set-enabled epel
 dnf -y --nodocs --verbose --releasever=$release_ver --forcearch=$target_arch --installroot=$install_root config-manager --set-enabled epel-testing
-dnf -y --nodocs --verbose --releasever=$release_ver --forcearch=$target_arch --installroot=$install_root config-manager --set-enabled crb
+dnf -y --nodocs --verbose --releasever=$release_ver --forcearch=$target_arch --installroot=$install_root config-manager --set-enabled powertools
 dnf -y --nodocs --verbose --releasever=$release_ver --forcearch=$target_arch --installroot=$install_root config-manager --set-enabled plus
 # Install GPG key for CERN repos in the target rootfs
 cp "/etc/pki/rpm-gpg/RPM-GPG-KEY-kojiv2" "$install_root/$key_path/"

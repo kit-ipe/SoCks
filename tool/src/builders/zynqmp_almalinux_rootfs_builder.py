@@ -11,10 +11,10 @@ import tqdm
 
 import socks.pretty_print as pretty_print
 from builders.builder import Builder
-from builders.zynqmp_alma_rootfs_model import ZynqMP_Alma_RootFS_Model
+from builders.zynqmp_almalinux_rootfs_model import ZynqMP_AlmaLinux_RootFS_Model
 
 
-class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
+class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
     """
     AlmaLinux root file system builder class
     """
@@ -32,7 +32,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
-            model_class=ZynqMP_Alma_RootFS_Model,
+            model_class=ZynqMP_AlmaLinux_RootFS_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -134,7 +134,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         mod_base_install_script = self._repo_dir / "mod_base_install.sh"
 
         # Check whether the base root file system needs to be built
-        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
+        if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [dnf_conf_file, extra_pkgs_file, mod_base_install_script],
             out_search_list=[self._work_dir],
         ):
@@ -220,7 +220,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             sys.exit(1)
 
         # Check whether the predefined file system layers need to be added
-        if self._pfs_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
+        if self._pfs_added_flag.is_file() and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=[self._repo_dir / "predefined_fs_layers"], out_search_list=[self._work_dir]
         ):
             pretty_print.print_build(
@@ -272,7 +272,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
                 f"File {layer_conf_file} not found. No files and directories created at build time will be added."
             )
             return
-        if self._btfs_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
+        if self._btfs_added_flag.is_file() and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=[self._dependencies_dir], out_search_list=[self._work_dir]
         ):
             pretty_print.print_build(
@@ -336,7 +336,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
             sys.exit(1)
 
         # Check whether users need to be added
-        if self._users_added_flag.is_file() and not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
+        if self._users_added_flag.is_file() and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=[self._repo_dir / "users"], out_search_list=[self._work_dir]
         ):
             pretty_print.print_build("No need to add users. No altered source files detected...")
@@ -433,7 +433,7 @@ class ZynqMP_Alma_RootFS_Builder_Alma8(Builder):
         """
 
         # Check if the archive needs to be built
-        if not ZynqMP_Alma_RootFS_Builder_Alma8._check_rebuild_required(
+        if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]
         ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
