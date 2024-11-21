@@ -8,6 +8,7 @@ import urllib
 import requests
 import validators
 import tqdm
+import inspect
 
 import socks.pretty_print as pretty_print
 from builders.builder import Builder
@@ -49,12 +50,6 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         # Project files
         # File for version & build info tracking
         self._build_info_file = self._work_dir / "fs_build_info"
-        # Flag to remember if predefined file system layers have already been added
-        self._pfs_added_flag = self._work_dir / ".pfsladded"
-        # Flag to remember if the build time file system layer has already been added
-        self._btfs_added_flag = self._work_dir / ".btfsladded"
-        # Flag to remember if users have already been added
-        self._users_added_flag = self._work_dir / ".usersadded"
         # File for saving the checksum of the Kernel module archive used
         self._source_kmods_md5_file = self._work_dir / "source_kmodules.md5"
 
@@ -136,7 +131,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         # Check whether the base root file system needs to be built
         if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [dnf_conf_file, extra_pkgs_file, mod_base_install_script],
-            out_search_list=[self._work_dir],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
@@ -195,10 +190,13 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             run_as_root=True,
         )
 
-        # Remove flags
-        self._pfs_added_flag.unlink(missing_ok=True)
-        self._btfs_added_flag.unlink(missing_ok=True)
-        self._users_added_flag.unlink(missing_ok=True)
+        # Reset timestamps
+        self._del_logged_timestamp(identifier=f"function-add_pd_layers-success")
+        self._del_logged_timestamp(identifier=f"function-add_bt_layer-success")
+        self._del_logged_timestamp(identifier=f"function-add_users-success")
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def add_pd_layers(self):
         """
@@ -220,8 +218,10 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             sys.exit(1)
 
         # Check whether the predefined file system layers need to be added
-        if self._pfs_added_flag.is_file() and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
-            src_search_list=[self._repo_dir / "predefined_fs_layers"], out_search_list=[self._work_dir]
+        layers_already_added = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        if layers_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
+            src_search_list=[self._repo_dir / "predefined_fs_layers"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build(
                 "No need to add predefined file system layers. No altered source files detected..."
@@ -242,8 +242,8 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             run_as_root=True,
         )
 
-        # Create the flag if it doesn't exist and update the timestamps
-        self._pfs_added_flag.touch()
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def add_bt_layer(self):
         """
@@ -272,8 +272,10 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 f"File {layer_conf_file} not found. No files and directories created at build time will be added."
             )
             return
-        if self._btfs_added_flag.is_file() and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
-            src_search_list=[self._dependencies_dir], out_search_list=[self._work_dir]
+        layer_already_added = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        if layer_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
+            src_search_list=[self._dependencies_dir],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build(
                 "No need to add external files and directories created at build time. No altered source files detected..."
@@ -313,8 +315,8 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             run_as_root=True,
         )
 
-        # Create the flag if it doesn't exist and update the timestamps
-        self._btfs_added_flag.touch()
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def add_users(self):
         """
@@ -336,8 +338,10 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             sys.exit(1)
 
         # Check whether users need to be added
-        if self._users_added_flag.is_file() and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
-            src_search_list=[self._repo_dir / "users"], out_search_list=[self._work_dir]
+        users_already_added = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        if users_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
+            src_search_list=[self._repo_dir / "users"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to add users. No altered source files detected...")
             return
@@ -355,8 +359,8 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             commands=add_users_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")], run_as_root=True
         )
 
-        # Create the flag if it doesn't exist and update the timestamps
-        self._users_added_flag.touch()
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def add_kmodules(self):
         """
@@ -434,7 +438,8 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
         # Check if the archive needs to be built
         if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]
+            src_search_list=self._project_cfg_files + [self._work_dir],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
@@ -496,6 +501,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
             run_as_root=True,
         )
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def build_archive_prebuilt(self):
         """
