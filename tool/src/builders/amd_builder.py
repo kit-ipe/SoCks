@@ -3,6 +3,7 @@ import os
 import pathlib
 import shutil
 import sys
+import inspect
 
 import socks.pretty_print as pretty_print
 from builders.builder import Builder
@@ -163,7 +164,10 @@ class AMD_Builder(Builder):
             sys.exit(1)
 
         # Check whether the xsa archive needs to be imported
-        if not AMD_Builder._check_rebuild_required(src_search_list=[xsa_files[0]], out_search_list=[self._xsa_dir]):
+        if not AMD_Builder._check_rebuild_required(
+            src_search_list=[xsa_files[0]],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        ):
             pretty_print.print_build("No need to import XSA archive. No altered source files detected...")
             return
 
@@ -175,6 +179,9 @@ class AMD_Builder(Builder):
 
         # Copy XSA archive
         shutil.copy(xsa_files[0], self._xsa_dir / xsa_files[0].name)
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def clean_source_xsa(self):
         """

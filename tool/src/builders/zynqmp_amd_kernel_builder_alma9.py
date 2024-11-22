@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import urllib
+import inspect
 
 import socks.pretty_print as pretty_print
 from builders.builder import Builder
@@ -134,7 +135,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
-            out_search_list=[self._source_repo_dir / "arch/arm64/boot"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild the Linux Kernel. No altered source files detected...")
             return
@@ -168,6 +169,9 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         (self._output_dir / "Image.gz").unlink(missing_ok=True)
         (self._output_dir / "Image.gz").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image.gz")
 
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+
     def export_modules(self):
         """
         Exports all built Kernel modules.
@@ -191,7 +195,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuild_required(
             src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
-            out_search_list=[self._output_dir / "kernel_modules.tar.gz"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to export Kernel modules. No altered source files detected...")
             return
@@ -210,3 +214,6 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         self.run_containerizable_sh_command(
             commands=export_modules_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

@@ -6,6 +6,7 @@ import tarfile
 import stat
 import urllib
 import validators
+import inspect
 
 import socks.pretty_print as pretty_print
 from builders.zynqmp_amd_petalinux_rootfs_builder_alma8 import ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8
@@ -55,7 +56,8 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Build
 
         # Check if the archive needs to be built
         if not ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]
+            src_search_list=self._project_cfg_files + [self._work_dir],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
@@ -108,3 +110,6 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Build
             dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
             run_as_root=True,
         )
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

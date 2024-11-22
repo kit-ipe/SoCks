@@ -6,6 +6,7 @@ import tarfile
 import stat
 import urllib
 import validators
+import inspect
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
@@ -244,7 +245,8 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         """
 
         # Skip all operations if the patches have already been applied
-        if self._patches_applied_flag.exists():
+        patches_already_added = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        if patches_already_added:
             pretty_print.print_build("No need to apply patches...")
             return
 
@@ -281,8 +283,8 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
                             visible_lines=0,
                         )
 
-        # Create the flag if it doesn't exist and update the timestamps
-        self._patches_applied_flag.touch()
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def yocto_init(self):
         """
@@ -343,17 +345,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             src_ignore_list=[
                 self._source_repo_dir / "sources" / "core" / "bitbake" / "lib" / "bb" / "pysh" / "pyshtables.py"
             ],
-            out_search_list=[
-                self._source_repo_dir / "build" / "tmp" / "deploy" / "images",
-                self._source_repo_dir
-                / "build"
-                / "tmp"
-                / "deploy"
-                / "images"
-                / "zynqmp-generic"
-                / "core-image-minimal-zynqmp-generic.cpio.gz",
-                self._source_repo_dir / "sources" / "core" / "bitbake" / "lib" / "bb" / "pysh" / "pyshtables.py",
-            ],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
@@ -371,7 +363,10 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             "bitbake core-image-minimal"
         ]
 
-        self.run_containerizable_sh_command(commands=base_rootfs_build_commands, dirs_to_mount=[(self._repo_dir, "Z")])
+        self.run_containerizable_sh_command(
+            commands=base_rootfs_build_commands,
+            dirs_to_mount=[(self._repo_dir, "Z")]
+        )
 
         extract_rootfs_commands = [f"gunzip -c {self._source_repo_dir}/build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.cpio.gz | sh -c \"cd {self._mod_dir}/ && cpio -i\""]
 
@@ -381,6 +376,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
         )
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def add_kmodules(self):
         """
@@ -458,7 +456,8 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
 
         # Check if the archive needs to be built
         if not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._work_dir], out_search_list=[self._output_dir]
+            src_search_list=self._project_cfg_files + [self._work_dir],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
@@ -516,6 +515,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
             run_as_root=True,
         )
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def build_archive_prebuilt(self):
         """
@@ -682,9 +684,6 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         cleaning_commands = [f"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true"]
 
         self.run_containerizable_sh_command(commands=cleaning_commands, dirs_to_mount=[(self._repo_dir, "Z")])
-
-        # Remove flag
-        self._patches_applied_flag.unlink(missing_ok=True)
 
         # Remove empty repo directory
         self._repo_dir.rmdir()

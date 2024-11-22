@@ -15,6 +15,7 @@ import hashlib
 import time
 import pydantic
 import csv
+import inspect
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
@@ -113,10 +114,6 @@ class Builder(Containerization):
         self._project_cfg_files = project_cfg_files
         # ASCII file with all patches in the order in which they are to be applied
         self._patch_list_file = self._patch_dir / "patches.cfg"
-        # Flag to remember if patches have already been applied
-        self._repo_init_done_flag = self._block_temp_dir / ".repoinitdone"
-        # Flag to remember if patches have already been applied
-        self._patches_applied_flag = self._block_temp_dir / ".patchesapplied"
         # File for saving the checksum of the imported, pre-built block package
         self._source_pb_md5_file = self._work_dir / "source_pb.md5"
         # Logfile to store timestamps
@@ -131,9 +128,10 @@ class Builder(Containerization):
         )
 
         # Check whether the user has modified the patches since they were applied
-        if self._patch_dir.exists() and self._patches_applied_flag.exists() and Builder._check_rebuild_required(
+        patches_already_added = self._get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
+        if self._patch_dir.exists() and patches_already_added and Builder._check_rebuild_required(
             src_search_list=[self._patch_dir],
-            out_search_list=[self._patches_applied_flag],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-apply_patches-success")
         ):
             pretty_print.print_error(f"It seems that the patches for block '{self.block_id}' have changed since "
                 f"they were applied. This is an unexpected state. Please clean and rebuild block '{self.block_id}'.")
@@ -701,7 +699,8 @@ class Builder(Containerization):
         """
 
         # Skip all operations if the repo has already been initialized
-        if self._repo_init_done_flag.exists():
+        repo_init_done = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        if repo_init_done:
             pretty_print.print_build("No need to initialize the local repo...")
             return
 
@@ -751,8 +750,8 @@ class Builder(Containerization):
                 ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_dev_branch]
             )
 
-        # Create the flag if it doesn't exist and update the timestamps
-        self._repo_init_done_flag.touch()
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def create_patches(self):
         """
@@ -819,10 +818,11 @@ class Builder(Containerization):
             ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
         )
 
-        # Update the timestamp of the patches applied flag, if it exists. Otherwise, SoCks assumes
+        # Update the timestamp of the patches applied tag, if it exists. Otherwise, SoCks assumes
         # that the user has modified the patches since they were applied.
-        if self._patches_applied_flag.is_file():
-            self._patches_applied_flag.touch()
+        patches_already_added = self._get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
+        if patches_already_added:
+            self._log_timestamp(identifier=f"function-apply_patches-success")
 
     def apply_patches(self):
         """
@@ -840,7 +840,8 @@ class Builder(Containerization):
         """
 
         # Skip all operations if the patches have already been applied
-        if self._patches_applied_flag.exists():
+        patches_already_added = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        if patches_already_added:
             pretty_print.print_build("No need to apply patches...")
             return
 
@@ -866,8 +867,8 @@ class Builder(Containerization):
             ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
         )
 
-        # Create the flag if it doesn't exist and update the timestamps
-        self._patches_applied_flag.touch()
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def _download_prebuilt(self):
         """
@@ -1058,7 +1059,7 @@ class Builder(Containerization):
         if not Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._output_dir],
             src_ignore_list=[block_pkg_path],
-            out_search_list=[block_pkg_path],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to export block package. No altered source files detected...")
             return
@@ -1072,6 +1073,9 @@ class Builder(Containerization):
             for file in self._output_dir.iterdir():
                 if not file.samefile(block_pkg_path):
                     archive.add(file.resolve(strict=True), arcname=file.name)
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def import_dependencies(self):
         """
@@ -1269,9 +1273,6 @@ class Builder(Containerization):
         cleaning_commands = [f"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true"]
 
         self.run_containerizable_sh_command(commands=cleaning_commands, dirs_to_mount=[(self._repo_dir, "Z")])
-
-        # Remove flag
-        self._patches_applied_flag.unlink(missing_ok=True)
 
         # Remove empty repo directory
         self._repo_dir.rmdir()

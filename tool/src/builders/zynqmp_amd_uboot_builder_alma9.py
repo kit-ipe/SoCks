@@ -3,6 +3,7 @@ import pathlib
 import shutil
 import urllib
 import hashlib
+import inspect
 
 import socks.pretty_print as pretty_print
 from builders.builder import Builder
@@ -191,7 +192,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
         if not ZynqMP_AMD_UBoot_Builder_Alma9._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "u-boot.elf", self._source_repo_dir / "spl/.boot.bin.cmd"],
-            out_search_list=[self._source_repo_dir / "u-boot.elf", self._source_repo_dir / "spl/.boot.bin.cmd"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild U-Boot. No altered source files detected...")
             return
@@ -223,3 +224,6 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
         # Create symlink to the output file
         (self._output_dir / "u-boot.elf").unlink(missing_ok=True)
         (self._output_dir / "u-boot.elf").symlink_to(self._source_repo_dir / "u-boot.elf")
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

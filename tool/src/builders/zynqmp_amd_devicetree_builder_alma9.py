@@ -3,6 +3,7 @@ import pathlib
 import shutil
 import urllib
 import hashlib
+import inspect
 
 import socks.pretty_print as pretty_print
 from builders.amd_builder import AMD_Builder
@@ -171,7 +172,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         # Check whether the devicetree needs to be built
         if not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuild_required(
             src_search_list=[self._dt_incl_dir, self._source_repo_dir],
-            out_search_list=[self._base_work_dir / "system.dtb"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild the devicetree. No altered source files detected...")
             return
@@ -212,6 +213,9 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         (self._output_dir / "system.dts").unlink(missing_ok=True)
         (self._output_dir / "system.dts").symlink_to(self._base_work_dir / "system.dts")
 
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+
     def build_dt_overlays(self):
         """
         Builds devicetree overlays.
@@ -231,7 +235,8 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             not self._dt_overlay_dir.is_dir()
             or not any(self._dt_overlay_dir.iterdir())
             or not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuild_required(
-                src_search_list=[self._dt_overlay_dir], out_search_list=list(self._overlay_work_dir.glob("*.dtbo"))
+                src_search_list=[self._dt_overlay_dir],
+                out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             )
         ):
             pretty_print.print_build("No need to rebuild devicetree overlays. No altered source files detected...")
@@ -296,3 +301,6 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             (symlink).unlink()
         for symlink in self._overlay_work_dir.glob("*.dtbo"):
             (self._output_dir / symlink.name).symlink_to(symlink)
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

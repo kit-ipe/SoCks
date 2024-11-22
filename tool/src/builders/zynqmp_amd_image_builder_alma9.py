@@ -2,6 +2,7 @@ import sys
 import pathlib
 import shutil
 import zipfile
+import inspect
 
 import socks.pretty_print as pretty_print
 from builders.amd_builder import AMD_Builder
@@ -154,7 +155,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self._dependencies_dir / "devicetree",
                 self._dependencies_dir / "ramfs",
             ],
-            out_search_list=[self._output_dir / "image.ub"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild Linux Image. No altered source files detected...")
             return
@@ -185,6 +186,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             ],
         )
 
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+
     def bootscr_img(self):
         """
         Creates boot script image boot.scr for U-Boot
@@ -201,7 +205,8 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
 
         # Check whether the boot script image needs to be built
         if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(
-            src_search_list=[self._misc_dir / "boot.cmd"], out_search_list=[self._output_dir / "boot.scr"]
+            src_search_list=[self._misc_dir / "boot.cmd"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild boot.scr. No altered source files detected...")
             return
@@ -217,6 +222,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self.run_containerizable_sh_command(
             commands=bootscr_img_build_commands, dirs_to_mount=[(self._misc_dir, "Z"), (self._output_dir, "Z")]
         )
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def boot_img(self):
         """
@@ -254,7 +262,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self._output_dir / "image.ub",
                 self._output_dir / "boot.scr",
             ],
-            out_search_list=[self._output_dir / "BOOT.BIN"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild BOOT.BIN. No altered source files detected...")
             return
@@ -307,6 +315,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             ],
         )
 
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+
     def sd_card_img(self):
         """
         Builds an image file that can be written to a SD card
@@ -339,7 +350,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self._output_dir / "image.ub",
                 self._dependencies_dir / "rootfs",
             ],
-            out_search_list=[self._output_dir / self._sdc_image_name],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild the SD card image. No altered source files detected...")
             return
@@ -366,3 +377,6 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self.run_containerizable_sh_command(
             commands=sdc_img_build_commands, dirs_to_mount=[(self._dependencies_dir, "Z"), (self._output_dir, "Z")]
         )
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

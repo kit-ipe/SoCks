@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import urllib
+import inspect
 
 import socks.pretty_print as pretty_print
 from builders.amd_builder import AMD_Builder
@@ -112,7 +113,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
                 self._source_repo_dir / "Hog",
                 self._source_repo_dir / f"lib_{self.block_cfg.project.name}",
             ],
-            out_search_list=[self._source_repo_dir / "bin"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
@@ -154,6 +155,9 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             )
             sys.exit(1)
         (self._output_dir / bit_files[0].name).symlink_to(bit_files[0])
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def start_vivado_gui(self):
         """

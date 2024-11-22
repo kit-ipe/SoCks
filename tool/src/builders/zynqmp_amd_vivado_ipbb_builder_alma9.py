@@ -1,5 +1,6 @@
 import sys
 import pathlib
+import inspect
 
 import socks.pretty_print as pretty_print
 from builders.amd_builder import AMD_Builder
@@ -36,10 +37,6 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         # Project directories
         self._ipbb_work_dir = self._repo_dir / self._ipbb_work_dir_name
 
-        # Project files
-        # Flag to remember if IPBB has already been initialized
-        self._ipbb_init_done_flag = self._block_temp_dir / ".ipbbinitdone"
-
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
         self.block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": [], "start-vivado-gui": []}
@@ -70,7 +67,8 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         """
 
         # Skip all operations if the IPBB environment is already initialized
-        if self._ipbb_init_done_flag.exists():
+        ipbb_init_done = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        if ipbb_init_done:
             pretty_print.print_build("The IPBB environment has already been initialized. It is not reinitialized...")
             return
 
@@ -111,8 +109,8 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             custom_params=["-v", "$SSH_AUTH_SOCK:/ssh-auth-sock", "--env", "SSH_AUTH_SOCK=/ssh-auth-sock"],
         )
 
-        # Create the flag if it doesn't exist and update the timestamps
-        self._ipbb_init_done_flag.touch()
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def create_vivado_project(self):
         """
@@ -194,7 +192,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
                 / self.block_cfg.project.name
                 / f"{self.block_cfg.project.name}.cache",
             ],
-            out_search_list=[self._ipbb_work_dir / "proj" / self.block_cfg.project.name / "package"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
@@ -229,6 +227,9 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         # Create symlinks to the output files
         for item in (self._ipbb_work_dir / "proj" / self.block_cfg.project.name / "package" / "src").glob("*"):
             (self._output_dir / item.name).symlink_to(item)
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def start_container(self):
         """

@@ -2,6 +2,7 @@ import sys
 import pathlib
 import shutil
 import hashlib
+import inspect
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
@@ -173,7 +174,7 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
         if not ZynqMP_AMD_FSBL_Builder_Alma9._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "executable.elf"],
-            out_search_list=[self._source_repo_dir / "executable.elf"],
+            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
         ):
             pretty_print.print_build("No need to rebuild the FSBL. No altered source files detected...")
             return
@@ -203,3 +204,6 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
         # Create symlink to the output file
         (self._output_dir / "fsbl.elf").unlink(missing_ok=True)
         (self._output_dir / "fsbl.elf").symlink_to(self._source_repo_dir / "executable.elf")
+
+        # Log success of this function
+        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
