@@ -96,9 +96,10 @@ class Builder(Containerization):
             # Online project sources are used for this block
             self._repo_dir = self._block_temp_dir / "repo"
             self._source_repo_dir = self._repo_dir / (
-                pathlib.Path(urllib.parse.urlparse(url=self._source_repo['url']).path).stem
+                pathlib.Path(urllib.parse.urlparse(url=self._source_repo["url"]).path).stem
                 + "-"
-                + self._source_repo['branch'])
+                + self._source_repo["branch"]
+            )
         elif self._source_repos or self._local_source_dirs:
             # This block uses several project sources. In this case, the directory structure cannot be
             # completely standardized. The required project directories must be created in the respective builder.
@@ -129,12 +130,18 @@ class Builder(Containerization):
 
         # Check whether the user has modified the patches since they were applied
         patches_already_added = self._get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
-        if self._patch_dir.exists() and patches_already_added and Builder._check_rebuild_required(
-            src_search_list=[self._patch_dir],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-apply_patches-success")
+        if (
+            self._patch_dir.exists()
+            and patches_already_added
+            and Builder._check_rebuild_required(
+                src_search_list=[self._patch_dir],
+                out_timestamp=self._get_logged_timestamp(identifier=f"function-apply_patches-success"),
+            )
         ):
-            pretty_print.print_error(f"It seems that the patches for block '{self.block_id}' have changed since "
-                f"they were applied. This is an unexpected state. Please clean and rebuild block '{self.block_id}'.")
+            pretty_print.print_error(
+                f"It seems that the patches for block '{self.block_id}' have changed since "
+                f"they were applied. This is an unexpected state. Please clean and rebuild block '{self.block_id}'."
+            )
             sys.exit(1)
 
     @staticmethod
@@ -298,7 +305,7 @@ class Builder(Containerization):
 
         # If there are source and output files, check whether a rebuild is required
         if latest_src_mod is not None and latest_out_mod is not None:
-            return (latest_src_mod > latest_out_mod)
+            return latest_src_mod > latest_out_mod
 
         # A rebuild is required if source or output files are missing
         else:
@@ -428,7 +435,7 @@ class Builder(Containerization):
 
         # Read the existing logs from the file (if it exists)
         try:
-            with open(self._timestamp_logfile, mode='r', newline='') as file:
+            with open(self._timestamp_logfile, mode="r", newline="") as file:
                 reader = csv.reader(file)
                 logs = list(reader)
         except FileNotFoundError:
@@ -446,7 +453,7 @@ class Builder(Containerization):
             logs.append([identifier, timestamp])
 
         # Write all logs back to the CSV file
-        with open(self._timestamp_logfile, mode='w', newline='') as file:
+        with open(self._timestamp_logfile, mode="w", newline="") as file:
             writer = csv.writer(file)
             writer.writerows(logs)
 
@@ -470,11 +477,11 @@ class Builder(Containerization):
 
         # Read the existing logs from the file
         try:
-            with open(self._timestamp_logfile, mode='r', newline='') as file:
+            with open(self._timestamp_logfile, mode="r", newline="") as file:
                 reader = csv.reader(file)
                 logs = list(reader)
         except FileNotFoundError:
-            return timestamp # It is okay if the file does not exist
+            return timestamp  # It is okay if the file does not exist
 
         # Find the timestamp
         for row in logs:
@@ -503,7 +510,7 @@ class Builder(Containerization):
 
         # Read the existing logs from the file (if it exists)
         try:
-            with open(self._timestamp_logfile, mode='r', newline='') as file:
+            with open(self._timestamp_logfile, mode="r", newline="") as file:
                 reader = csv.reader(file)
                 logs = list(reader)
         except FileNotFoundError:
@@ -515,7 +522,7 @@ class Builder(Containerization):
                 del logs[i]
 
         # Write all logs back to the CSV file
-        with open(self._timestamp_logfile, mode='w', newline='') as file:
+        with open(self._timestamp_logfile, mode="w", newline="") as file:
             writer = csv.writer(file)
             writer.writerows(logs)
 
@@ -557,7 +564,10 @@ class Builder(Containerization):
                 )
                 sys.exit(1)
             else:
-                source_repo = {"url": self.block_cfg.project.build_srcs.source, "branch": self.block_cfg.project.build_srcs.branch}
+                source_repo = {
+                    "url": self.block_cfg.project.build_srcs.source,
+                    "branch": self.block_cfg.project.build_srcs.branch,
+                }
         else:
             raise ValueError(
                 "The following string is not a valid reference to a block project source: "
@@ -609,7 +619,10 @@ class Builder(Containerization):
                     sys.exit(1)
                 else:
                     source_repos.append(
-                        {"url": self.block_cfg.project.build_srcs[index].source, "branch": self.block_cfg.project.build_srcs[index].branch}
+                        {
+                            "url": self.block_cfg.project.build_srcs[index].source,
+                            "branch": self.block_cfg.project.build_srcs[index].branch,
+                        }
                     )
             else:
                 raise ValueError(
@@ -699,7 +712,9 @@ class Builder(Containerization):
         """
 
         # Skip all operations if the repo has already been initialized
-        repo_init_done = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        repo_init_done = (
+            self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        )
         if repo_init_done:
             pretty_print.print_build("No need to initialize the local repo...")
             return
@@ -840,7 +855,9 @@ class Builder(Containerization):
         """
 
         # Skip all operations if the patches have already been applied
-        patches_already_added = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        patches_already_added = (
+            self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        )
         if patches_already_added:
             pretty_print.print_build("No need to apply patches...")
             return
@@ -1059,7 +1076,9 @@ class Builder(Containerization):
         if not Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._output_dir],
             src_ignore_list=[block_pkg_path],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to export block package. No altered source files detected...")
             return

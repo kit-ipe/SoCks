@@ -83,7 +83,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             f"source {self._amd_vivado_path}/settings64.sh",
             f"git config --global --add safe.directory {self._source_repo_dir}",
             f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
-            f"{self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}"
+            f"{self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}",
         ]
 
         self.run_containerizable_sh_command(
@@ -113,7 +113,9 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
                 self._source_repo_dir / "Hog",
                 self._source_repo_dir / f"lib_{self.block_cfg.project.name}",
             ],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
@@ -132,7 +134,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             f"source {self._amd_vivado_path}/settings64.sh",
             f"git config --global --add safe.directory {self._source_repo_dir}",
             f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
-            f"{self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}"
+            f"{self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}",
         ]
 
         self.run_containerizable_sh_command(
@@ -141,14 +143,18 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         )
 
         # Create symlinks to the output files
-        xsa_files = list(self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.xsa"))
+        xsa_files = list(
+            self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.xsa")
+        )
         if len(xsa_files) != 1:
             pretty_print.print_error(
                 f"Unexpected number of {len(xsa_files)} *.xsa files in output directory. Expected was 1."
             )
             sys.exit(1)
         (self._output_dir / xsa_files[0].name).symlink_to(xsa_files[0])
-        bit_files = list(self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.bit"))
+        bit_files = list(
+            self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.bit")
+        )
         if len(bit_files) != 1:
             pretty_print.print_error(
                 f"Unexpected number of {len(bit_files)} *.bit files in output directory. Expected was 1."
@@ -179,7 +185,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"source {self._amd_vivado_path}/settings64.sh",
             f"vivado -nojournal -nolog {self._source_repo_dir}/Projects/{self.block_cfg.project.name}/{self.block_cfg.project.name}.xpr",
-            f"exit"
+            f"exit",
         ]
 
         self.start_gui_container(

@@ -214,7 +214,7 @@ class Containerization:
         # Assemble command string for container
         comp_commands = "'"
         if print_commands:
-            comp_commands = comp_commands + "trap \"echo \\\"container> \$BASH_COMMAND\\\"\" DEBUG && "
+            comp_commands = comp_commands + 'trap "echo \\"container> \$BASH_COMMAND\\"" DEBUG && '
         for i, command in enumerate(commands):
             if i == len(commands) - 1:
                 # The last element of the list is treated differently

@@ -245,7 +245,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         """
 
         # Skip all operations if the patches have already been applied
-        patches_already_added = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        patches_already_added = (
+            self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        )
         if patches_already_added:
             pretty_print.print_build("No need to apply patches...")
             return
@@ -312,7 +314,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         yocto_init_commands = [
             f"cd {self._source_repo_dir}",
             f"source ./setupsdk",
-            f"cat {local_conf_append} >> {self._source_repo_dir}/build/conf/local.conf"
+            f"cat {local_conf_append} >> {self._source_repo_dir}/build/conf/local.conf",
         ]
 
         self.run_containerizable_sh_command(
@@ -345,7 +347,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             src_ignore_list=[
                 self._source_repo_dir / "sources" / "core" / "bitbake" / "lib" / "bb" / "pysh" / "pyshtables.py"
             ],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
@@ -357,18 +361,13 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
 
         pretty_print.print_build("Building the base root file system...")
 
-        base_rootfs_build_commands = [
-            f"cd {self._source_repo_dir}",
-            "source ./setupsdk",
-            "bitbake core-image-minimal"
+        base_rootfs_build_commands = [f"cd {self._source_repo_dir}", "source ./setupsdk", "bitbake core-image-minimal"]
+
+        self.run_containerizable_sh_command(commands=base_rootfs_build_commands, dirs_to_mount=[(self._repo_dir, "Z")])
+
+        extract_rootfs_commands = [
+            f'gunzip -c {self._source_repo_dir}/build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.cpio.gz | sh -c "cd {self._mod_dir}/ && cpio -i"'
         ]
-
-        self.run_containerizable_sh_command(
-            commands=base_rootfs_build_commands,
-            dirs_to_mount=[(self._repo_dir, "Z")]
-        )
-
-        extract_rootfs_commands = [f"gunzip -c {self._source_repo_dir}/build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.cpio.gz | sh -c \"cd {self._mod_dir}/ && cpio -i\""]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
@@ -424,7 +423,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             "chmod -R u=rwX,go=rX lib",
             f"rm -rf {self._mod_dir}/lib/modules/*",
             f"mv lib/modules/* {self._mod_dir}/lib/modules/",
-            "rm -rf lib"
+            "rm -rf lib",
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -457,7 +456,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         # Check if the archive needs to be built
         if not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._work_dir],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
@@ -475,7 +476,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
 
             add_build_info_commands = [
                 f"mv {self._build_info_file} {self._mod_dir}/etc/fs_build_info",
-                f"chmod 0444 {self._mod_dir}/etc/fs_build_info"
+                f"chmod 0444 {self._mod_dir}/etc/fs_build_info",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -506,7 +507,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
             f"tar -I pxz --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.tar.xz'} ./",
             f"if id {self._host_user} >/dev/null 2>&1; then "
             f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.tar.xz'}; "
-            f"fi"
+            f"fi",
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.

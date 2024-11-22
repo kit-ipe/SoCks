@@ -57,7 +57,9 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Build
         # Check if the archive needs to be built
         if not ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._work_dir],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
@@ -75,7 +77,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Build
 
             add_build_info_commands = [
                 f"mv {self._build_info_file} {self._mod_dir}/etc/fs_build_info",
-                f"chmod 0444 {self._mod_dir}/etc/fs_build_info"
+                f"chmod 0444 {self._mod_dir}/etc/fs_build_info",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -101,7 +103,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Build
             f"find . | cpio -H newc -o | gzip -9 > {self._output_dir / f'{archive_name}.cpio.gz'}",
             f"if id {self._host_user} >/dev/null 2>&1; then "
             f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.cpio.gz'}; "
-            f"fi"
+            f"fi",
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.

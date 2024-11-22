@@ -166,7 +166,9 @@ class AMD_Builder(Builder):
         # Check whether the xsa archive needs to be imported
         if not AMD_Builder._check_rebuild_required(
             src_search_list=[xsa_files[0]],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to import XSA archive. No altered source files detected...")
             return

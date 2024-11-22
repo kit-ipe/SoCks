@@ -89,7 +89,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         menuconfig_commands = [
             f"cd {self._source_repo_dir}",
             "export CROSS_COMPILE=aarch64-linux-gnu-",
-            "make ARCH=arm64 menuconfig"
+            "make ARCH=arm64 menuconfig",
         ]
 
         super()._run_menuconfig(menuconfig_commands=menuconfig_commands)
@@ -112,7 +112,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             f"cd {self._source_repo_dir}",
             "export CROSS_COMPILE=aarch64-linux-gnu-",
             "make ARCH=arm64 xilinx_zynqmp_defconfig",
-            "printf \"\n# Do not ignore the config file\n!.config\n\" >> .gitignore"
+            'printf "\n# Do not ignore the config file\n!.config\n" >> .gitignore',
         ]
 
         super()._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
@@ -135,7 +135,9 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild the Linux Kernel. No altered source files detected...")
             return
@@ -156,7 +158,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             f"cd {self._source_repo_dir}",
             "export CROSS_COMPILE=aarch64-linux-gnu-",
             "make ARCH=arm64 olddefconfig",
-            f"make ARCH=arm64 -j{self.project_cfg.external_tools.make.max_build_threads}"
+            f"make ARCH=arm64 -j{self.project_cfg.external_tools.make.max_build_threads}",
         ]
 
         self.run_containerizable_sh_command(
@@ -195,7 +197,9 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuild_required(
             src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to export Kernel modules. No altered source files detected...")
             return
@@ -208,7 +212,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             f"make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir}",
             f"find {self._output_dir}/lib -type l -delete",
             f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._output_dir}/kernel_modules.tar.gz {self._output_dir}/lib",
-            f"rm -rf {self._output_dir}/lib"
+            f"rm -rf {self._output_dir}/lib",
         ]
 
         self.run_containerizable_sh_command(

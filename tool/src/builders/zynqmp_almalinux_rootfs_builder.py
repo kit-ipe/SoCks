@@ -131,7 +131,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         # Check whether the base root file system needs to be built
         if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [dnf_conf_file, extra_pkgs_file, mod_base_install_script],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
@@ -144,44 +146,53 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             pretty_print.print_error(f"The following dnf configuration file is required: {dnf_conf_file}")
             sys.exit(1)
 
-        extra_pkgs=[]
+        extra_pkgs = []
         if extra_pkgs_file.is_file():
             with open(extra_pkgs_file, "r", newline="") as csvfile:
                 extra_pkgs_raw = csv.reader(csvfile)
                 for i, pkg in enumerate(extra_pkgs_raw):
-                    line = i+1
+                    line = i + 1
                     if len(pkg) != 1:
                         print(f"ERROR: Line {line} in {extra_pkgs_file} has more than 1 column.")
                         sys.exit(1)
                     pkg[0] = pkg[0].replace("\n", "")
                     extra_pkgs.append(pkg[0])
         else:
-            pretty_print.print_warning(f"File {extra_pkgs_file} not found. No additional rpm packages will be installed.")
+            pretty_print.print_warning(
+                f"File {extra_pkgs_file} not found. No additional rpm packages will be installed."
+            )
 
         pretty_print.print_build("Building the base root file system...")
 
         dnf_base_command = f"dnf -y --nodocs --verbose -c {dnf_conf_file} --releasever={self.block_cfg.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
         base_rootfs_build_commands = [
-            dnf_base_command + "clean all", # Clean all cache files generated from repository metadata
-            dnf_base_command + "update", # Update all the installed packages
-            "printf \"\nInstall the base os via dnf group install...\n\n\"",
-            dnf_base_command + "groupinstall --with-optional \"Minimal Install\"" # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
+            dnf_base_command + "clean all",  # Clean all cache files generated from repository metadata
+            dnf_base_command + "update",  # Update all the installed packages
+            'printf "\nInstall the base os via dnf group install...\n\n"',
+            dnf_base_command
+            + 'groupinstall --with-optional "Minimal Install"',  # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
         ]
 
         if mod_base_install_script.is_file():
-            base_rootfs_build_commands.extend([
-                "printf \"\nCall user-defined script to make changes to the base os...\n\n\"",
-                f"chmod a+x {mod_base_install_script}",
-                f"{mod_base_install_script} {self._target_arch} {self.block_cfg.release} {dnf_conf_file} {self._build_dir}"
-            ])
+            base_rootfs_build_commands.extend(
+                [
+                    'printf "\nCall user-defined script to make changes to the base os...\n\n"',
+                    f"chmod a+x {mod_base_install_script}",
+                    f"{mod_base_install_script} {self._target_arch} {self.block_cfg.release} {dnf_conf_file} {self._build_dir}",
+                ]
+            )
         else:
-            pretty_print.print_warning(f"File {mod_base_install_script} not found. No user-defined changes are made to the base os.")
+            pretty_print.print_warning(
+                f"File {mod_base_install_script} not found. No user-defined changes are made to the base os."
+            )
 
         if extra_pkgs:
-            base_rootfs_build_commands.extend([
-                "printf \"\nInstalling user defined packages...\n\n\"",
-                dnf_base_command + "install " + ' '.join(extra_pkgs)
-        ])
+            base_rootfs_build_commands.extend(
+                [
+                    'printf "\nInstalling user defined packages...\n\n"',
+                    dnf_base_command + "install " + " ".join(extra_pkgs),
+                ]
+            )
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
@@ -218,10 +229,14 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             sys.exit(1)
 
         # Check whether the predefined file system layers need to be added
-        layers_already_added = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        layers_already_added = (
+            self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        )
         if layers_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=[self._repo_dir / "predefined_fs_layers"],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build(
                 "No need to add predefined file system layers. No altered source files detected..."
@@ -232,7 +247,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
         add_pd_layers_commands = [
             f"cd {self._repo_dir / 'predefined_fs_layers'}",
-            f"for dir in ./*; do \"$dir\"/install_layer.sh {self._build_dir}/; done"
+            f'for dir in ./*; do "$dir"/install_layer.sh {self._build_dir}/; done',
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -272,10 +287,14 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 f"File {layer_conf_file} not found. No files and directories created at build time will be added."
             )
             return
-        layer_already_added = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        layer_already_added = (
+            self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        )
         if layer_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=[self._dependencies_dir],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build(
                 "No need to add external files and directories created at build time. No altered source files detected..."
@@ -285,10 +304,10 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         pretty_print.print_build("Adding external files and directories created at build time...")
 
         add_bt_layer_commands = []
-        with open(layer_conf_file, newline='') as csvfile:
+        with open(layer_conf_file, newline="") as csvfile:
             layer_conf = csv.reader(csvfile)
             for i, row in enumerate(layer_conf):
-                line = i+1
+                line = i + 1
                 if len(row) != 6:
                     pretty_print.print_error(f"Line {line} in {layer_conf_file} does not have 6 columns.")
                     sys.exit(1)
@@ -306,7 +325,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     if og:
                         add_bt_layer_commands.append(f"chown -R {og} {self._build_dir}/{dest_path}/{dest_item}")
                     if permissions:
-                        add_bt_layer_commands.append(f"chmod -R {permissions} {self._build_dir}/{dest_path}/{dest_item}")
+                        add_bt_layer_commands.append(
+                            f"chmod -R {permissions} {self._build_dir}/{dest_path}/{dest_item}"
+                        )
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
@@ -338,10 +359,14 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             sys.exit(1)
 
         # Check whether users need to be added
-        users_already_added = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        users_already_added = (
+            self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        )
         if users_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=[self._repo_dir / "users"],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to add users. No altered source files detected...")
             return
@@ -351,7 +376,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         add_users_commands = [
             f"cp -r {self._repo_dir / 'users'} {self._build_dir / 'tmp'}",
             f"chroot {self._build_dir} /bin/bash /tmp/users/add_users.sh",
-            f"rm -rf {self._build_dir}/tmp/users"
+            f"rm -rf {self._build_dir}/tmp/users",
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -406,7 +431,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             f"chmod -R u=rwX,go=rX lib",
             f"rm -rf {self._build_dir}/lib/modules/*",
             f"mv lib/modules/* {self._build_dir}/lib/modules/",
-            f"rm -rf lib"
+            f"rm -rf lib",
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -439,7 +464,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         # Check if the archive needs to be built
         if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._work_dir],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
@@ -457,7 +484,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
             add_build_info_commands = [
                 f"mv {self._build_info_file} {self._build_dir}/etc/fs_build_info",
-                f"chmod 0444 {self._build_dir}/etc/fs_build_info"
+                f"chmod 0444 {self._build_dir}/etc/fs_build_info",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -492,7 +519,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             f"tar -I pxz --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.tar.xz'} ./",
             f"if id {self._host_user} >/dev/null 2>&1; then "
             f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.tar.xz'}; "
-            f"fi"
+            f"fi",
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -599,7 +626,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
         extract_pb_rootfs_commands = [
             f"mkdir -p {self._build_dir}",
-            f"tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._build_dir}"
+            f"tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._build_dir}",
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.

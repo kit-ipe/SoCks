@@ -94,9 +94,7 @@ def sort_blocks(blocks: typing.List[str], project_cfg: dict):
 
 
 # Set tool and project directory
-socks_dir = pathlib.Path(
-    importlib.resources.files(socks)
-)
+socks_dir = pathlib.Path(importlib.resources.files(socks))
 project_dir = pathlib.Path.cwd()
 
 # Set root project configuration file
@@ -116,7 +114,7 @@ project_cfg, project_cfg_files = Configuration_Compiler.compile(
 
 # Check project type and find respective module
 project_model_suffix = "_Base_Model"
-project_model_class_name = project_cfg['project']['type'] + project_model_suffix
+project_model_class_name = project_cfg["project"]["type"] + project_model_suffix
 try:
     project_model_module = importlib.import_module("socks." + project_model_class_name.lower())
 except ImportError:
@@ -127,12 +125,16 @@ except ImportError:
         if module_name.endswith(project_model_suffix.lower()):
             module = importlib.import_module(module_name)
             # Find classes that end with the project model suffix
-            classes = [cls for name, cls in inspect.getmembers(module, inspect.isclass) if name.endswith(project_model_suffix)]
+            classes = [
+                cls for name, cls in inspect.getmembers(module, inspect.isclass) if name.endswith(project_model_suffix)
+            ]
             available_prj_model_classes.extend(classes)
 
     supported_prj_types = [cls.__name__.split(project_model_suffix)[0] for cls in available_prj_model_classes]
 
-    pretty_print.print_error(f"Project type '{project_cfg['project']['type']}' is not supported (No project model class '{project_model_class_name}' available).")
+    pretty_print.print_error(
+        f"Project type '{project_cfg['project']['type']}' is not supported (No project model class '{project_model_class_name}' available)."
+    )
     pretty_print.print_error("Available options are: " + ", ".join(supported_prj_types))
     sys.exit(1)
 

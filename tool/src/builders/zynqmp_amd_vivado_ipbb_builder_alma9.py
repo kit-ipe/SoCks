@@ -67,7 +67,9 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         """
 
         # Skip all operations if the IPBB environment is already initialized
-        ipbb_init_done = self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        ipbb_init_done = (
+            self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+        )
         if ipbb_init_done:
             pretty_print.print_build("The IPBB environment has already been initialized. It is not reinitialized...")
             return
@@ -81,7 +83,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             "source ~/tools/ipbb-*/env.sh",
             f"cd {self._repo_dir}",
             f"ipbb init {self._ipbb_work_dir_name}",
-            f"cd {self._ipbb_work_dir}"
+            f"cd {self._ipbb_work_dir}",
         ]
 
         # Add local repositories
@@ -145,7 +147,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             "ipbb ipbus gendecoders -c",
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"source {self._amd_vivado_path}/settings64.sh",
-            "ipbb vivado generate-project"
+            "ipbb vivado generate-project",
         ]
 
         local_source_mounts = []
@@ -192,7 +194,9 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
                 / self.block_cfg.project.name
                 / f"{self.block_cfg.project.name}.cache",
             ],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
@@ -212,7 +216,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             f"cd {self._ipbb_work_dir}/proj/{self.block_cfg.project.name}",
             "ipbb vivado check-syntax",
             f"ipbb vivado synth -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} impl -j{self.project_cfg.external_tools.xilinx.max_threads_vivado}",
-            "ipbb vivado bitfile package"
+            "ipbb vivado bitfile package",
         ]
 
         local_source_mounts = []
@@ -280,7 +284,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"source {self._amd_vivado_path}/settings64.sh",
             f"vivado -nojournal -nolog {self._ipbb_work_dir}/proj/{self.block_cfg.project.name}/{self.block_cfg.project.name}/{self.block_cfg.project.name}.xpr",
-            f"exit"
+            f"exit",
         ]
 
         self.start_gui_container(

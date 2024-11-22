@@ -155,7 +155,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self._dependencies_dir / "devicetree",
                 self._dependencies_dir / "ramfs",
             ],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild Linux Image. No altered source files detected...")
             return
@@ -167,12 +169,12 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
 
         linux_img_build_commands = [
             f"cp {self._misc_dir}/image.its.tpl {self._work_dir}/image.its",
-            f"sed -i \"s:<KERNEL_IMG_PATH>:{self._kernel_img_path}:g;\" {self._work_dir}/image.its",
-            f"sed -i \"s:<DT_IMG_PATH>:{self._dt_img_path}:g;\" {self._work_dir}/image.its"
+            f'sed -i "s:<KERNEL_IMG_PATH>:{self._kernel_img_path}:g;" {self._work_dir}/image.its',
+            f'sed -i "s:<DT_IMG_PATH>:{self._dt_img_path}:g;" {self._work_dir}/image.its',
         ]
         if ramfs_archives:
             linux_img_build_commands.append(
-                f"sed -i \"s:<RAMFS_IMG_PATH>:{ramfs_archives[0]}:g;\" {self._work_dir}/image.its"
+                f'sed -i "s:<RAMFS_IMG_PATH>:{ramfs_archives[0]}:g;" {self._work_dir}/image.its'
             )
         linux_img_build_commands.append(f"mkimage -f {self._work_dir}/image.its {self._output_dir}/image.ub")
 
@@ -206,7 +208,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         # Check whether the boot script image needs to be built
         if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(
             src_search_list=[self._misc_dir / "boot.cmd"],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild boot.scr. No altered source files detected...")
             return
@@ -262,7 +266,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self._output_dir / "image.ub",
                 self._output_dir / "boot.scr",
             ],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild BOOT.BIN. No altered source files detected...")
             return
@@ -293,15 +299,15 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"source {self._amd_vitis_path}/settings64.sh",
             f"cp {self._misc_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif",
-            f"sed -i \"s:<FSBL_PATH>:{self._fsbl_img_path}:g;\" {self._work_dir}/bootgen.bif",
-            f"sed -i \"s:<PMUFW_PATH>:{self._pmufw_img_path}:g;\" {self._work_dir}/bootgen.bif",
-            f"sed -i \"s:<PLBIT_PATH>:{bit_file}:g;\" {self._work_dir}/bootgen.bif",
-            f"sed -i \"s:<ATF_PATH>:{self._atf_img_path}:g;\" {self._work_dir}/bootgen.bif",
-            f"sed -i \"s:<DTB_PATH>:{self._dt_img_path}:g;\" {self._work_dir}/bootgen.bif",
-            f"sed -i \"s:<UBOOT_PATH>:{self._uboot_img_path}:g;\" {self._work_dir}/bootgen.bif",
+            f'sed -i "s:<FSBL_PATH>:{self._fsbl_img_path}:g;" {self._work_dir}/bootgen.bif',
+            f'sed -i "s:<PMUFW_PATH>:{self._pmufw_img_path}:g;" {self._work_dir}/bootgen.bif',
+            f'sed -i "s:<PLBIT_PATH>:{bit_file}:g;" {self._work_dir}/bootgen.bif',
+            f'sed -i "s:<ATF_PATH>:{self._atf_img_path}:g;" {self._work_dir}/bootgen.bif',
+            f'sed -i "s:<DTB_PATH>:{self._dt_img_path}:g;" {self._work_dir}/bootgen.bif',
+            f'sed -i "s:<UBOOT_PATH>:{self._uboot_img_path}:g;" {self._work_dir}/bootgen.bif',
             f"sed -i \"s:<LINUX_PATH>:{self._output_dir / 'image.ub'}:g;\" {self._work_dir}/bootgen.bif",
             f"sed -i \"s:<BSCR_PATH>:{self._output_dir / 'boot.scr'}:g;\" {self._work_dir}/bootgen.bif",
-            f"bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN -w"
+            f"bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN -w",
         ]
 
         self.run_containerizable_sh_command(
@@ -350,7 +356,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self._output_dir / "image.ub",
                 self._dependencies_dir / "rootfs",
             ],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild the SD card image. No altered source files detected...")
             return
@@ -364,7 +372,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             f"    set-label /dev/sda2 ROOTFS : "
             f"    mkmountpoint /p1 : "
             f"    mount /dev/sda1 /p1 : "
-            f"    copy-in {self._output_dir}/image.ub {self._output_dir}/boot.scr {self._output_dir}/BOOT.BIN /p1/ : "
+            f"    copy-in {self._output_dir}/image.ub {self._output_dir}/boot.scr {self._output_dir}/BOOT.BIN /p1/ : ",
         ]
         if rootfs_archives:
             sdc_img_build_commands[-1] = (

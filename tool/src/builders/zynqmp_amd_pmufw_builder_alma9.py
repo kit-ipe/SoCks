@@ -122,14 +122,14 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"source {self._amd_vitis_path}/settings64.sh",
             f"SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa)",
-            "printf \"set hwdsgn [hsi open_hw_design ${SOURCE_XSA_PATH}]"
-            f"    \r\nhsi generate_app -hw \$hwdsgn -os standalone -proc psu_pmu_0 -app zynqmp_pmufw -sw pmufw -dir {self._source_repo_dir}\" > {self._work_dir}/generate_pmufw_prj.tcl",
+            'printf "set hwdsgn [hsi open_hw_design ${SOURCE_XSA_PATH}]'
+            f'    \r\nhsi generate_app -hw \$hwdsgn -os standalone -proc psu_pmu_0 -app zynqmp_pmufw -sw pmufw -dir {self._source_repo_dir}" > {self._work_dir}/generate_pmufw_prj.tcl',
             f"xsct -nodisp {self._work_dir}/generate_pmufw_prj.tcl",
             f"git -C {self._source_repo_dir} init --initial-branch=main",
             f"git -C {self._source_repo_dir} config user.email 'container-user@example.com'",
             f"git -C {self._source_repo_dir} config user.name 'container-user'",
             f"git -C {self._source_repo_dir} add {self._source_repo_dir}/.",
-            f"git -C {self._source_repo_dir} commit --quiet -m 'Initial commit'"
+            f"git -C {self._source_repo_dir} commit --quiet -m 'Initial commit'",
         ]
 
         self.run_containerizable_sh_command(
@@ -174,7 +174,9 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
         if not ZynqMP_AMD_PMUFW_Builder_Alma9._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "executable.elf"],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild the PMU Firmware. No altered source files detected...")
             return
@@ -188,7 +190,7 @@ class ZynqMP_AMD_PMUFW_Builder_Alma9(AMD_Builder):
             f"source {self._amd_vitis_path}/settings64.sh",
             f"cd {self._source_repo_dir}",
             "make clean",
-            "make"
+            "make",
         ]
 
         self.run_containerizable_sh_command(

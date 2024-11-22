@@ -73,7 +73,9 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
         if not ZynqMP_AMD_ATF_Builder_Alma9._check_rebuild_required(
             src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "build"],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild the ATF. No altered source files detected...")
             return
@@ -83,7 +85,7 @@ class ZynqMP_AMD_ATF_Builder_Alma9(Builder):
         atf_build_commands = [
             f"cd {self._source_repo_dir}",
             "make distclean",
-            "make CROSS_COMPILE=aarch64-none-elf- PLAT=zynqmp RESET_TO_BL31=1 ZYNQMP_CONSOLE=cadence0"
+            "make CROSS_COMPILE=aarch64-none-elf- PLAT=zynqmp RESET_TO_BL31=1 ZYNQMP_CONSOLE=cadence0",
         ]
 
         self.run_containerizable_sh_command(

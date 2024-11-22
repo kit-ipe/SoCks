@@ -108,7 +108,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
             f"cd {self._source_repo_dir}",
             "export CROSS_COMPILE=aarch64-linux-gnu-",
             "export ARCH=aarch64",
-            "make menuconfig"
+            "make menuconfig",
         ]
 
         super()._run_menuconfig(menuconfig_commands=menuconfig_commands)
@@ -132,7 +132,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
             "export CROSS_COMPILE=aarch64-linux-gnu-",
             "export ARCH=aarch64",
             "make xilinx_zynqmp_virt_defconfig",
-            "printf \"\n# Do not ignore the config file\n!.config\n\" >> .gitignore"
+            'printf "\n# Do not ignore the config file\n!.config\n" >> .gitignore',
         ]
 
         super()._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
@@ -192,7 +192,9 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
         if not ZynqMP_AMD_UBoot_Builder_Alma9._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "u-boot.elf", self._source_repo_dir / "spl/.boot.bin.cmd"],
-            out_timestamp=self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            out_timestamp=self._get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
         ):
             pretty_print.print_build("No need to rebuild U-Boot. No altered source files detected...")
             return
@@ -214,7 +216,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
             "export CROSS_COMPILE=aarch64-linux-gnu-",
             "export ARCH=aarch64",
             "make olddefconfig",
-            f"make -j{self.project_cfg.external_tools.make.max_build_threads}"
+            f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
         ]
 
         self.run_containerizable_sh_command(
