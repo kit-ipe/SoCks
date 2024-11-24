@@ -632,6 +632,8 @@ class Builder(Containerization):
                     "git",
                     "clone",
                     "--recursive",
+                    "--depth 1",
+                    "--shallow-submodules",
                     "--branch",
                     self._source_repo["branch"],
                     self._source_repo["url"],
