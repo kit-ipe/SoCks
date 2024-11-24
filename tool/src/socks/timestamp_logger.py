@@ -2,6 +2,7 @@ import pathlib
 import csv
 import time
 
+
 class Timestamp_Logger:
     """
     A class to log timestamps in csv files

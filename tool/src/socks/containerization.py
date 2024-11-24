@@ -8,6 +8,7 @@ import subprocess
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
+from socks.timestamp_logger import Timestamp_Logger
 
 
 class Containerization:
@@ -15,7 +16,9 @@ class Containerization:
     A class to execute commands and tasks in containers
     """
 
-    def __init__(self, container_tool: str, container_file: pathlib.Path, container_image: str):
+    def __init__(
+        self, container_tool: str, container_file: pathlib.Path, container_image: str, container_log_file: pathlib.Path
+    ):
 
         if container_tool not in ["docker", "podman", "none"]:
             pretty_print.print_error(f"Containerization tool {self._container_tool} is not supported.")
@@ -27,6 +30,9 @@ class Containerization:
         self._container_file = container_file
         # Identifier of the container image in format <image name>:<image tag>.
         self._container_image = container_image
+
+        # Timestamp logger
+        self._container_log = Timestamp_Logger(container_log_file)
 
     @staticmethod
     def _err_container_feature(feature: str):
@@ -60,28 +66,29 @@ class Containerization:
             None
 
         Raises:
-            None
+            ValueError:
+                If an unexpected container tool is specified
         """
+
+        # Skip this function if no container tool is used
+        if self._container_tool == "none":
+            pretty_print.print_warning("Container image is not built in native mode.")
+            return
 
         # Check if the required container file exists
         if not self._container_file.is_file():
             pretty_print.print_error(f"File {self._container_file} not found.")
             sys.exit(1)
 
-        if self._container_tool == "docker":
-            # Get last tag time from docker
-            results = Shell_Command_Runners.get_sh_results(
-                ["docker", "image", "inspect", "-f '{{ .Metadata.LastTagTime }}'", self._container_image]
-            )
-            # Do not extract tag time if the image does not yet exist
-            if f"No such image: {self._container_image}" in results.stderr:
-                last_tag_timestamp = 0
-            else:
-                last_tag_timestamp = parser.parse(results.stdout.rpartition(" ")[0]).timestamp()
-            # Get last modification time of the container file
-            last_file_mod_timestamp = self._container_file.stat().st_mtime
-            # Build image, if necessary
-            if last_tag_timestamp < last_file_mod_timestamp:
+        # Get last build timestamp
+        last_build_timestamp = self._container_log.get_logged_timestamp(
+            identifier=f"{self._container_tool}-image-{self._container_image}-built"
+        )
+        # Get last modification time of the container file
+        last_file_mod_timestamp = self._container_file.stat().st_mtime
+        # Build image, if necessary
+        if last_build_timestamp < last_file_mod_timestamp:
+            if self._container_tool == "docker":
                 host_user = os.getlogin()
                 host_user_id = os.getuid()
                 pretty_print.print_build(f"Building docker image {self._container_image}...")
@@ -100,53 +107,19 @@ class Containerization:
                         ".",
                     ]
                 )
-            else:
-                pretty_print.print_build(f"No need to build the docker image {self._container_image}...")
 
-        elif self._container_tool == "podman":
-            # Get last build event time from podman
-            results = Shell_Command_Runners.get_sh_results(
-                [
-                    "podman",
-                    "image",
-                    "inspect",
-                    "-f",
-                    "'{{ .Id }}'",
-                    self._container_image,
-                    "|",
-                    "xargs",
-                    "-I",
-                    "{}",
-                    "podman",
-                    "events",
-                    "--filter",
-                    "image={}",
-                    "--filter",
-                    "event=build",
-                    "--format",
-                    "'{{.Time}}'",
-                    "--until",
-                    "0m",
-                ]
-            )
-            # Do not extract last build event time if the image does not yet exist
-            if f"{self._container_image}: image not known" in results.stderr:
-                last_build_time_timestamp = 0
-            else:
-                last_build_time_timestamp = parser.parse(results.stdout.splitlines()[-2].rpartition(" ")[0]).timestamp()
-            # Get last modification time of the container file
-            last_file_mod_timestamp = self._container_file.stat().st_mtime
-            # Build image, if necessary
-            if last_build_time_timestamp < last_file_mod_timestamp:
+            elif self._container_tool == "podman":
                 pretty_print.print_build(f"Building podman image {self._container_image}...")
                 Shell_Command_Runners.run_sh_command(
                     ["podman", "build", "-t", self._container_image, "-f", str(self._container_file), "."]
                 )
-            else:
-                pretty_print.print_build(f"No need to build the podman image {self._container_image}...")
 
-        elif self._container_tool == "none":
-            pretty_print.print_warning("Container image is not built in native mode.")
+            else:
+                raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
+            self._container_log.log_timestamp(identifier=f"{self._container_tool}-image-{self._container_image}-built")
+        else:
+            pretty_print.print_build(f"No need to build {self._container_tool} image {self._container_image}...")
 
     def clean_container_image(self):
         """
@@ -159,7 +132,8 @@ class Containerization:
             None
 
         Raises:
-            None
+            ValueError:
+                If an unexpected container tool is specified
         """
 
         if self._container_tool in ("docker", "podman"):
@@ -178,6 +152,9 @@ class Containerization:
         elif self._container_tool == "none":
             # This function is only supported if a container tool is used
             Containerization._err_container_feature(f"{inspect.getframeinfo(inspect.currentframe()).function}()")
+
+        else:
+            raise ValueError(f"Unexpected container tool: {self._container_tool}")
 
     def run_containerizable_sh_command(
         self,
@@ -208,7 +185,8 @@ class Containerization:
             None
 
         Raises:
-            ValueError: If argument 'command' does not start and end with a single quote
+            ValueError:
+                If an unexpected container tool is specified
         """
 
         # Assemble command string for container
@@ -232,10 +210,14 @@ class Containerization:
                 + custom_params
                 + [self._container_image, "sh", "-c", comp_commands]
             )
+
         elif self._container_tool == "none":
             # Run commands without using a container
             sudo_opt = "sudo" if run_as_root else ""
             Shell_Command_Runners.run_sh_command([sudo_opt, "sh", "-c", comp_commands])
+
+        else:
+            raise ValueError(f"Unexpected container tool: {self._container_tool}")
 
     def enable_multiarch(self):
         """
@@ -252,7 +234,8 @@ class Containerization:
             None
 
         Raises:
-            None
+            ValueError:
+                If an unexpected container tool is specified
         """
 
         if list(pathlib.Path("/proc/sys/fs/binfmt_misc").glob("qemu-*")):
@@ -266,14 +249,19 @@ class Containerization:
             Shell_Command_Runners.run_sh_command(
                 ["docker", "run", "--rm", "--privileged", "multiarch/qemu-user-static", "--reset", "-p", "yes"]
             )
+
         elif self._container_tool == "podman":
             Shell_Command_Runners.run_sh_command(["sudo", "podman", "pull", "multiarch/qemu-user-static"])
             Shell_Command_Runners.run_sh_command(
                 ["sudo", "podman", "run", "--rm", "--privileged", "multiarch/qemu-user-static", "--reset", "-p", "yes"]
             )
+
         elif self._container_tool == "none":
             pretty_print.print_warning(f"Multiarch is not activated in native mode.")
             return
+
+        else:
+            raise ValueError(f"Unexpected container tool: {self._container_tool}")
 
     def start_container(self, potential_mounts: typing.List[typing.Tuple[pathlib.Path, str]]):
         """
@@ -288,7 +276,8 @@ class Containerization:
             None
 
         Raises:
-            None
+            ValueError:
+                If an unexpected container tool is specified
         """
 
         if self._container_tool in ("docker", "podman"):
@@ -309,6 +298,9 @@ class Containerization:
             # This function is only supported if a container tool is used
             Containerization._err_container_feature(f"{inspect.getframeinfo(inspect.currentframe()).function}()")
 
+        else:
+            raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
     def start_gui_container(
         self, start_gui_commands: typing.List[str], potential_mounts: typing.List[typing.Tuple[pathlib.Path, str]]
     ):
@@ -326,7 +318,8 @@ class Containerization:
             None
 
         Raises:
-            None
+            ValueError:
+                If an unexpected container tool is specified
         """
 
         # Check if x11docker is installed
@@ -368,6 +361,7 @@ class Containerization:
                     f"--runasuser={comp_commands}",
                 ]
             )
+
         elif self._container_tool == "podman":
             Shell_Command_Runners.run_sh_command(
                 [
@@ -384,6 +378,10 @@ class Containerization:
                     f"--runasuser={comp_commands}",
                 ]
             )
+
         elif self._container_tool == "none":
             # This function is only supported if a container tool is used
             Containerization._err_container_feature(f"{inspect.getframeinfo(inspect.currentframe()).function}()")
+
+        else:
+            raise ValueError(f"Unexpected container tool: {self._container_tool}")

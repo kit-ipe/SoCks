@@ -113,7 +113,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
                 self._source_repo_dir / "Hog",
                 self._source_repo_dir / f"lib_{self.block_cfg.project.name}",
             ],
-            out_timestamp=self._time_log.get_logged_timestamp(
+            out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -163,7 +163,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         (self._output_dir / bit_files[0].name).symlink_to(bit_files[0])
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def start_vivado_gui(self):
         """

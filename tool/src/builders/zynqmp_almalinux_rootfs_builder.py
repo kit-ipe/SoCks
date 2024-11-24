@@ -131,7 +131,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         # Check whether the base root file system needs to be built
         if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [dnf_conf_file, extra_pkgs_file, mod_base_install_script],
-            out_timestamp=self._time_log.get_logged_timestamp(
+            out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -202,12 +202,12 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         )
 
         # Reset timestamps
-        self._time_log.del_logged_timestamp(identifier=f"function-add_pd_layers-success")
-        self._time_log.del_logged_timestamp(identifier=f"function-add_bt_layer-success")
-        self._time_log.del_logged_timestamp(identifier=f"function-add_users-success")
+        self._build_log.del_logged_timestamp(identifier=f"function-add_pd_layers-success")
+        self._build_log.del_logged_timestamp(identifier=f"function-add_bt_layer-success")
+        self._build_log.del_logged_timestamp(identifier=f"function-add_users-success")
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def add_pd_layers(self):
         """
@@ -230,11 +230,12 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
         # Check whether the predefined file system layers need to be added
         layers_already_added = (
-            self._time_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+            self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            != 0.0
         )
         if layers_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=[self._repo_dir / "predefined_fs_layers"],
-            out_timestamp=self._time_log.get_logged_timestamp(
+            out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -258,7 +259,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         )
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def add_bt_layer(self):
         """
@@ -288,11 +289,12 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             )
             return
         layer_already_added = (
-            self._time_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+            self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            != 0.0
         )
         if layer_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=[self._dependencies_dir],
-            out_timestamp=self._time_log.get_logged_timestamp(
+            out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -337,7 +339,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         )
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def add_users(self):
         """
@@ -360,11 +362,12 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
         # Check whether users need to be added
         users_already_added = (
-            self._time_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+            self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            != 0.0
         )
         if users_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=[self._repo_dir / "users"],
-            out_timestamp=self._time_log.get_logged_timestamp(
+            out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -385,7 +388,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         )
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def add_kmodules(self):
         """
@@ -464,7 +467,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         # Check if the archive needs to be built
         if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._work_dir],
-            out_timestamp=self._time_log.get_logged_timestamp(
+            out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -530,7 +533,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         )
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def build_archive_prebuilt(self):
         """

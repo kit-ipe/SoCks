@@ -119,7 +119,7 @@ class Builder(Containerization):
         self._source_pb_md5_file = self._work_dir / "source_pb.md5"
 
         # Timestamp logger
-        self._time_log = Timestamp_Logger(self._block_temp_dir / ".timestamps.csv")
+        self._build_log = Timestamp_Logger(log_file=self._block_temp_dir / ".build_log.csv")
 
         # Containerization
         container_image = f"{self.block_cfg.container.image}:socks"
@@ -127,16 +127,19 @@ class Builder(Containerization):
             container_tool=self.project_cfg.external_tools.container_tool,
             container_image=container_image,
             container_file=self._container_dir / f"{container_image}.containerfile",
+            container_log_file=self._project_temp_dir / ".container_log.csv",
         )
 
         # Check whether the user has modified the patches since they were applied
-        patches_already_added = self._time_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
+        patches_already_added = (
+            self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
+        )
         if (
             self._patch_dir.exists()
             and patches_already_added
             and Builder._check_rebuild_required(
                 src_search_list=[self._patch_dir],
-                out_timestamp=self._time_log.get_logged_timestamp(identifier=f"function-apply_patches-success"),
+                out_timestamp=self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success"),
             )
         ):
             pretty_print.print_error(
@@ -602,7 +605,8 @@ class Builder(Containerization):
 
         # Skip all operations if the repo has already been initialized
         repo_init_done = (
-            self._time_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+            self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            != 0.0
         )
         if repo_init_done:
             pretty_print.print_build("No need to initialize the local repo...")
@@ -655,7 +659,7 @@ class Builder(Containerization):
             )
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def create_patches(self):
         """
@@ -724,9 +728,11 @@ class Builder(Containerization):
 
         # Update the timestamp of the patches applied tag, if it exists. Otherwise, SoCks assumes
         # that the user has modified the patches since they were applied.
-        patches_already_added = self._time_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
+        patches_already_added = (
+            self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
+        )
         if patches_already_added:
-            self._time_log.log_timestamp(identifier=f"function-apply_patches-success")
+            self._build_log.log_timestamp(identifier=f"function-apply_patches-success")
 
     def apply_patches(self):
         """
@@ -745,7 +751,8 @@ class Builder(Containerization):
 
         # Skip all operations if the patches have already been applied
         patches_already_added = (
-            self._time_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+            self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            != 0.0
         )
         if patches_already_added:
             pretty_print.print_build("No need to apply patches...")
@@ -774,7 +781,7 @@ class Builder(Containerization):
         )
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def _download_prebuilt(self):
         """
@@ -965,7 +972,7 @@ class Builder(Containerization):
         if not Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._output_dir],
             src_ignore_list=[block_pkg_path],
-            out_timestamp=self._time_log.get_logged_timestamp(
+            out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -983,7 +990,7 @@ class Builder(Containerization):
                     archive.add(file.resolve(strict=True), arcname=file.name)
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def import_dependencies(self):
         """

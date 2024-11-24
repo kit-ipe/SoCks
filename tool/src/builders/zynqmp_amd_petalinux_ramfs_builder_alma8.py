@@ -57,7 +57,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Build
         # Check if the archive needs to be built
         if not ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._work_dir],
-            out_timestamp=self._time_log.get_logged_timestamp(
+            out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -114,4 +114,4 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Build
         )
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

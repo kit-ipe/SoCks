@@ -166,7 +166,7 @@ class AMD_Builder(Builder):
         # Check whether the xsa archive needs to be imported
         if not AMD_Builder._check_rebuild_required(
             src_search_list=[xsa_files[0]],
-            out_timestamp=self._time_log.get_logged_timestamp(
+            out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -183,7 +183,7 @@ class AMD_Builder(Builder):
         shutil.copy(xsa_files[0], self._xsa_dir / xsa_files[0].name)
 
         # Log success of this function
-        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def clean_source_xsa(self):
         """
