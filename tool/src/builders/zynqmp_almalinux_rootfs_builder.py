@@ -61,7 +61,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         self._block_deps = {
             "kernel": ["kernel_modules.tar.gz"],
             "devicetree": ["system.dtb", "system.dts"],
-            "vivado": [".*.xsa", ".*.bit"],
+            "vivado": [".*.bit"],
         }
 
         # The user can use block commands to interact with the block.

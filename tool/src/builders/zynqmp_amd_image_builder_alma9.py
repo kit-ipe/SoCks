@@ -42,7 +42,12 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self._kernel_img_path = self._dependencies_dir / "kernel/Image.gz"
         self._pmufw_img_path = self._dependencies_dir / "pmu_fw/pmufw.elf"
         self._uboot_img_path = self._dependencies_dir / "uboot/u-boot.elf"
-        self._vivado_xsa_path = None
+        bitfiles = list((self._dependencies_dir / "vivado").glob("*.bit"))
+        if len(bitfiles) != 1:
+            pretty_print.print_error(f'Not exactly one *.bit file in {self._dependencies_dir / "vivado"}.')
+            sys.exit(1)
+        self._vivado_bitfile_path = bitfiles[0]
+
 
         self._sdc_image_name = f"{self.project_cfg.project.name}_sd_card.img"
 
@@ -63,7 +68,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             "ramfs": [".*.cpio.gz"],
             "rootfs": [".*.tar.xz"],
             "uboot": ["u-boot.elf"],
-            "vivado": [".*.xsa"],
+            "vivado": [".*.bit"],
         }
 
         # The user can use block commands to interact with the block.
@@ -244,14 +249,6 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             None
         """
 
-        xsa_files = list((self._dependencies_dir / "vivado").glob("*.xsa"))
-
-        if len(xsa_files) != 1:
-            pretty_print.print_error(f'Not exactly one XSA archive in {self._dependencies_dir / "vivado"}.')
-            sys.exit(1)
-
-        self._vivado_xsa_path = xsa_files[0]
-
         # Check whether the boot script image needs to be built
         if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(
             src_search_list=self._project_cfg_files
@@ -259,7 +256,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self._misc_dir / "bootgen.bif.tpl",
                 self._fsbl_img_path,
                 self._pmufw_img_path,
-                self._vivado_xsa_path,
+                self._vivado_bitfile_path,
                 self._atf_img_path,
                 self._dt_img_path,
                 self._uboot_img_path,
@@ -279,29 +276,13 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
 
         pretty_print.print_build("Building BOOT.BIN...")
 
-        # Extract .bit file from XSA archive
-        bit_file = None
-        with zipfile.ZipFile(self._vivado_xsa_path, "r") as archive:
-            # Find all .bit files in the archive
-            bit_files = [file for file in archive.namelist() if file.endswith(".bit")]
-            # Check if there is more than one bit file
-            if len(bit_files) != 1:
-                pretty_print.print_error(f"Not exactly one *.bit archive in {self._vivado_xsa_path}.")
-                sys.exit(1)
-            # Extract the single .bit file
-            archive.extract(bit_files[0], path=str(self._work_dir))
-            # Rename the extracted file
-            temp_bit_file = self._work_dir / bit_files[0]
-            bit_file = self._work_dir / "system.bit"
-            temp_bit_file.rename(bit_file)
-
         boot_img_build_commands = [
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"source {self._amd_vitis_path}/settings64.sh",
             f"cp {self._misc_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif",
             f'sed -i "s:<FSBL_PATH>:{self._fsbl_img_path}:g;" {self._work_dir}/bootgen.bif',
             f'sed -i "s:<PMUFW_PATH>:{self._pmufw_img_path}:g;" {self._work_dir}/bootgen.bif',
-            f'sed -i "s:<PLBIT_PATH>:{bit_file}:g;" {self._work_dir}/bootgen.bif',
+            f'sed -i "s:<PLBIT_PATH>:{self._vivado_bitfile_path}:g;" {self._work_dir}/bootgen.bif',
             f'sed -i "s:<ATF_PATH>:{self._atf_img_path}:g;" {self._work_dir}/bootgen.bif',
             f'sed -i "s:<DTB_PATH>:{self._dt_img_path}:g;" {self._work_dir}/bootgen.bif',
             f'sed -i "s:<UBOOT_PATH>:{self._uboot_img_path}:g;" {self._work_dir}/bootgen.bif',
