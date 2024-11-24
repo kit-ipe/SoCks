@@ -1,7 +1,6 @@
 import sys
 import pathlib
 import shutil
-import zipfile
 import inspect
 
 import socks.pretty_print as pretty_print
@@ -42,12 +41,9 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self._kernel_img_path = self._dependencies_dir / "kernel/Image.gz"
         self._pmufw_img_path = self._dependencies_dir / "pmu_fw/pmufw.elf"
         self._uboot_img_path = self._dependencies_dir / "uboot/u-boot.elf"
-        bitfiles = list((self._dependencies_dir / "vivado").glob("*.bit"))
-        if len(bitfiles) != 1:
-            pretty_print.print_error(f'Not exactly one *.bit file in {self._dependencies_dir / "vivado"}.')
-            sys.exit(1)
-        self._vivado_bitfile_path = bitfiles[0]
-
+        self._vivado_bitfile_path = (
+            None  # Must be initialized outside the constructor, as the name of the file it not fixed.
+        )
 
         self._sdc_image_name = f"{self.project_cfg.project.name}_sd_card.img"
 
@@ -248,6 +244,15 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         Raises:
             None
         """
+
+        # Get *.bit file from vivado block package
+        bitfiles = list((self._dependencies_dir / "vivado").glob("*.bit"))
+
+        if len(bitfiles) != 1:
+            pretty_print.print_error(f'Not exactly one *.bit file in {self._dependencies_dir / "vivado"}.')
+            sys.exit(1)
+
+        self._vivado_bitfile_path = bitfiles[0]
 
         # Check whether the boot script image needs to be built
         if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(
