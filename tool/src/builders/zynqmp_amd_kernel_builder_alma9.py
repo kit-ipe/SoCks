@@ -135,7 +135,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
-            out_timestamp=self._get_logged_timestamp(
+            out_timestamp=self._time_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -172,7 +172,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         (self._output_dir / "Image.gz").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image.gz")
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def export_modules(self):
         """
@@ -197,7 +197,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuild_required(
             src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
-            out_timestamp=self._get_logged_timestamp(
+            out_timestamp=self._time_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -220,4 +220,4 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         )
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

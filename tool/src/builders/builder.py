@@ -14,11 +14,11 @@ import re
 import hashlib
 import time
 import pydantic
-import csv
 import inspect
 
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
+from socks.timestamp_logger import Timestamp_Logger
 from socks.containerization import Containerization
 
 
@@ -117,8 +117,9 @@ class Builder(Containerization):
         self._patch_list_file = self._patch_dir / "patches.cfg"
         # File for saving the checksum of the imported, pre-built block package
         self._source_pb_md5_file = self._work_dir / "source_pb.md5"
-        # Logfile to store timestamps
-        self._timestamp_logfile = self._block_temp_dir / ".timestamps.csv"
+
+        # Timestamp logger
+        self._time_log = Timestamp_Logger(self._block_temp_dir / ".timestamps.csv")
 
         # Containerization
         container_image = f"{self.block_cfg.container.image}:socks"
@@ -129,13 +130,13 @@ class Builder(Containerization):
         )
 
         # Check whether the user has modified the patches since they were applied
-        patches_already_added = self._get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
+        patches_already_added = self._time_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
         if (
             self._patch_dir.exists()
             and patches_already_added
             and Builder._check_rebuild_required(
                 src_search_list=[self._patch_dir],
-                out_timestamp=self._get_logged_timestamp(identifier=f"function-apply_patches-success"),
+                out_timestamp=self._time_log.get_logged_timestamp(identifier=f"function-apply_patches-success"),
             )
         ):
             pretty_print.print_error(
@@ -414,118 +415,6 @@ class Builder(Containerization):
         else:
             return True
 
-    def _log_timestamp(self, identifier: str):
-        """
-        Creates or updates a timestamp in a timestamp csv file.
-
-        Args:
-            identifier:
-                Identifier of the timestamp.
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        logs = []
-        log_found = False
-        timestamp = time.time()
-
-        # Read the existing logs from the file (if it exists)
-        try:
-            with open(self._timestamp_logfile, mode="r", newline="") as file:
-                reader = csv.reader(file)
-                logs = list(reader)
-        except FileNotFoundError:
-            pass  # If the file doesn't exist, we'll create it later
-
-        # Check if we need to update an existing log with the identifier
-        for i, row in enumerate(logs):
-            if row[0] == identifier:
-                logs[i] = [identifier, timestamp]
-                log_found = True
-                break
-
-        # If the log was not found, create a new one
-        if not log_found:
-            logs.append([identifier, timestamp])
-
-        # Write all logs back to the CSV file
-        with open(self._timestamp_logfile, mode="w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerows(logs)
-
-    def _get_logged_timestamp(self, identifier: str) -> float:
-        """
-        Reads a timestamp from a timestamp csv file.
-
-        Args:
-            identifier:
-                Identifier of the timestamp.
-
-        Returns:
-            The timestamp if it was found. Otherwise 0.
-
-        Raises:
-            ValueError:
-                If the identifier cannot be found in the file
-        """
-
-        timestamp = 0.0
-
-        # Read the existing logs from the file
-        try:
-            with open(self._timestamp_logfile, mode="r", newline="") as file:
-                reader = csv.reader(file)
-                logs = list(reader)
-        except FileNotFoundError:
-            return timestamp  # It is okay if the file does not exist
-
-        # Find the timestamp
-        for row in logs:
-            if row[0] == identifier:
-                timestamp = float(row[1])
-                break
-
-        return timestamp
-
-    def _del_logged_timestamp(self, identifier: str):
-        """
-        Delete a timestamp in a timestamp csv file.
-
-        Args:
-            identifier:
-                Identifier of the timestamp.
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        logs = []
-
-        # Read the existing logs from the file (if it exists)
-        try:
-            with open(self._timestamp_logfile, mode="r", newline="") as file:
-                reader = csv.reader(file)
-                logs = list(reader)
-        except FileNotFoundError:
-            return  # It is okay if the file does not exist
-
-        # Check if we need to update an existing log with the identifier
-        for i, row in enumerate(logs):
-            if row[0] == identifier:
-                del logs[i]
-
-        # Write all logs back to the CSV file
-        with open(self._timestamp_logfile, mode="w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerows(logs)
-
     def _eval_single_prj_src(self) -> typing.Tuple[pathlib.Path, dict]:
         """
         Process the source section of a block with a single source.
@@ -713,7 +602,7 @@ class Builder(Containerization):
 
         # Skip all operations if the repo has already been initialized
         repo_init_done = (
-            self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+            self._time_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
         )
         if repo_init_done:
             pretty_print.print_build("No need to initialize the local repo...")
@@ -766,7 +655,7 @@ class Builder(Containerization):
             )
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def create_patches(self):
         """
@@ -835,9 +724,9 @@ class Builder(Containerization):
 
         # Update the timestamp of the patches applied tag, if it exists. Otherwise, SoCks assumes
         # that the user has modified the patches since they were applied.
-        patches_already_added = self._get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
+        patches_already_added = self._time_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
         if patches_already_added:
-            self._log_timestamp(identifier=f"function-apply_patches-success")
+            self._time_log.log_timestamp(identifier=f"function-apply_patches-success")
 
     def apply_patches(self):
         """
@@ -856,7 +745,7 @@ class Builder(Containerization):
 
         # Skip all operations if the patches have already been applied
         patches_already_added = (
-            self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+            self._time_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
         )
         if patches_already_added:
             pretty_print.print_build("No need to apply patches...")
@@ -885,7 +774,7 @@ class Builder(Containerization):
         )
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def _download_prebuilt(self):
         """
@@ -1076,7 +965,7 @@ class Builder(Containerization):
         if not Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._output_dir],
             src_ignore_list=[block_pkg_path],
-            out_timestamp=self._get_logged_timestamp(
+            out_timestamp=self._time_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -1094,7 +983,7 @@ class Builder(Containerization):
                     archive.add(file.resolve(strict=True), arcname=file.name)
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def import_dependencies(self):
         """

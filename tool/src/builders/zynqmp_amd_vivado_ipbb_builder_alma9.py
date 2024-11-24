@@ -68,7 +68,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
 
         # Skip all operations if the IPBB environment is already initialized
         ipbb_init_done = (
-            self._get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
+            self._time_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success") != 0.0
         )
         if ipbb_init_done:
             pretty_print.print_build("The IPBB environment has already been initialized. It is not reinitialized...")
@@ -112,7 +112,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
         )
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def create_vivado_project(self):
         """
@@ -194,7 +194,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
                 / self.block_cfg.project.name
                 / f"{self.block_cfg.project.name}.cache",
             ],
-            out_timestamp=self._get_logged_timestamp(
+            out_timestamp=self._time_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -233,7 +233,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder_Alma9(AMD_Builder):
             (self._output_dir / item.name).symlink_to(item)
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def start_container(self):
         """

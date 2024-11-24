@@ -155,7 +155,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self._dependencies_dir / "devicetree",
                 self._dependencies_dir / "ramfs",
             ],
-            out_timestamp=self._get_logged_timestamp(
+            out_timestamp=self._time_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -189,7 +189,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         )
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def bootscr_img(self):
         """
@@ -208,7 +208,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         # Check whether the boot script image needs to be built
         if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(
             src_search_list=[self._misc_dir / "boot.cmd"],
-            out_timestamp=self._get_logged_timestamp(
+            out_timestamp=self._time_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -228,7 +228,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         )
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def boot_img(self):
         """
@@ -266,7 +266,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self._output_dir / "image.ub",
                 self._output_dir / "boot.scr",
             ],
-            out_timestamp=self._get_logged_timestamp(
+            out_timestamp=self._time_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -322,7 +322,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         )
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def sd_card_img(self):
         """
@@ -356,7 +356,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                 self._output_dir / "image.ub",
                 self._dependencies_dir / "rootfs",
             ],
-            out_timestamp=self._get_logged_timestamp(
+            out_timestamp=self._time_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -387,4 +387,4 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         )
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

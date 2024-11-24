@@ -172,7 +172,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         # Check whether the devicetree needs to be built
         if not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuild_required(
             src_search_list=[self._dt_incl_dir, self._source_repo_dir],
-            out_timestamp=self._get_logged_timestamp(
+            out_timestamp=self._time_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
@@ -216,7 +216,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         (self._output_dir / "system.dts").symlink_to(self._base_work_dir / "system.dts")
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def build_dt_overlays(self):
         """
@@ -238,7 +238,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             or not any(self._dt_overlay_dir.iterdir())
             or not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuild_required(
                 src_search_list=[self._dt_overlay_dir],
-                out_timestamp=self._get_logged_timestamp(
+                out_timestamp=self._time_log.get_logged_timestamp(
                     identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
                 ),
             )
@@ -307,4 +307,4 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
             (self._output_dir / symlink.name).symlink_to(symlink)
 
         # Log success of this function
-        self._log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        self._time_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
