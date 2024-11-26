@@ -14,7 +14,7 @@ from builders.builder import Builder
 from builders.zynqmp_amd_petalinux_rootfs_model import ZynqMP_AMD_PetaLinux_RootFS_Model
 
 
-class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
+class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
     """
     AMD PetaLinux root file system builder class
     """
@@ -337,7 +337,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         """
 
         # Check whether the base root file system needs to be built
-        if not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuild_required(
+        if not ZynqMP_AMD_PetaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files
             + [
                 self._block_src_dir / "src",
@@ -455,7 +455,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8(Builder):
         """
 
         # Check if the archive needs to be built
-        if not ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8._check_rebuild_required(
+        if not ZynqMP_AMD_PetaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._work_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"

@@ -8,7 +8,7 @@ from builders.amd_builder import AMD_Builder
 from builders.zynqmp_amd_vivado_hog_model import ZynqMP_AMD_Vivado_Hog_Model
 
 
-class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
+class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
     """
     Builder class for AMD Vivado projects utilizing the Hog framework
     """
@@ -106,7 +106,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder_Alma9(AMD_Builder):
         """
 
         # Check if the project needs to be build
-        if not ZynqMP_AMD_Vivado_Hog_Builder_Alma9._check_rebuild_required(
+        if not ZynqMP_AMD_Vivado_Hog_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files
             + [
                 self._source_repo_dir / "Top",

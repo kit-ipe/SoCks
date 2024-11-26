@@ -9,11 +9,11 @@ import validators
 import inspect
 
 import socks.pretty_print as pretty_print
-from builders.zynqmp_amd_petalinux_rootfs_builder_alma8 import ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8
+from builders.zynqmp_amd_petalinux_rootfs_builder import ZynqMP_AMD_PetaLinux_RootFS_Builder
 from builders.zynqmp_amd_petalinux_ramfs_model import ZynqMP_AMD_PetaLinux_RAMFS_Model
 
 
-class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8):
+class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
     """
     AMD PetaLinux RAM file system builder class
     """
@@ -55,7 +55,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8(ZynqMP_AMD_PetaLinux_RootFS_Build
         """
 
         # Check if the archive needs to be built
-        if not ZynqMP_AMD_PetaLinux_RAMFS_Builder_Alma8._check_rebuild_required(
+        if not ZynqMP_AMD_PetaLinux_RAMFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._work_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"

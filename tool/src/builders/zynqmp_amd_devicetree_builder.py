@@ -10,7 +10,7 @@ from builders.amd_builder import AMD_Builder
 from builders.zynqmp_amd_devicetree_model import ZynqMP_AMD_Devicetree_Model
 
 
-class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
+class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
     """
     AMD devicetree builder class
     """
@@ -170,7 +170,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         """
 
         # Check whether the devicetree needs to be built
-        if not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuild_required(
+        if not ZynqMP_AMD_Devicetree_Builder._check_rebuild_required(
             src_search_list=[self._dt_incl_dir, self._source_repo_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -236,7 +236,7 @@ class ZynqMP_AMD_Devicetree_Builder_Alma9(AMD_Builder):
         if (
             not self._dt_overlay_dir.is_dir()
             or not any(self._dt_overlay_dir.iterdir())
-            or not ZynqMP_AMD_Devicetree_Builder_Alma9._check_rebuild_required(
+            or not ZynqMP_AMD_Devicetree_Builder._check_rebuild_required(
                 src_search_list=[self._dt_overlay_dir],
                 out_timestamp=self._build_log.get_logged_timestamp(
                     identifier=f"function-{inspect.currentframe().f_code.co_name}-success"

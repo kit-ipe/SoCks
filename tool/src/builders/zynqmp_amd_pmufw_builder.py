@@ -7,12 +7,12 @@ import inspect
 import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
 from builders.amd_builder import AMD_Builder
-from builders.zynqmp_amd_fsbl_model import ZynqMP_AMD_FSBL_Model
+from builders.zynqmp_amd_pmufw_model import ZynqMP_AMD_PMUFW_Model
 
 
-class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
+class ZynqMP_AMD_PMUFW_Builder(AMD_Builder):
     """
-    AMD FSBL builder class
+    AMD PMU firmware builder class
     """
 
     def __init__(
@@ -21,14 +21,14 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
         project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
-        block_id: str = "fsbl",
-        block_description: str = "Build the First Stage Boot Loader (FSBL) for ZynqMP devices",
+        block_id: str = "pmu_fw",
+        block_description: str = "Build the Platform Management Unit (PMU) Firmware for ZynqMP devices",
     ):
 
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
-            model_class=ZynqMP_AMD_FSBL_Model,
+            model_class=ZynqMP_AMD_PMUFW_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -63,20 +63,20 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
                     self.build_container_image,
                     self.import_dependencies,
                     self.import_xsa,
-                    self.create_fsbl_project,
+                    self.create_pmufw_project,
                     self.apply_patches,
                 ]
             )
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend([self.build_fsbl, self.export_block_package])
+            self.block_cmds["build"].extend([self.build_pmufw, self.export_block_package])
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
-    def create_fsbl_project(self):
+    def create_pmufw_project(self):
         """
-        Creates the FSBL project.
+        Creates the PMU firmware project.
 
         Args:
             None
@@ -105,7 +105,7 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
 
         # Check if the project needs to be created
         if md5_existsing_file == md5_new_file:
-            pretty_print.print_warning("No new XSA archive recognized. FSBL project is not created.")
+            pretty_print.print_warning("No new XSA archive recognized. PMU Firmware project is not created.")
             return
 
         self.check_amd_tools(required_tools=["vitis"])
@@ -116,15 +116,15 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
         self._repo_dir.mkdir(parents=True)
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
-        pretty_print.print_build("Creating the FSBL project...")
+        pretty_print.print_build("Creating the PMU Firmware project...")
 
-        create_fsbl_project_commands = [
+        create_pmufw_project_commands = [
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"source {self._amd_vitis_path}/settings64.sh",
             f"SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa)",
             'printf "set hwdsgn [hsi open_hw_design ${SOURCE_XSA_PATH}]'
-            f'    \r\nhsi generate_app -hw \$hwdsgn -os standalone -proc psu_cortexa53_0 -app zynqmp_fsbl -sw fsbl -dir {self._source_repo_dir}" > {self._work_dir}/generate_fsbl_prj.tcl',
-            f"xsct -nodisp {self._work_dir}/generate_fsbl_prj.tcl",
+            f'    \r\nhsi generate_app -hw \$hwdsgn -os standalone -proc psu_pmu_0 -app zynqmp_pmufw -sw pmufw -dir {self._source_repo_dir}" > {self._work_dir}/generate_pmufw_prj.tcl',
+            f"xsct -nodisp {self._work_dir}/generate_pmufw_prj.tcl",
             f"git -C {self._source_repo_dir} init --initial-branch=main",
             f"git -C {self._source_repo_dir} config user.email 'container-user@example.com'",
             f"git -C {self._source_repo_dir} config user.name 'container-user'",
@@ -133,7 +133,7 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
         ]
 
         self.run_containerizable_sh_command(
-            commands=create_fsbl_project_commands,
+            commands=create_pmufw_project_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
                 (self._xsa_dir, "Z"),
@@ -156,9 +156,9 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
         with self._source_xsa_md5_file.open("w") as f:
             print(md5_new_file, file=f, end="")
 
-    def build_fsbl(self):
+    def build_pmufw(self):
         """
-        Builds the FSBL.
+        Builds the PMU Firmware.
 
         Args:
             None
@@ -170,22 +170,22 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
             None
         """
 
-        # Check whether the FSBL needs to be built
-        if not ZynqMP_AMD_FSBL_Builder_Alma9._check_rebuild_required(
+        # Check whether the PMU Firmware needs to be built
+        if not ZynqMP_AMD_PMUFW_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "executable.elf"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
-            pretty_print.print_build("No need to rebuild the FSBL. No altered source files detected...")
+            pretty_print.print_build("No need to rebuild the PMU Firmware. No altered source files detected...")
             return
 
         self.check_amd_tools(required_tools=["vitis"])
 
-        pretty_print.print_build("Building the FSBL...")
+        pretty_print.print_build("Building the PMU Firmware...")
 
-        fsbl_build_commands = [
+        pmufw_build_commands = [
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"source {self._amd_vitis_path}/settings64.sh",
             f"cd {self._source_repo_dir}",
@@ -194,7 +194,7 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
         ]
 
         self.run_containerizable_sh_command(
-            commands=fsbl_build_commands,
+            commands=pmufw_build_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
                 (self._xsa_dir, "Z"),
@@ -204,8 +204,8 @@ class ZynqMP_AMD_FSBL_Builder_Alma9(AMD_Builder):
         )
 
         # Create symlink to the output file
-        (self._output_dir / "fsbl.elf").unlink(missing_ok=True)
-        (self._output_dir / "fsbl.elf").symlink_to(self._source_repo_dir / "executable.elf")
+        (self._output_dir / "pmufw.elf").unlink(missing_ok=True)
+        (self._output_dir / "pmufw.elf").symlink_to(self._source_repo_dir / "executable.elf")
 
         # Log success of this function
         self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

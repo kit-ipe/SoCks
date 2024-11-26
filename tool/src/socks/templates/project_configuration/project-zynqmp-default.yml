@@ -10,7 +10,7 @@ external_tools:
 blocks:
   atf:
     source: "build"
-    builder: "ZynqMP_AMD_ATF_Builder_Alma9"
+    builder: "ZynqMP_AMD_ATF_Builder"
     project:
       build_srcs:
         source: "https://github.com/Xilinx/arm-trusted-firmware.git"
@@ -21,7 +21,7 @@ blocks:
       tag: "xilinx-v{{external_tools/xilinx/version}}"
   devicetree:
     source: "build"
-    builder: "ZynqMP_AMD_Devicetree_Builder_Alma9"
+    builder: "ZynqMP_AMD_Devicetree_Builder"
     project:
       build_srcs:
         source: "https://github.com/Xilinx/device-tree-xlnx.git"
@@ -34,7 +34,7 @@ blocks:
       tag: "xilinx-v{{external_tools/xilinx/version}}"
   fsbl:
     source: "build"
-    builder: "ZynqMP_AMD_FSBL_Builder_Alma9"
+    builder: "ZynqMP_AMD_FSBL_Builder"
     project:
       # If no 'import_src' property is specified, the block must be built locally
       dependencies:
@@ -44,7 +44,7 @@ blocks:
       tag: "xilinx-v{{external_tools/xilinx/version}}"
   kernel:
     source: "build"
-    builder: "ZynqMP_AMD_Kernel_Builder_Alma9"
+    builder: "ZynqMP_AMD_Kernel_Builder"
     project:
       build_srcs:
         source: "https://github.com/Xilinx/linux-xlnx.git"
@@ -56,7 +56,7 @@ blocks:
       tag: "xilinx-v{{external_tools/xilinx/version}}"
   pmu_fw:
     source: "build"
-    builder: "ZynqMP_AMD_PMUFW_Builder_Alma9"
+    builder: "ZynqMP_AMD_PMUFW_Builder"
     project:
       # If no 'import_src' property is specified, the block must be built locally
       dependencies:
@@ -66,7 +66,7 @@ blocks:
       tag: "xilinx-v{{external_tools/xilinx/version}}"
   uboot:
     source: "build"
-    builder: "ZynqMP_AMD_UBoot_Builder_Alma9"
+    builder: "ZynqMP_AMD_UBoot_Builder"
     project:
       build_srcs:
         source: "https://github.com/Xilinx/u-boot-xlnx.git"
@@ -89,7 +89,7 @@ blocks:
       tag: "xilinx-v{{external_tools/xilinx/version}}"
   image:
     source: "build"
-    builder: "ZynqMP_AMD_Image_Builder_Alma9"
+    builder: "ZynqMP_AMD_Image_Builder"
     project:
       # If no 'import_src' property is specified, the block must be built locally
       dependencies:

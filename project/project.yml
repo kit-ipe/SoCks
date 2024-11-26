@@ -12,7 +12,7 @@ blocks:
       import_src: "https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/serenity-s1-kria-atf.tar.gz"
 #  rootfs:
 #    source: "build"
-#    builder: "ZynqMP_AMD_PetaLinux_RootFS_Builder_Alma8"
+#    builder: "ZynqMP_AMD_PetaLinux_RootFS_Builder"
 #    project:
 #      build_srcs:
 #        source: "https://github.com/Xilinx/yocto-manifests.git"
@@ -25,7 +25,7 @@ blocks:
 #      image: "petalinux-rootfs-builder-alma8"
 #      tag: "xilinx-v{{externalTools/xilinx/version}}"
   vivado:
-    builder: "ZynqMP_AMD_Vivado_IPBB_Builder_Alma9"
+    builder: "ZynqMP_AMD_Vivado_IPBB_Builder"
     project:
       build_srcs:
         - source: "https://github.com/ipbus/ipbus-firmware.git"

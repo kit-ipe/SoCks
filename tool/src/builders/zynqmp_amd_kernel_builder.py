@@ -8,7 +8,7 @@ from builders.builder import Builder
 from builders.zynqmp_amd_kernel_model import ZynqMP_AMD_Kernel_Model
 
 
-class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
+class ZynqMP_AMD_Kernel_Builder(Builder):
     """
     AMD Kernel builder class
     """
@@ -132,7 +132,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
         """
 
         # Check whether the Kernel needs to be built
-        if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuild_required(
+        if not ZynqMP_AMD_Kernel_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
             out_timestamp=self._build_log.get_logged_timestamp(
@@ -194,7 +194,7 @@ class ZynqMP_AMD_Kernel_Builder_Alma9(Builder):
             return
 
         # Check whether the Kernel modules need to be exported
-        if not ZynqMP_AMD_Kernel_Builder_Alma9._check_rebuild_required(
+        if not ZynqMP_AMD_Kernel_Builder._check_rebuild_required(
             src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
             out_timestamp=self._build_log.get_logged_timestamp(

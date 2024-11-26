@@ -10,7 +10,7 @@ from builders.builder import Builder
 from builders.zynqmp_amd_uboot_model import ZynqMP_AMD_UBoot_Model
 
 
-class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
+class ZynqMP_AMD_UBoot_Builder(Builder):
     """
     AMD U-Boot builder class
     """
@@ -189,7 +189,7 @@ class ZynqMP_AMD_UBoot_Builder_Alma9(Builder):
         """
 
         # Check whether das U-Boot needs to be built
-        if not ZynqMP_AMD_UBoot_Builder_Alma9._check_rebuild_required(
+        if not ZynqMP_AMD_UBoot_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files + [self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "u-boot.elf", self._source_repo_dir / "spl/.boot.bin.cmd"],
             out_timestamp=self._build_log.get_logged_timestamp(

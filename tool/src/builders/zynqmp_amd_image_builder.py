@@ -9,7 +9,7 @@ from builders.builder import Builder
 from builders.zynqmp_amd_image_model import ZynqMP_AMD_Image_Model
 
 
-class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
+class ZynqMP_AMD_Image_Builder(AMD_Builder):
     """
     AMD Image builder class
     """
@@ -149,7 +149,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
                     sys.exit(1)
 
         # Check whether the Linux image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(
+        if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
             src_search_list=[
                 self._misc_dir / "image.its.tpl",
                 self._dependencies_dir / "kernel",
@@ -207,7 +207,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         """
 
         # Check whether the boot script image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(
+        if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
             src_search_list=[self._misc_dir / "boot.cmd"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -255,7 +255,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
         self._vivado_bitfile_path = bitfiles[0]
 
         # Check whether the boot script image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(
+        if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files
             + [
                 self._misc_dir / "bootgen.bif.tpl",
@@ -335,7 +335,7 @@ class ZynqMP_AMD_Image_Builder_Alma9(AMD_Builder):
             sys.exit(1)
 
         # Check whether the sd card image needs to be built
-        if not ZynqMP_AMD_Image_Builder_Alma9._check_rebuild_required(
+        if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
             src_search_list=[
                 self._output_dir / "BOOT.BIN",
                 self._output_dir / "boot.scr",
