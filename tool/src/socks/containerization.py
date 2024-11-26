@@ -24,6 +24,21 @@ class Containerization:
             pretty_print.print_error(f"Containerization tool {self._container_tool} is not supported.")
             sys.exit(1)
 
+        # Check if the selected container tool is installed
+        # This detailed check is necessary to avoid being tricked by podman's Docker compatibility layer
+        results = Shell_Command_Runners.get_sh_results([container_tool, "--version"])
+        installation_valid = True
+        if container_tool == "docker":
+            installation_valid = results.returncode == 0 and any("Docker version" in s for s in results.stdout.splitlines())
+        if container_tool == "podman":
+            installation_valid = results.returncode == 0 and any("podman version" in s for s in results.stdout.splitlines())
+        if not installation_valid:
+            pretty_print.print_error(
+                f"It seems that the selected container tool '{container_tool}' is not installed correctly. " +
+                f"(This was detected by analysing the output of '{container_tool} --version')"
+            )
+            sys.exit(1)
+
         # The container tool to be used. 'none' if the command is to be run directly on the host system.
         self._container_tool = container_tool
         # The container file to be user as source for building.
