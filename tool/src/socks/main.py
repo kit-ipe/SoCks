@@ -180,7 +180,7 @@ supported_block_commands = {
     "prepare": "Performs all the preparatory steps to prepare this block for building, but does not build it.",
     "build": "Builds this block.",
     "prebuild": "Builds a project-independent preliminary version of this block that can later be completed with project-dependent components.",
-    "build-sd-card": "Creates a complete image than can be written directly to an SD card.",
+    "build-sd-card": "Creates a complete image that can be written directly to an SD card.",
     "clean": "Deletes all generated files of this block.",
     "create-patches": "Uses the commited changes in the repo of this block to create patch files.",
     "menucfg": "Opens the menuconfig tool to enable interactive configuration of the project in this block.",

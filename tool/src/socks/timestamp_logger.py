@@ -37,7 +37,10 @@ class Timestamp_Logger:
                 reader = csv.reader(file)
                 logs = list(reader)
         except FileNotFoundError:
-            pass  # If the file doesn't exist, we'll create it later
+            # If the file doesn't exist, it will be created automatically later,
+            # but it should be ensured here that the parent directory exists
+            self._log_file.parent.mkdir(parents=True, exist_ok=True)
+            pass
 
         # Check if we need to update an existing log with the identifier
         for i, row in enumerate(logs):
