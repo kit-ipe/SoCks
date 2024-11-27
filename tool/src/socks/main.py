@@ -146,7 +146,10 @@ try:
     project_cfg_model = project_model_class(**project_cfg)
 except pydantic.ValidationError as e:
     for err in e.errors():
-        print(f"Error: {err['msg']} when analyzing {' -> '.join(err['loc'])}")
+        pretty_print.print_error(
+            f"The following error occured while analyzing node '{' -> '.join(err['loc'])}' "
+            f"of the project configuration: {err['msg']}"
+        )
     sys.exit(1)
 
 # Create builder objects

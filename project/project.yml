@@ -23,7 +23,7 @@ blocks:
 #        kernel: "temp/kernel/output/kernel.tar.gz"
 #    container:
 #      image: "petalinux-rootfs-builder-alma8"
-#      tag: "xilinx-v{{externalTools/xilinx/version}}"
+#      tag: "socks"
   vivado:
     builder: "ZynqMP_AMD_Vivado_IPBB_Builder"
     project:
@@ -54,4 +54,4 @@ blocks:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "alma9-rootfs-builder-alma9"
-      tag: "v1.0"
+      tag: "socks"

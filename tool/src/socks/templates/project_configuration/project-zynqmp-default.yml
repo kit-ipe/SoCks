@@ -18,7 +18,7 @@ blocks:
       # If no 'import_src' property is specified, the block must be built locally
     container:
       image: "atf-builder-alma9"
-      tag: "xilinx-v{{external_tools/xilinx/version}}"
+      tag: "socks"
   devicetree:
     source: "build"
     builder: "ZynqMP_AMD_Devicetree_Builder"
@@ -31,7 +31,7 @@ blocks:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "amd-xilinx-tools-alma8"
-      tag: "xilinx-v{{external_tools/xilinx/version}}"
+      tag: "socks"
   fsbl:
     source: "build"
     builder: "ZynqMP_AMD_FSBL_Builder"
@@ -41,7 +41,7 @@ blocks:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "amd-xilinx-tools-alma8"
-      tag: "xilinx-v{{external_tools/xilinx/version}}"
+      tag: "socks"
   kernel:
     source: "build"
     builder: "ZynqMP_AMD_Kernel_Builder"
@@ -53,7 +53,7 @@ blocks:
       add_build_info: false
     container:
       image: "kernel-builder-alma9"
-      tag: "xilinx-v{{external_tools/xilinx/version}}"
+      tag: "socks"
   pmu_fw:
     source: "build"
     builder: "ZynqMP_AMD_PMUFW_Builder"
@@ -63,7 +63,7 @@ blocks:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "amd-xilinx-tools-alma8"
-      tag: "xilinx-v{{external_tools/xilinx/version}}"
+      tag: "socks"
   uboot:
     source: "build"
     builder: "ZynqMP_AMD_UBoot_Builder"
@@ -77,7 +77,7 @@ blocks:
         atf: "temp/atf/output/atf.tar.gz"
     container:
       image: "kernel-builder-alma9"
-      tag: "xilinx-v{{external_tools/xilinx/version}}"
+      tag: "socks"
   vivado:
     source: "build"
     # Property 'builder' must be specified outside this default project configuration file
@@ -86,7 +86,7 @@ blocks:
       # If no 'import_src' property is specified, the block must be built locally
     container:
       image: "amd-xilinx-tools-alma8"
-      tag: "xilinx-v{{external_tools/xilinx/version}}"
+      tag: "socks"
   image:
     source: "build"
     builder: "ZynqMP_AMD_Image_Builder"
@@ -102,4 +102,4 @@ blocks:
         vivado: "temp/vivado/output/vivado.tar.gz"
     container:
       image: "amd-image-builder-alma9"
-      tag: "xilinx-v{{external_tools/xilinx/version}}"
+      tag: "socks"

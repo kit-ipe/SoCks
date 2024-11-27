@@ -17,7 +17,12 @@ class Containerization:
     """
 
     def __init__(
-        self, container_tool: str, container_file: pathlib.Path, container_image: str, container_log_file: pathlib.Path
+        self,
+        container_tool: str,
+        container_file: pathlib.Path,
+        container_image: str,
+        container_image_tag: str,
+        container_log_file: pathlib.Path,
     ):
 
         if container_tool not in ["docker", "podman", "none"]:
@@ -29,13 +34,17 @@ class Containerization:
         results = Shell_Command_Runners.get_sh_results([container_tool, "--version"])
         installation_valid = True
         if container_tool == "docker":
-            installation_valid = results.returncode == 0 and any("Docker version" in s for s in results.stdout.splitlines())
+            installation_valid = results.returncode == 0 and any(
+                "Docker version" in s for s in results.stdout.splitlines()
+            )
         if container_tool == "podman":
-            installation_valid = results.returncode == 0 and any("podman version" in s for s in results.stdout.splitlines())
+            installation_valid = results.returncode == 0 and any(
+                "podman version" in s for s in results.stdout.splitlines()
+            )
         if not installation_valid:
             pretty_print.print_error(
-                f"It seems that the selected container tool '{container_tool}' is not installed correctly. " +
-                f"(This was detected by analysing the output of '{container_tool} --version')"
+                f"It seems that the selected container tool '{container_tool}' is not installed correctly. "
+                + f"(This was detected by analysing the output of '{container_tool} --version')"
             )
             sys.exit(1)
 
@@ -44,7 +53,7 @@ class Containerization:
         # The container file to be user as source for building.
         self._container_file = container_file
         # Identifier of the container image in format <image name>:<image tag>.
-        self._container_image = container_image
+        self._container_image_tagged = f"{container_image}:{container_image_tag}"
 
         # Timestamp logger
         self._container_log = Timestamp_Logger(container_log_file)
@@ -97,7 +106,7 @@ class Containerization:
 
         # Get last build timestamp
         last_build_timestamp = self._container_log.get_logged_timestamp(
-            identifier=f"{self._container_tool}-image-{self._container_image}-built"
+            identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
         )
         # Get last modification time of the container file
         last_file_mod_timestamp = self._container_file.stat().st_mtime
@@ -106,13 +115,13 @@ class Containerization:
             if self._container_tool == "docker":
                 host_user = os.getlogin()
                 host_user_id = os.getuid()
-                pretty_print.print_build(f"Building docker image {self._container_image}...")
+                pretty_print.print_build(f"Building docker image {self._container_image_tagged}...")
                 Shell_Command_Runners.run_sh_command(
                     [
                         "docker",
                         "build",
                         "-t",
-                        self._container_image,
+                        self._container_image_tagged,
                         "-f",
                         str(self._container_file),
                         "--build-arg",
@@ -124,17 +133,19 @@ class Containerization:
                 )
 
             elif self._container_tool == "podman":
-                pretty_print.print_build(f"Building podman image {self._container_image}...")
+                pretty_print.print_build(f"Building podman image {self._container_image_tagged}...")
                 Shell_Command_Runners.run_sh_command(
-                    ["podman", "build", "-t", self._container_image, "-f", str(self._container_file), "."]
+                    ["podman", "build", "-t", self._container_image_tagged, "-f", str(self._container_file), "."]
                 )
 
             else:
                 raise ValueError(f"Unexpected container tool: {self._container_tool}")
 
-            self._container_log.log_timestamp(identifier=f"{self._container_tool}-image-{self._container_image}-built")
+            self._container_log.log_timestamp(
+                identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
+            )
         else:
-            pretty_print.print_build(f"No need to build {self._container_tool} image {self._container_image}...")
+            pretty_print.print_build(f"No need to build {self._container_tool} image {self._container_image_tagged}...")
 
     def clean_container_image(self):
         """
@@ -154,14 +165,16 @@ class Containerization:
         if self._container_tool in ("docker", "podman"):
             # Clean image only if it exists
             results = Shell_Command_Runners.get_sh_results(
-                [self._container_tool, "images", "-q", self._container_image]
+                [self._container_tool, "images", "-q", self._container_image_tagged]
             )
             if results.stdout.splitlines():
-                pretty_print.print_build(f"Cleaning container image {self._container_image}...")
-                Shell_Command_Runners.run_sh_command([self._container_tool, "image", "rm", self._container_image])
+                pretty_print.print_build(f"Cleaning container image {self._container_image_tagged}...")
+                Shell_Command_Runners.run_sh_command(
+                    [self._container_tool, "image", "rm", self._container_image_tagged]
+                )
             else:
                 pretty_print.print_build(
-                    f"No need to clean container image {self._container_image}, " "the image doesn't exist..."
+                    f"No need to clean container image {self._container_image_tagged}, " "the image doesn't exist..."
                 )
 
         elif self._container_tool == "none":
@@ -223,7 +236,7 @@ class Containerization:
             Shell_Command_Runners.run_sh_command(
                 [self._container_tool, "run", "--rm", "-it", user_opt, mounts]
                 + custom_params
-                + [self._container_image, "sh", "-c", comp_commands]
+                + [self._container_image_tagged, "sh", "-c", comp_commands]
             )
 
         elif self._container_tool == "none":
@@ -304,7 +317,7 @@ class Containerization:
 
             try:
                 Shell_Command_Runners.run_sh_command(
-                    [self._container_tool, "run", "--rm", "-it", mounts, self._container_image]
+                    [self._container_tool, "run", "--rm", "-it", mounts, self._container_image_tagged]
                 )
             except subprocess.CalledProcessError:
                 pass  # It is okay if the interactive shell session is ended with an exit code not equal to 0
@@ -372,7 +385,7 @@ class Containerization:
                     "--xauth=trusted",
                     "--user=RETAIN",
                     mounts,
-                    self._container_image,
+                    self._container_image_tagged,
                     f"--runasuser={comp_commands}",
                 ]
             )
@@ -389,7 +402,7 @@ class Containerization:
                     "--cap-default",
                     "--user=RETAIN",
                     mounts,
-                    self._container_image,
+                    self._container_image_tagged,
                     f"--runasuser={comp_commands}",
                 ]
             )

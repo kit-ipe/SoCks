@@ -46,7 +46,10 @@ class Builder(Containerization):
             self.project_cfg = model_class(**project_cfg)
         except pydantic.ValidationError as e:
             for err in e.errors():
-                pretty_print.print_error(f"{err['msg']} when analyzing {' -> '.join(err['loc'])}")
+                pretty_print.print_error(
+                    f"The following error occured while analyzing node '{' -> '.join(err['loc'])}' "
+                    f"of the project configuration: {err['msg']}"
+                )
             sys.exit(1)
 
         self.block_cfg = getattr(self.project_cfg.blocks, block_id)
@@ -122,11 +125,11 @@ class Builder(Containerization):
         self._build_log = Timestamp_Logger(log_file=self._block_temp_dir / ".build_log.csv")
 
         # Containerization
-        container_image = f"{self.block_cfg.container.image}:socks"
         super().__init__(
             container_tool=self.project_cfg.external_tools.container_tool,
-            container_image=container_image,
-            container_file=self._container_dir / f"{container_image}.containerfile",
+            container_image=self.block_cfg.container.image,
+            container_image_tag=self.block_cfg.container.tag,
+            container_file=self._container_dir / f"{self.block_cfg.container.image}.containerfile",
             container_log_file=self._project_temp_dir / ".container_log.csv",
         )
 

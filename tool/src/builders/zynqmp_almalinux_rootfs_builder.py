@@ -397,7 +397,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             f"chroot {self._build_dir} /bin/bash /tmp/users/add_users.sh",
             f"rm -rf {self._build_dir}/tmp/users",
             # The QEMU binary if only required during build, so delete it if it exists
-            f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static"
+            f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
