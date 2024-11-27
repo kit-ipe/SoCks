@@ -79,6 +79,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
+            self.block_cmds["prepare"].insert(0, self.provide_srcs_tpl)
             self.block_cmds["prepare"].extend([self.init_repo, self.apply_patches, self.yocto_init])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend(

@@ -1,6 +1,7 @@
 import typing
 import os
 import pathlib
+import importlib.resources
 import shutil
 import sys
 import datetime
@@ -20,6 +21,7 @@ import socks.pretty_print as pretty_print
 from socks.shell_command_runners import Shell_Command_Runners
 from socks.timestamp_logger import Timestamp_Logger
 from socks.containerization import Containerization
+import builders
 
 
 class Builder(Containerization):
@@ -76,9 +78,10 @@ class Builder(Containerization):
         self._git_local_ref_branch = "__ref"
         self._git_local_dev_branch = "__temp"
 
-        # SoCks directorys (ToDo: If there is more like this needed outside of the blocks, maybe there should be a SoCks or tool class)
+        # SoCks directorys
         self._socks_dir = socks_dir
         self._container_dir = self._socks_dir / "container"
+        self._builders_dir = pathlib.Path(importlib.resources.files(builders))
 
         # Project directories
         self._project_dir = project_dir
@@ -1149,6 +1152,66 @@ class Builder(Containerization):
         self.run_containerizable_sh_command(
             commands=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )
+
+    def provide_srcs_tpl(self):
+        """
+        This function checks whether there are already sources for this block
+        and, if not, offers the user to import source code templates.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # If there are already sources, there is nothing to do
+        if self._block_src_dir.is_dir():
+            return
+
+        templates = list(
+            (self._builders_dir / "templates" / "block_srcs" / self.__class__.__name__.lower()).glob("*.tar.gz")
+        )
+
+        # Stop program execution if no templates are available
+        if not templates:
+            pretty_print.print_error(
+                f"Block '{self.block_id}' requires source files, "
+                f"but the following directory is missing: {self._block_src_dir}"
+            )
+            sys.exit(1)
+
+        # Let the user select a template
+        pretty_print.print_warning(
+            f"Block '{self.block_id}' requires source files, but none were found. "
+            "Please select one of the following templates:\n"
+        )
+        for i, item in enumerate(templates):
+            print(f"{i + 1}) {item.name.split('.')[0]}")
+
+        try:
+            while True:
+                choice = input("\nEnter number: ")
+
+                if not re.fullmatch(pattern="\d+", string=choice) or not 0 < int(choice) <= len(templates):
+                    print("Invalid choice, please try again.")
+                    continue
+
+                choice = int(choice) - 1
+                break
+        except KeyboardInterrupt:
+            print()
+            exit(1)
+
+        # Import template
+        pretty_print.print_build(f"Importing template {choice + 1} into the project...")
+        self._block_src_dir.mkdir(parents=True)
+        with tarfile.open(templates[choice], "r:*") as archive:
+            # Extract all contents to the output directory
+            archive.extractall(path=self._block_src_dir)
 
     def clean_repo(self):
         """

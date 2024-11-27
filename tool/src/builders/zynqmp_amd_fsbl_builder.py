@@ -60,6 +60,7 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
                 [
+                    self.provide_srcs_tpl,
                     self.build_container_image,
                     self.import_dependencies,
                     self.import_xsa,

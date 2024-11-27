@@ -67,7 +67,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
         self.block_cmds = {"prepare": [], "build": [], "prebuild": [], "clean": [], "start-container": []}
-        self.block_cmds["prepare"].extend([self.build_container_image, self.import_dependencies, self.enable_multiarch])
+        self.block_cmds["prepare"].extend(
+            [self.provide_srcs_tpl, self.build_container_image, self.import_dependencies, self.enable_multiarch]
+        )
         self.block_cmds["clean"].extend(
             [
                 self.build_container_image,
