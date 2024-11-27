@@ -260,15 +260,15 @@ class Containerization:
         pretty_print.print_build("Activating multiarch support for containers...")
 
         if self._container_tool == "docker":
-            Shell_Command_Runners.run_sh_command(["docker", "pull", "multiarch/qemu-user-static"])
+            Shell_Command_Runners.run_sh_command(["docker", "pull", "multiarch/qemu-user-static:register"])
             Shell_Command_Runners.run_sh_command(
-                ["docker", "run", "--rm", "--privileged", "multiarch/qemu-user-static", "--reset", "-p", "yes"]
+                ["docker", "run", "--rm", "--privileged", "multiarch/qemu-user-static:register", "--reset"]
             )
 
         elif self._container_tool == "podman":
-            Shell_Command_Runners.run_sh_command(["sudo", "podman", "pull", "multiarch/qemu-user-static"])
+            Shell_Command_Runners.run_sh_command(["sudo", "podman", "pull", "multiarch/qemu-user-static:register"])
             Shell_Command_Runners.run_sh_command(
-                ["sudo", "podman", "run", "--rm", "--privileged", "multiarch/qemu-user-static", "--reset", "-p", "yes"]
+                ["sudo", "podman", "run", "--rm", "--privileged", "multiarch/qemu-user-static:register", "--reset"]
             )
 
         elif self._container_tool == "none":

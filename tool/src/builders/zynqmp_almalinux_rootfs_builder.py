@@ -166,11 +166,18 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
         dnf_base_command = f"dnf -y --nodocs --verbose -c {dnf_conf_file} --releasever={self.block_cfg.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
         base_rootfs_build_commands = [
-            dnf_base_command + "clean all",  # Clean all cache files generated from repository metadata
-            dnf_base_command + "update",  # Update all the installed packages
+            # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
+            f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+            f"    mkdir -p {self._build_dir}/usr/bin && "
+            f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+            f"fi",
+            # Clean all cache files generated from repository metadata
+            dnf_base_command + "clean all",
+            # Update all the installed packages
+            dnf_base_command + "update",
             'printf "\nInstall the base os via dnf group install...\n\n"',
-            dnf_base_command
-            + 'groupinstall --with-optional "Minimal Install"',  # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
+            # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
+            dnf_base_command + 'groupinstall --with-optional "Minimal Install"',
         ]
 
         if mod_base_install_script.is_file():
@@ -193,6 +200,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     dnf_base_command + "install " + " ".join(extra_pkgs),
                 ]
             )
+
+        # The QEMU binary if only required during build, so delete it if it exists
+        base_rootfs_build_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.run_containerizable_sh_command(
@@ -377,9 +387,17 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         pretty_print.print_build("Adding users...")
 
         add_users_commands = [
+            # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
+            f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+            f"    mkdir -p {self._build_dir}/usr/bin && "
+            f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+            f"fi",
+            # Add users
             f"cp -r {self._repo_dir / 'users'} {self._build_dir / 'tmp'}",
             f"chroot {self._build_dir} /bin/bash /tmp/users/add_users.sh",
             f"rm -rf {self._build_dir}/tmp/users",
+            # The QEMU binary if only required during build, so delete it if it exists
+            f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static"
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.

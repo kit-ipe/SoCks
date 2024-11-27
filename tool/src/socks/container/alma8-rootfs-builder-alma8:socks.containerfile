@@ -1,4 +1,8 @@
+FROM multiarch/qemu-user-static:x86_64-aarch64 AS qemu
 FROM almalinux:8
+
+# Install QEMU binary to run aarch64 binaries on an x86 architecture
+COPY --from=qemu /usr/bin/qemu-aarch64-static /usr/bin
 
 # Build-time variables
 ARG user_name=root
