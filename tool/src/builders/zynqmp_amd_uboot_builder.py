@@ -74,8 +74,9 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
                     self.build_container_image,
                     self.import_dependencies,
                     self.init_repo,
-                    self.copy_atf,
                     self.apply_patches,
+                    self.provide_srcs_tpl,
+                    self.copy_atf,
                 ]
             )
             self.block_cmds["build"].extend(self.block_cmds["prepare"])

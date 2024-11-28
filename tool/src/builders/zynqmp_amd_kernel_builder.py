@@ -59,7 +59,9 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend([self.build_container_image, self.init_repo, self.apply_patches])
+            self.block_cmds["prepare"].extend(
+                [self.build_container_image, self.init_repo, self.apply_patches, self.provide_srcs_tpl]
+            )
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_kernel, self.export_modules, self.export_block_package])
             self.block_cmds["create-patches"].extend([self.create_patches])
