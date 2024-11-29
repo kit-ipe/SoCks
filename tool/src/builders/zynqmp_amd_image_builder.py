@@ -48,7 +48,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         self._sdc_image_name = f"{self.project_cfg.project.name}_sd_card.img"
 
         # Project directories
-        self._misc_dir = self._block_src_dir / "misc"
+        self._config_dir = self._block_src_dir / "config"
 
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
@@ -124,7 +124,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
 
         potential_mounts = [
             (pathlib.Path(self._amd_tools_path), "ro"),
-            (self._misc_dir, "Z"),
+            (self._config_dir, "Z"),
             (self._dependencies_dir, "Z"),
             (self._work_dir, "Z"),
             (self._output_dir, "Z"),
@@ -157,7 +157,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             sys.exit(1)
         elif not ramfs_archives:
             # Check if a ramfs archive is needed
-            with open(self._misc_dir / "image.its.tpl", "r") as file:
+            with open(self._config_dir / "image.its.tpl", "r") as file:
                 if "<RAMFS_IMG_PATH>" in file.read():
                     pretty_print.print_error(
                         f'Block \'{self.block_id}\' needs input from block \'ramfs\', but it was not found in {self._dependencies_dir / "ramfs"}.'
@@ -167,7 +167,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         # Check whether the Linux image needs to be built
         if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
             src_search_list=[
-                self._misc_dir / "image.its.tpl",
+                self._config_dir / "image.its.tpl",
                 self._dependencies_dir / "kernel",
                 self._dependencies_dir / "devicetree",
                 self._dependencies_dir / "ramfs",
@@ -185,7 +185,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         pretty_print.print_build("Building Linux Image...")
 
         linux_img_build_commands = [
-            f"cp {self._misc_dir}/image.its.tpl {self._work_dir}/image.its",
+            f"cp {self._config_dir}/image.its.tpl {self._work_dir}/image.its",
             f'sed -i "s:<KERNEL_IMG_PATH>:{self._kernel_img_path}:g;" {self._work_dir}/image.its',
             f'sed -i "s:<DT_IMG_PATH>:{self._dt_img_path}:g;" {self._work_dir}/image.its',
         ]
@@ -198,7 +198,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         self.run_containerizable_sh_command(
             commands=linux_img_build_commands,
             dirs_to_mount=[
-                (self._misc_dir, "Z"),
+                (self._config_dir, "Z"),
                 (self._dependencies_dir, "Z"),
                 (self._work_dir, "Z"),
                 (self._output_dir, "Z"),
@@ -224,7 +224,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
 
         # Check whether the boot script image needs to be built
         if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
-            src_search_list=[self._misc_dir / "boot.cmd"],
+            src_search_list=[self._config_dir / "boot.cmd"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
@@ -237,11 +237,11 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         pretty_print.print_build("Building boot.scr...")
 
         bootscr_img_build_commands = [
-            f"mkimage -c none -A arm -T script -d {self._misc_dir}/boot.cmd {self._output_dir}/boot.scr"
+            f"mkimage -c none -A arm -T script -d {self._config_dir}/boot.cmd {self._output_dir}/boot.scr"
         ]
 
         self.run_containerizable_sh_command(
-            commands=bootscr_img_build_commands, dirs_to_mount=[(self._misc_dir, "Z"), (self._output_dir, "Z")]
+            commands=bootscr_img_build_commands, dirs_to_mount=[(self._config_dir, "Z"), (self._output_dir, "Z")]
         )
 
         # Log success of this function
@@ -274,7 +274,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files
             + [
-                self._misc_dir / "bootgen.bif.tpl",
+                self._config_dir / "bootgen.bif.tpl",
                 self._fsbl_img_path,
                 self._pmufw_img_path,
                 self._vivado_bitfile_path,
@@ -300,7 +300,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         boot_img_build_commands = [
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"source {self._amd_vitis_path}/settings64.sh",
-            f"cp {self._misc_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif",
+            f"cp {self._config_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif",
             f'sed -i "s:<FSBL_PATH>:{self._fsbl_img_path}:g;" {self._work_dir}/bootgen.bif',
             f'sed -i "s:<PMUFW_PATH>:{self._pmufw_img_path}:g;" {self._work_dir}/bootgen.bif',
             f'sed -i "s:<PLBIT_PATH>:{self._vivado_bitfile_path}:g;" {self._work_dir}/bootgen.bif',
@@ -316,7 +316,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             commands=boot_img_build_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
-                (self._misc_dir, "Z"),
+                (self._config_dir, "Z"),
                 (self._dependencies_dir, "Z"),
                 (self._work_dir, "Z"),
                 (self._output_dir, "Z"),
