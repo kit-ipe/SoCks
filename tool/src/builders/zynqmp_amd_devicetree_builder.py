@@ -70,7 +70,6 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
                 [
-                    self.provide_srcs_tpl,
                     self.build_container_image,
                     self.import_dependencies,
                     self.init_repo,
@@ -88,6 +87,22 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
+
+    def validate_srcs(self):
+        """
+        Check whether all sources required to build this block are present.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self.import_src_tpl()
 
     def prepare_dt_sources(self):
         """

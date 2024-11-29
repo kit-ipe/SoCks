@@ -79,7 +79,6 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].insert(0, self.provide_srcs_tpl)
             self.block_cmds["prepare"].extend([self.init_repo, self.apply_patches, self.yocto_init])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend(
@@ -96,6 +95,22 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             self.block_cmds["build"].extend(
                 [self.import_prebuilt, self.add_kmodules, self.build_archive, self.export_block_package]
             )
+
+    def validate_srcs(self):
+        """
+        Check whether all sources required to build this block are present.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self.import_src_tpl()
 
     def init_repo(self):
         """

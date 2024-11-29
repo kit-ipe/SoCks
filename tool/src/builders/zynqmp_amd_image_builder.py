@@ -81,9 +81,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend(
-                [self.provide_srcs_tpl, self.build_container_image, self.import_dependencies]
-            )
+            self.block_cmds["prepare"].extend([self.build_container_image, self.import_dependencies])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.linux_img, self.bootscr_img, self.boot_img])
             self.block_cmds["build-sd-card"].extend(self.block_cmds["build"])
@@ -91,6 +89,22 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
+
+    def validate_srcs(self):
+        """
+        Check whether all sources required to build this block are present.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self.import_src_tpl()
 
     def start_container(self):
         """

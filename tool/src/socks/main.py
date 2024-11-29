@@ -275,7 +275,7 @@ def main():
             active_blocks = list(project_cfg["blocks"])
         elif block_cmd in group_cmds:
             active_blocks = add_active_blocks(block=target_block, active_blocks=[], project_cfg=project_cfg)
-        elif block_cmd not in group_cmds:
+        else:
             pretty_print.print_error(f"The following command cannot be executed on a group of blocks: {block_cmd}.")
             sys.exit(1)
         active_blocks = sort_blocks(blocks=active_blocks, project_cfg=project_cfg)
@@ -285,15 +285,22 @@ def main():
     else:
         active_blocks = [target_block]
 
+    if block_cmd not in ["clean", "start-container", "start-vivado-gui", "prep-clean-srcs"]:
+        # Validate sources of all active blocks
+        for block in active_blocks:
+            builder_name = project_cfg["blocks"][block]["builder"]
+            builder = builders[builder_name]
+            builder.validate_srcs()
+
     # If necessary, issue warnings before building and ask the user for permission
-    pre_build_warnings = []
+    pre_action_warnings = []
     for block in active_blocks:
         builder_name = project_cfg["blocks"][block]["builder"]
         builder = builders[builder_name]
-        for warning in builder.pre_build_warnings:
-            pre_build_warnings.append(f"Block '{builder.block_id}': " + warning)
-    if pre_build_warnings:
-        for warning in pre_build_warnings:
+        for warning in builder.pre_action_warnings:
+            pre_action_warnings.append(f"Block '{builder.block_id}': " + warning)
+    if pre_action_warnings:
+        for warning in pre_action_warnings:
             pretty_print.print_warning(warning)
         print(f"\nPlease read the warnings above carefully. Do you really want to continue? (y/n) ", end="")
         answer = input("")

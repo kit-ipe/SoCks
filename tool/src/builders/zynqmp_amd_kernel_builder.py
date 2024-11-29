@@ -60,7 +60,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
         )
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
-                [self.build_container_image, self.init_repo, self.apply_patches, self.provide_srcs_tpl]
+                [self.build_container_image, self.init_repo, self.apply_patches, self.import_clean_srcs]
             )
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_kernel, self.export_modules, self.export_block_package])
@@ -73,6 +73,28 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
+
+    def validate_srcs(self):
+        """
+        Check whether all sources required to build this block are present.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if not self._block_src_dir.is_dir():
+            self.pre_action_warnings.append(
+                "This block requires source files, but none were found. "
+                "If you proceed, SoCks will automatically generate clean sources and add them to your project."
+            )
+            # Function 'import_clean_srcs' is called with block command 'prepare' at a suitable stage.
+            # Calling it here would not make sense, because the  repo might not be ready yet.
 
     def run_menuconfig(self):
         """

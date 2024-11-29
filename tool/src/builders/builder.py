@@ -41,7 +41,7 @@ class Builder(Containerization):
     ):
         self.block_id = block_id
         self.block_description = block_description
-        self.pre_build_warnings = []
+        self.pre_action_warnings = []
 
         # Initialize block model
         try:
@@ -450,7 +450,7 @@ class Builder(Containerization):
                     f"The following setting in blocks/{self.block_id}/project/build_srcs/source does not point to a directory: {self.block_cfg.project.build_srcs.source}"
                 )
                 sys.exit(1)
-            self.pre_build_warnings.append(
+            self.pre_action_warnings.append(
                 f"The following local project source will be used for this block: {local_source_dir}. "
                 "SoCks will operate on this directory, create local branches, apply patches, build binaries, etc."
             )
@@ -504,7 +504,7 @@ class Builder(Containerization):
                         f"The following setting in blocks/{self.block_id}/project/build_srcs/source[{index}] does not point to a directory: {self.block_cfg.project.build_srcs[index].source}"
                     )
                     sys.exit(1)
-                self.pre_build_warnings.append(
+                self.pre_action_warnings.append(
                     f"The following local project source will be used for this block: {local_source_dirs[-1]}. "
                     "SoCks will operate on this directory, create local branches, apply patches, build binaries, etc."
                 )
@@ -530,6 +530,21 @@ class Builder(Containerization):
                 )
 
         return local_source_dirs, source_repos
+
+    def validate_srcs(self):
+        """
+        Check whether all sources required to build this block are present.
+        This is a dummy function. Overwrite it in a child class to add functionality.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
 
     def _compose_build_info(self) -> str:
         """
@@ -1127,7 +1142,8 @@ class Builder(Containerization):
 
     def _prep_clean_srcs(self, prep_srcs_commands: typing.List[str]):
         """
-        This function is intended to create a new, clean Linux kernel or U-Boot project. After the creation of the project you should create a patch that includes .gitignore and .config.
+        This function is intended to create a new, clean Linux kernel or U-Boot project.
+        After the creation of the project you should create a patch that includes .gitignore and .config.
 
         Args:
             menuconfig_commands:
@@ -1154,10 +1170,56 @@ class Builder(Containerization):
             commands=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )
 
-    def provide_srcs_tpl(self):
+    def import_clean_srcs(self):
         """
         This function checks whether there are already sources for this block
-        and, if not, offers the user to import source code templates.
+        and, if not, offers the user to prepare and import a source code template.
+        This is only possible for blocks that have a definition of the function prep_clean_srcs.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            AttributeError:
+                If the object does not have the method 'prep_clean_srcs'
+        """
+
+        if not hasattr(self, "prep_clean_srcs"):
+            raise AttributeError(
+                f"Object of type {self.__class__.__name__} does not have the expected method 'prep_clean_srcs'"
+            )
+
+        # If there are already sources, there is nothing to do
+        if self._block_src_dir.is_dir():
+            return
+
+        # Check if there are uncommited changes in the git repo
+        results = Shell_Command_Runners.get_sh_results(
+            ["git", "-C", str(self._source_repo_dir), "status", "--porcelain"]
+        )
+        if results.stdout:
+            pretty_print.print_error(
+                f"Unable to create clean sources, because there are uncommited changes in {self._source_repo_dir}. "
+                f"Please commit the changes or clean this block ({self.block_id})."
+            )
+            sys.exit(1)
+
+        # Prepare clean sources and create patch
+        self.prep_clean_srcs()
+        pretty_print.print_build("Creating a commit with the clean sources...")
+        Shell_Command_Runners.run_sh_command(["git", "-C", str(self._source_repo_dir), "add", "."])
+        Shell_Command_Runners.run_sh_command(
+            ["git", "-C", str(self._source_repo_dir), "commit", "-m", "'Add default config'"]
+        )
+        self.create_patches()
+
+    def import_src_tpl(self):
+        """
+        This function checks whether there are already sources for this block
+        and, if not, offers the user to import a source code template.
 
         Args:
             None
@@ -1171,29 +1233,6 @@ class Builder(Containerization):
 
         # If there are already sources, there is nothing to do
         if self._block_src_dir.is_dir():
-            return
-
-        # If this object has a prep_clean_srcs method, this method must be used to create sources
-        if hasattr(self, "prep_clean_srcs"):
-            # Check if there are uncommited changes in the git repo
-            results = Shell_Command_Runners.get_sh_results(
-                ["git", "-C", str(self._source_repo_dir), "status", "--porcelain"]
-            )
-            if results.stdout:
-                pretty_print.print_error(
-                    f"Unable to create clean sources, because there are uncommited changes in {self._source_repo_dir}. "
-                    f"Please commit the changes or clean this block ({self.block_id})."
-                )
-                sys.exit(1)
-
-            # Prepare clean sources and create patch
-            self.prep_clean_srcs()
-            pretty_print.print_build("Creating a commit with the clean sources...")
-            Shell_Command_Runners.run_sh_command(["git", "-C", str(self._source_repo_dir), "add", "."])
-            Shell_Command_Runners.run_sh_command(
-                ["git", "-C", str(self._source_repo_dir), "commit", "-m", "'Add default config'"]
-            )
-            self.create_patches()
             return
 
         # Check if there are source templates that can be imported for this builder
