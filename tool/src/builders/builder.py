@@ -4,7 +4,7 @@ import pathlib
 import importlib.resources
 import shutil
 import sys
-import datetime
+from datetime import datetime
 from dateutil import parser
 import urllib
 import requests
@@ -981,7 +981,8 @@ class Builder(Containerization):
             None
         """
 
-        block_pkg_path = self._output_dir / f"{self.block_id}.tar.gz"
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        block_pkg_path = self._output_dir / f"{self.block_id}_{self.project_cfg.project.name}_{timestamp}.tar.gz"
 
         # Check whether there is something to export
         if not self._output_dir.is_dir() or not any(self._output_dir.iterdir()):
@@ -1030,10 +1031,20 @@ class Builder(Containerization):
         """
 
         for dependency in self.block_cfg.project.dependencies.model_fields:
-            block_pkg_rel_path = getattr(self.block_cfg.project.dependencies, dependency)
-            if block_pkg_rel_path is None:
+            block_pkg_cfg_str = getattr(self.block_cfg.project.dependencies, dependency)
+            if block_pkg_cfg_str is None:
                 continue
-            block_pkg_path = self._project_dir / block_pkg_rel_path
+
+            block_pkgs_parent = (self._project_dir / block_pkg_cfg_str).parent
+            block_pkgs_name = (self._project_dir / block_pkg_cfg_str).name
+            block_pkgs = list(block_pkgs_parent.glob(block_pkgs_name))
+
+            # Check if there is more than one block package in the directory
+            if len(block_pkgs) != 1:
+                pretty_print.print_error(f"Not exactly one block package that matches '{block_pkg_cfg_str}'.")
+                sys.exit(1)
+
+            block_pkg_path = block_pkgs[0]
             import_path = self._dependencies_dir / dependency
             block_pkg_md5_file = self._dependencies_dir / f"block_pkg_{dependency}.md5"
 

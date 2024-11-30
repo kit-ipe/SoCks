@@ -28,7 +28,7 @@ blocks:
         branch: "xilinx_v{{external_tools/xilinx/version}}"
       # If no 'import_src' property is specified, the block must be built locally
       dependencies:
-        vivado: "temp/vivado/output/vivado.tar.gz"
+        vivado: "temp/vivado/output/vivado*.tar.gz"
     container:
       image: "amd-xilinx-tools-alma8"
       tag: "socks"
@@ -38,7 +38,7 @@ blocks:
     project:
       # If no 'import_src' property is specified, the block must be built locally
       dependencies:
-        vivado: "temp/vivado/output/vivado.tar.gz"
+        vivado: "temp/vivado/output/vivado*.tar.gz"
     container:
       image: "amd-xilinx-tools-alma8"
       tag: "socks"
@@ -60,7 +60,7 @@ blocks:
     project:
       # If no 'import_src' property is specified, the block must be built locally
       dependencies:
-        vivado: "temp/vivado/output/vivado.tar.gz"
+        vivado: "temp/vivado/output/vivado*.tar.gz"
     container:
       image: "amd-xilinx-tools-alma8"
       tag: "socks"
@@ -74,7 +74,7 @@ blocks:
       # If no 'import_src' property is specified, the block must be built locally
       add_build_info: false
       dependencies:
-        atf: "temp/atf/output/atf.tar.gz"
+        atf: "temp/atf/output/atf*.tar.gz"
     container:
       image: "kernel-builder-alma9"
       tag: "socks"
@@ -93,13 +93,13 @@ blocks:
     project:
       # If no 'import_src' property is specified, the block must be built locally
       dependencies:
-        atf: "temp/atf/output/atf.tar.gz"
-        devicetree: "temp/devicetree/output/devicetree.tar.gz"
-        fsbl: "temp/fsbl/output/fsbl.tar.gz"
-        kernel: "temp/kernel/output/kernel.tar.gz"
-        pmu_fw: "temp/pmu_fw/output/pmu_fw.tar.gz"
-        uboot: "temp/uboot/output/uboot.tar.gz"
-        vivado: "temp/vivado/output/vivado.tar.gz"
+        atf: "temp/atf/output/atf*.tar.gz"
+        devicetree: "temp/devicetree/output/devicetree*.tar.gz"
+        fsbl: "temp/fsbl/output/fsbl*.tar.gz"
+        kernel: "temp/kernel/output/kernel*.tar.gz"
+        pmu_fw: "temp/pmu_fw/output/pmu_fw*.tar.gz"
+        uboot: "temp/uboot/output/uboot*.tar.gz"
+        vivado: "temp/vivado/output/vivado*.tar.gz"
     container:
       image: "amd-image-builder-alma9"
       tag: "socks"
