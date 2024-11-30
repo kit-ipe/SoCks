@@ -955,11 +955,12 @@ class Builder(Containerization):
 
         pretty_print.print_build("Importing pre-built block package...")
 
-        # Copy block package
-        shutil.copy(prebuilt_block_package, self._output_dir / prebuilt_block_package.name)
+        # Import block package
+        imported_block_package = self._output_dir / (f"{self.block_id}_import"+"".join(prebuilt_block_package.suffixes))
+        shutil.copy(prebuilt_block_package, imported_block_package)
 
         # Extract pre-built files
-        with tarfile.open(self._output_dir / prebuilt_block_package.name, "r:*") as archive:
+        with tarfile.open(imported_block_package, "r:*") as archive:
             # Extract all contents to the output directory
             archive.extractall(path=self._output_dir)
 
