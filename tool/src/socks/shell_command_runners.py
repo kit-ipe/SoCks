@@ -1,6 +1,8 @@
 import typing
 import pathlib
+import shutil
 import sys
+import re
 import select
 import subprocess
 
@@ -18,7 +20,7 @@ class Shell_Command_Runners:
         cwd: pathlib.Path = None,
         logfile: pathlib.Path = None,
         scrolling_output: bool = False,
-        visible_lines: int = 20,
+        visible_lines: int = 30,
     ):
         """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
@@ -54,6 +56,13 @@ class Shell_Command_Runners:
             subprocess.run(" ".join(command), shell=True, cwd=cwd, check=True)
             return
 
+        # Remove old logfile
+        if logfile != None:
+            logfile.unlink(missing_ok=True)
+
+        # Regex to strip ANSI escape sequences from strings
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
         # Prepare to process the command line output of the command
         printed_lines = 0
         last_lines = []
@@ -64,6 +73,13 @@ class Shell_Command_Runners:
             if len(last_lines) >= visible_lines:
                 last_lines.pop(0)
             last_lines.append(line)
+
+        # Tell the user where the complete output is logged
+        if logfile:
+            print(
+                "The output of this process is displayed in a scrolling view. "
+                f"You can find the full output here: {logfile}"
+            )
 
         # Start the subprocess
         process = subprocess.Popen(
@@ -84,6 +100,8 @@ class Shell_Command_Runners:
             stdout_line = None
             if process.stdout in readable:
                 stdout_line = process.stdout.readline()
+                # Strip all invisible elements from the end of the string (especially new line characters, etc.)
+                stdout_line = stdout_line.rstrip()
 
             stderr_line = None
             if process.stderr in readable:
@@ -97,9 +115,13 @@ class Shell_Command_Runners:
             if logfile:
                 with logfile.open("a") as f:
                     if stdout_line:
-                        print(stdout_line, file=f, end="")
+                        # Strip ANSI escape sequences as they cannot be printed to a file
+                        stdout_line = ansi_escape.sub("", stdout_line)
+                        print(stdout_line, file=f)
                     if stderr_line:
-                        print(stderr_line, file=f, end="")
+                        # Strip ANSI escape sequences as they cannot be printed to a file
+                        stderr_line = ansi_escape.sub("", stderr_line)
+                        print(stderr_line, file=f)
 
             # Show output of the command
             if stdout_line:
@@ -110,14 +132,18 @@ class Shell_Command_Runners:
             # Clear previous output
             for _ in range(printed_lines):
                 # Move the cursor up one line
-                print("\033[F", end="")
+                print("\033[F", end="", flush=True)
                 # Clear the line
-                print("\033[K", end="")
+                print("\033[K", end="", flush=True)
 
             # Print output
             printed_lines = 0
+            terminal_width = shutil.get_terminal_size().columns
             for line in last_lines:
-                print(line, end="", flush=True)
+                if len(line) > terminal_width:
+                    # Limit the line length to avoid wrapping
+                    line = line[:(terminal_width-3)] + "..."
+                print(line, end="\r\n", flush=True)
                 printed_lines += 1
 
         # Close the streams

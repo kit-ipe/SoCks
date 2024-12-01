@@ -189,8 +189,11 @@ class Containerization:
         commands: typing.List[str],
         dirs_to_mount: typing.List[typing.Tuple[pathlib.Path, str]] = [],
         custom_params: typing.List[str] = [],
-        run_as_root: bool = False,
         print_commands: bool = False,
+        run_as_root: bool = False,
+        logfile: pathlib.Path = None,
+        scrolling_output: bool = False,
+        visible_lines: int = 30,
     ):
         """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
@@ -204,10 +207,18 @@ class Containerization:
                 path and a string with the correspondig docker/podman volume mount options.
             custom_params:
                 Additional custom parameters that are passed to the containerization tool.
-            run_as_root:
-                Set to True if the command is to be run as root user.
             print_commands:
                 Set to True to print every shell command before it is executed in the container
+            run_as_root:
+                Set to True if the command is to be run as root user.
+            logfile:
+                Logfile as pathlib.Path object. None if no log file is to be used.
+            scrolling_output:
+                If True, the output of the sh command is printed in a scrolling view. The printed output is updated
+                at runtime and the latest lines are always displayed.
+            visible_lines:
+                Maximum number of sh output lines to be printed if scolling_output is True. If set to 0, no output
+                is visible.
 
         Returns:
             None
@@ -234,15 +245,23 @@ class Containerization:
             # Run commands in container
             user_opt = "-u root" if run_as_root else ""
             Shell_Command_Runners.run_sh_command(
-                [self._container_tool, "run", "--rm", "-it", user_opt, mounts]
+                command=[self._container_tool, "run", "--rm", "-it", user_opt, mounts]
                 + custom_params
-                + [self._container_image_tagged, "sh", "-c", comp_commands]
+                + [self._container_image_tagged, "sh", "-c", comp_commands],
+                logfile=logfile,
+                scrolling_output=scrolling_output,
+                visible_lines=visible_lines
             )
 
         elif self._container_tool == "none":
             # Run commands without using a container
             sudo_opt = "sudo" if run_as_root else ""
-            Shell_Command_Runners.run_sh_command([sudo_opt, "sh", "-c", comp_commands])
+            Shell_Command_Runners.run_sh_command(
+                command=[sudo_opt, "sh", "-c", comp_commands],
+                logfile=logfile,
+                scrolling_output=scrolling_output,
+                visible_lines=visible_lines
+            )
 
         else:
             raise ValueError(f"Unexpected container tool: {self._container_tool}")
