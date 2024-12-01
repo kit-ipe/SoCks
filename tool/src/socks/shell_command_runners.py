@@ -141,6 +141,8 @@ class Shell_Command_Runners:
             terminal_width = shutil.get_terminal_size().columns
             for line in last_lines:
                 if len(line) > terminal_width:
+                    # Replace tabs with spaces to get a realistic line length
+                    line = line.expandtabs()
                     # Limit the line length to avoid wrapping
                     line = line[: (terminal_width - 3)] + "..."
                 print(line, end="\r\n", flush=True)
