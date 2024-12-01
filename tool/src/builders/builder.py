@@ -983,7 +983,7 @@ class Builder(Containerization):
         """
 
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        block_pkg_path = self._output_dir / f"{self.block_id}_{self.project_cfg.project.name}_{timestamp}.tar.gz"
+        block_pkg_path = self._output_dir / f"bp_{self.block_id}_{self.project_cfg.project.name}_{timestamp}.tar.gz"
 
         # Check whether there is something to export
         if not self._output_dir.is_dir() or not any(self._output_dir.iterdir()):

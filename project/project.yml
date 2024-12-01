@@ -20,7 +20,7 @@ blocks:
 #      add_build_info: true
 #      # If no 'import_src' property is specified, the block must be built locally
 #      dependencies:
-#        kernel: "temp/kernel/output/kernel_*.tar.gz"
+#        kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
 #    container:
 #      image: "petalinux-rootfs-builder-alma8"
 #      tag: "socks"
@@ -40,7 +40,7 @@ blocks:
   image:
     project:
       dependencies:
-        rootfs: "temp/rootfs/output/rootfs_*.tar.gz"
+        rootfs: "temp/rootfs/output/bp_rootfs_*.tar.gz"
   rootfs:
     source: "build"
     builder: "ZynqMP_AlmaLinux_RootFS_Builder"
@@ -49,9 +49,9 @@ blocks:
       add_build_info: false
       # If no 'import_src' property is specified, the block must be built locally
       dependencies:
-        kernel: "temp/kernel/output/kernel_*.tar.gz"
-        devicetree: "temp/devicetree/output/devicetree*.tar.gz"
-        vivado: "temp/vivado/output/vivado*.tar.gz"
+        kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
+        devicetree: "temp/devicetree/output/bp_devicetree*.tar.gz"
+        vivado: "temp/vivado/output/bp_vivado*.tar.gz"
     container:
       image: "alma9-rootfs-builder-alma9"
       tag: "socks"
