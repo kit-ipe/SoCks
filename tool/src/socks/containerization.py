@@ -250,7 +250,7 @@ class Containerization:
                 + [self._container_image_tagged, "sh", "-c", comp_commands],
                 logfile=logfile,
                 scrolling_output=scrolling_output,
-                visible_lines=visible_lines
+                visible_lines=visible_lines,
             )
 
         elif self._container_tool == "none":
@@ -260,7 +260,7 @@ class Containerization:
                 command=[sudo_opt, "sh", "-c", comp_commands],
                 logfile=logfile,
                 scrolling_output=scrolling_output,
-                visible_lines=visible_lines
+                visible_lines=visible_lines,
             )
 
         else:

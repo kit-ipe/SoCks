@@ -142,7 +142,7 @@ class Shell_Command_Runners:
             for line in last_lines:
                 if len(line) > terminal_width:
                     # Limit the line length to avoid wrapping
-                    line = line[:(terminal_width-3)] + "..."
+                    line = line[: (terminal_width - 3)] + "..."
                 print(line, end="\r\n", flush=True)
                 printed_lines += 1
 
