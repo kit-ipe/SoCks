@@ -217,6 +217,8 @@ class ZynqMP_AMD_PMUFW_Builder(AMD_Builder):
                 (self._repo_dir, "Z"),
                 (self._output_dir, "Z"),
             ],
+            logfile=self._block_temp_dir / "build.log",
+            scrolling_output=True,
         )
 
         # Create symlink to the output file

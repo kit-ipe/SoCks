@@ -158,6 +158,8 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         self.run_containerizable_sh_command(
             commands=create_vivado_project_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")] + local_source_mounts,
+            logfile=self._block_temp_dir / "build_project.log",
+            scrolling_output=True,
         )
 
     def build_vivado_project(self):
@@ -227,6 +229,8 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         self.run_containerizable_sh_command(
             commands=vivado_build_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")] + local_source_mounts,
+            logfile=self._block_temp_dir / "build.log",
+            scrolling_output=True,
         )
 
         # Create symlinks to the output files

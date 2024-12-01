@@ -89,7 +89,10 @@ class ZynqMP_AMD_ATF_Builder(Builder):
         ]
 
         self.run_containerizable_sh_command(
-            commands=atf_build_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+            commands=atf_build_commands,
+            dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")],
+            logfile=self._block_temp_dir / "build.log",
+            scrolling_output=True,
         )
 
         # Create symlinks to the output files
