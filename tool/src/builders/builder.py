@@ -1005,7 +1005,10 @@ class Builder(Containerization):
             pretty_print.print_build("No need to export block package. No altered source files detected...")
             return
 
-        block_pkg_path.unlink(missing_ok=True)
+        # Delete old block package
+        old_block_pkgs = list(self._output_dir.glob(f"bp_{self.block_id}_*.tar.gz"))
+        for old_pkg in old_block_pkgs:
+            old_pkg.unlink(missing_ok=True)
 
         pretty_print.print_build("Exporting block package...")
 
