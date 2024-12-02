@@ -221,7 +221,12 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             "dtc -I dtb -O dts -o system.dts system.dtb",
         ]
 
-        self.run_containerizable_sh_command(commands=dt_build_commands, dirs_to_mount=[(self._base_work_dir, "Z")])
+        self.run_containerizable_sh_command(
+            commands=dt_build_commands,
+            dirs_to_mount=[(self._base_work_dir, "Z")],
+            logfile=self._block_temp_dir / "build_devicetree.log",
+            scrolling_output=True,
+        )
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -311,7 +316,10 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         ]
 
         self.run_containerizable_sh_command(
-            commands=dt_overlays_build_commands, dirs_to_mount=[(self._overlay_work_dir, "Z")]
+            commands=dt_overlays_build_commands,
+            dirs_to_mount=[(self._overlay_work_dir, "Z")],
+            logfile=self._block_temp_dir / "build_dt_overlays.log",
+            scrolling_output=True,
         )
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
