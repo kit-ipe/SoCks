@@ -119,15 +119,19 @@ class Containerization:
                 Shell_Command_Runners.run_sh_command(
                     [
                         "docker",
+                        "buildx",
                         "build",
                         "-t",
                         self._container_image_tagged,
                         "-f",
                         str(self._container_file),
+                        "--ssh",
+                        "default",
                         "--build-arg",
                         f"user_name={host_user}",
                         "--build-arg",
                         f"user_id={host_user_id}",
+                        "--load",
                         ".",
                     ]
                 )
@@ -135,7 +139,17 @@ class Containerization:
             elif self._container_tool == "podman":
                 pretty_print.print_build(f"Building podman image {self._container_image_tagged}...")
                 Shell_Command_Runners.run_sh_command(
-                    ["podman", "build", "-t", self._container_image_tagged, "-f", str(self._container_file), "."]
+                    [
+                        "podman",
+                        "build",
+                        "-t",
+                        self._container_image_tagged,
+                        "-f",
+                        str(self._container_file),
+                        "--ssh",
+                        "default",
+                        ".",
+                    ]
                 )
 
             else:
@@ -310,7 +324,9 @@ class Containerization:
         else:
             raise ValueError(f"Unexpected container tool: {self._container_tool}")
 
-    def start_container(self, potential_mounts: typing.List[typing.Tuple[pathlib.Path, str]]):
+    def start_container(
+        self, potential_mounts: typing.List[typing.Tuple[pathlib.Path, str]], init_commands: typing.List[str] = []
+    ):
         """
         Starts an interactive container with which the block can be built.
 
@@ -318,6 +334,8 @@ class Containerization:
             potential_mounts:
                 List of all directories that could be mounted in the container.
                 Existing directories are mounted, non-existing directories are ignored.
+            init_commands:
+                List of commands to initialize the container.
 
         Returns:
             None
@@ -332,12 +350,39 @@ class Containerization:
             existing_mounts = [mount for mount in potential_mounts if mount[0].is_dir()]
             mounts = " ".join([f"-v {i[0]}:{i[0]}:{i[1]}" for i in existing_mounts])
 
+            # Assemble command string for container, if any
+            comp_commands = ""
+            if init_commands:
+                comp_commands = "'"
+                for i, command in enumerate(init_commands):
+                    if i == len(init_commands) - 1:
+                        # The last element of the list is treated differently
+                        comp_commands = comp_commands + command + " && exec bash"
+                    else:
+                        comp_commands = comp_commands + command + " && "
+                comp_commands = comp_commands + "'"
+
             pretty_print.print_build("Starting container...")
 
             try:
-                Shell_Command_Runners.run_sh_command(
-                    [self._container_tool, "run", "--rm", "-it", mounts, self._container_image_tagged]
-                )
+                if comp_commands:
+                    Shell_Command_Runners.run_sh_command(
+                        command=[
+                            self._container_tool,
+                            "run",
+                            "--rm",
+                            "-it",
+                            mounts,
+                            self._container_image_tagged,
+                            "sh",
+                            "-c",
+                            comp_commands,
+                        ]
+                    )
+                else:
+                    Shell_Command_Runners.run_sh_command(
+                        command=[self._container_tool, "run", "--rm", "-it", mounts, self._container_image_tagged]
+                    )
             except subprocess.CalledProcessError:
                 pass  # It is okay if the interactive shell session is ended with an exit code not equal to 0
 

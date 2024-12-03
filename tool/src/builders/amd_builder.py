@@ -140,7 +140,12 @@ class AMD_Builder(Builder):
             (self._output_dir, "Z"),
         ]
 
-        super(Builder, self).start_container(potential_mounts=potential_mounts)
+        init_commands = [
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vivado_path}/settings64.sh",
+        ]
+
+        super(Builder, self).start_container(potential_mounts=potential_mounts, init_commands=init_commands)
 
     def import_xsa(self):
         """

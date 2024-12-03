@@ -5,6 +5,7 @@ import sys
 import re
 import select
 import subprocess
+import os
 
 import socks.pretty_print as pretty_print
 
@@ -53,7 +54,7 @@ class Shell_Command_Runners:
         # If scolling output is disabled and the output should not be hidden or logged, subprocess.run can be used
         # to run the subprocess
         if scrolling_output == False and visible_lines != 0 and logfile == None:
-            subprocess.run(" ".join(command), shell=True, cwd=cwd, check=True)
+            subprocess.run(" ".join(command), shell=True, cwd=cwd, check=True, env=os.environ.copy())
             return
 
         # Remove old logfile
@@ -83,7 +84,13 @@ class Shell_Command_Runners:
 
         # Start the subprocess
         process = subprocess.Popen(
-            " ".join(command), shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            " ".join(command),
+            shell=True,
+            cwd=cwd,
+            env=os.environ.copy(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
         )
 
         # Continuously read from the process output

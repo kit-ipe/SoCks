@@ -5,38 +5,47 @@ project:
   name: "test-project"
 external_tools:
   xilinx:
-    version: "2022.2"
+    version: "2020.2"
 blocks:
   atf:
     project:
       import_src: "https://serenity.web.cern.ch/sw/ci/os/branches/3-build-complete-serenity-s1-kria-k26-image-in-a-pipeline/0e10c5d1/pipeline7729069/serenity-s1-kria-atf.tar.gz"
-#  rootfs:
-#    source: "build"
-#    builder: "ZynqMP_AMD_PetaLinux_RootFS_Builder"
-#    project:
-#      build_srcs:
-#        source: "https://github.com/Xilinx/yocto-manifests.git"
-#        branch: "rel-v{{externalTools/xilinx/version}}"
-#      add_build_info: true
-#      # If no 'import_src' property is specified, the block must be built locally
-#      dependencies:
-#        kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
-#    container:
-#      image: "petalinux-rootfs-builder-alma8"
-#      tag: "socks"
+  # rootfs:
+  #   source: "build"
+  #   builder: "ZynqMP_AMD_PetaLinux_RootFS_Builder"
+  #   project:
+  #     build_srcs:
+  #       source: "https://github.com/Xilinx/yocto-manifests.git"
+  #       branch: "rel-v{{externalTools/xilinx/version}}"
+  #     add_build_info: true
+  #     # If no 'import_src' property is specified, the block must be built locally
+  #     dependencies:
+  #       kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
+  #   container:
+  #     image: "petalinux-rootfs-builder-alma8"
+  #     tag: "socks"
+  # vivado:
+  #   builder: "ZynqMP_AMD_Vivado_IPBB_Builder"
+  #   project:
+  #     build_srcs:
+  #       - source: "https://github.com/ipbus/ipbus-firmware.git"
+  #         branch: "-r 60d7efed3ddba10e551790de7505bfea5bfc738b"
+  #       - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/firmware/serenity-service.git"
+  #         branch: "-b v0.4.4"
+  #       - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw"
+  #         branch: "-b main"
+  #     name: "s1-kria"
+  #   container:
+  #     image: "ipbb-builder-alma8"
   vivado:
-    builder: "ZynqMP_AMD_Vivado_IPBB_Builder"
+    builder: "ZynqMP_AMD_Vivado_logicc_Builder"
     project:
       build_srcs:
-        - source: "https://github.com/ipbus/ipbus-firmware.git"
-          branch: "-r 60d7efed3ddba10e551790de7505bfea5bfc738b"
-        - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/firmware/serenity-service.git"
-          branch: "-b v0.4.4"
-        - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw"
-          branch: "-b main"
-      name: "s1-kria"
+        source: "ssh://git@gitlab.kit.edu/kit/ipe-sdr/ipe-sdr-dev/hardware/sdr_hardware.git"
+        branch: "master"
+      name: "zcu102_empty"
     container:
-      image: "ipbb-builder-alma8"
+      image: "logicc-builder-alma8"
   image:
     project:
       dependencies:
