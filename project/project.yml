@@ -43,7 +43,7 @@ blocks:
       build_srcs:
         source: "ssh://git@gitlab.kit.edu/kit/ipe-sdr/ipe-sdr-dev/hardware/sdr_hardware.git"
         branch: "master"
-      name: "zcu102_empty"
+      name: "cap_zcu216_echo"
     container:
       image: "logicc-builder-alma8"
   image:

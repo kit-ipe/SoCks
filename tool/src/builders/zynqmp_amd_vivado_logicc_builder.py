@@ -154,11 +154,23 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         self.run_containerizable_sh_command(
             commands=vivado_build_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._work_dir, "Z")],
+            logfile=self._block_temp_dir / "build.log",
+            scrolling_output=True,
         )
 
         # Create symlinks to the output files
         for file in (self._logicc_image_dir / self.block_cfg.project.name).glob("*"):
             (self._output_dir / file.name).symlink_to(self._logicc_image_dir / self.block_cfg.project.name / file.name)
+        for file in (
+            self._logicc_build_dir / self.block_cfg.project.name / f"{self.block_cfg.project.name}.runs" / "impl_1"
+        ).glob("*.ltx"):
+            (self._output_dir / file.name).symlink_to(
+                self._logicc_build_dir
+                / self.block_cfg.project.name
+                / f"{self.block_cfg.project.name}.runs"
+                / "impl_1"
+                / file.name
+            )
 
         # Extract bit-file
         with zipfile.ZipFile(self._output_dir / "system_top.xsa", "r") as archive:

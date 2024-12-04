@@ -957,7 +957,7 @@ class Builder(Containerization):
 
         # Import block package
         imported_block_package = self._output_dir / (
-            f"{self.block_id}_import" + "".join(prebuilt_block_package.suffixes)
+            f"bp_{self.block_id}_import" + "".join(prebuilt_block_package.suffixes)
         )
         shutil.copy(prebuilt_block_package, imported_block_package)
 
