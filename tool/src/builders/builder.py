@@ -625,11 +625,12 @@ class Builder(Containerization):
         """
 
         # Skip all operations if the repo has already been initialized
-        repo_init_done = (
-            self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
-            != 0.0
-        )
-        if repo_init_done:
+        if not Builder._check_rebuild_required(
+            src_search_list=self._project_cfg_files,
+            out_timestamp=self._build_log.get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
+        ):
             pretty_print.print_build("No need to initialize the local repo...")
             return
 
@@ -646,6 +647,7 @@ class Builder(Containerization):
 
         # Check if the source code of this block project is online and needs to be downloaded
         if self._source_repo is not None:
+            self.clean_repo()
             self._repo_dir.mkdir(parents=True, exist_ok=True)
             # Clone the repo
             Shell_Command_Runners.run_sh_command(
@@ -1292,12 +1294,13 @@ class Builder(Containerization):
             # Extract all contents to the output directory
             archive.extractall(path=self._block_src_dir)
 
-    def clean_repo(self):
+    def clean_repo(self, as_root: bool = False):
         """
         This function cleans the git repo directory.
 
         Args:
-            None
+            as_root:
+                Set to True if the working directory is to be cleaned by the root user.
 
         Returns:
             None
@@ -1330,11 +1333,16 @@ class Builder(Containerization):
                 pretty_print.print_clean("Cleaning abborted...")
                 sys.exit(1)
 
-        pretty_print.print_clean("Cleaning repo directory...")
+        if as_root:
+            pretty_print.print_clean("Cleaning repo directory as root user...")
+        else:
+            pretty_print.print_clean("Cleaning repo directory...")
 
         cleaning_commands = [f"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true"]
 
-        self.run_containerizable_sh_command(commands=cleaning_commands, dirs_to_mount=[(self._repo_dir, "Z")])
+        self.run_containerizable_sh_command(
+            commands=cleaning_commands, dirs_to_mount=[(self._repo_dir, "Z")], run_as_root=as_root
+        )
 
         # Remove empty repo directory
         self._repo_dir.rmdir()

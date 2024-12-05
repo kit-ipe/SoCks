@@ -682,7 +682,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
     def clean_work(self):
         """
-        This function cleans the work directory.
+        This function cleans the work directory as root user.
 
         Args:
             None

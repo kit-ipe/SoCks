@@ -41,6 +41,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
 
         self._rootfs_name = f"petalinux_zynqmp_{self.project_cfg.project.name}"
 
+        # Project directories
+        self._mod_dir = self._work_dir / self._rootfs_name
+
         # Project files
         # File for version & build info tracking
         self._build_info_file = self._work_dir / "fs_build_info"
@@ -502,7 +505,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             )
         else:
             # Remove existing build information file
-            clean_build_info_commands = [f"rm -f {self._build_dir}/etc/fs_build_info"]
+            clean_build_info_commands = [f"rm -f {self._mod_dir}/etc/fs_build_info"]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.run_containerizable_sh_command(
@@ -647,7 +650,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
 
     def clean_work(self):
         """
-        This function cleans the work directory.
+        This function cleans the work directory as root user.
 
         Args:
             None

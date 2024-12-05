@@ -40,7 +40,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
 
     def build_archive(self, prebuilt: bool = False):
         """
-        Packs the entire rootfs in a archive.
+        Packs the entire ramfs in a archive.
 
         Args:
             prebuilt:
@@ -86,7 +86,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
             )
         else:
             # Remove existing build information file
-            clean_build_info_commands = [f"rm -f {self._build_dir}/etc/fs_build_info"]
+            clean_build_info_commands = [f"rm -f {self._mod_dir}/etc/fs_build_info"]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.run_containerizable_sh_command(
