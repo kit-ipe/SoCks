@@ -112,10 +112,12 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             None
         """
 
-        if not self._block_src_dir.is_dir():
+        self.import_src_tpl()
+
+        if not self._patch_dir.is_dir():
             self.pre_action_warnings.append(
-                "This block requires source files, but none were found. "
-                "If you proceed, SoCks will automatically generate clean sources and add them to your project."
+                "This block requires patch files, but none were found. "
+                "If you proceed, SoCks will automatically generate patches for a clean project and add them to your project."
             )
             # Function 'import_clean_srcs' is called with block command 'prepare' at a suitable stage.
             # Calling it here would not make sense, because the repo might not be ready yet.
@@ -157,7 +159,6 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         """
 
         prep_srcs_commands = [
-            "set -o xtrace",
             f"cd {self._source_repo_dir}",
             "make CROSS_COMPILE=aarch64-unknown-linux-uclibc- defconfig",
             'sed -i "s%^# CONFIG_STATIC is not set$%CONFIG_STATIC=y%" .config',

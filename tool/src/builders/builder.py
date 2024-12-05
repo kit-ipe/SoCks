@@ -1212,7 +1212,7 @@ class Builder(Containerization):
             )
 
         # If there are already sources, there is nothing to do
-        if self._block_src_dir.is_dir():
+        if self._patch_dir.is_dir():
             return
 
         # Check if there are uncommited changes in the git repo
