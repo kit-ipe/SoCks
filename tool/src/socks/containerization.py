@@ -260,7 +260,8 @@ class Containerization:
         comp_commands = comp_commands + "'"
 
         if self._container_tool in ("docker", "podman"):
-            mounts = " ".join([f"-v {i[0]}:{i[0]}:{i[1]}" for i in dirs_to_mount])
+            existing_mounts = [mount for mount in dirs_to_mount if mount[0].is_dir()]
+            mounts = " ".join([f"-v {i[0]}:{i[0]}:{i[1]}" for i in existing_mounts])
             # Run commands in container
             user_opt = "-u root" if run_as_root else ""
             Shell_Command_Runners.run_sh_command(

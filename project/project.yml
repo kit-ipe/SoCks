@@ -42,7 +42,7 @@ blocks:
     project:
       build_srcs:
         source: "ssh://git@gitlab.kit.edu/kit/ipe-sdr/ipe-sdr-dev/hardware/sdr_hardware.git"
-        branch: "master"
+        branch: "452-use-commit-id-of-sdr-hardware-instead-of-yocto-in-the-pimc"
       name: "cap_zcu216_echo"
     container:
       image: "logicc-builder-alma8"
