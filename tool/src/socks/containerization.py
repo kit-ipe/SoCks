@@ -1,5 +1,6 @@
 import typing
 import os
+import pwd
 import pathlib
 import sys
 from dateutil import parser
@@ -113,9 +114,12 @@ class Containerization:
         # Build image, if necessary
         if last_build_timestamp < last_file_mod_timestamp:
             if self._container_tool == "docker":
-                host_user = os.getlogin()
+                # Get host user and id (a bit complicated but should work in most Unix environments)
                 host_user_id = os.getuid()
+                host_user = pwd.getpwuid(host_user_id).pw_name
+
                 pretty_print.print_build(f"Building docker image {self._container_image_tagged}...")
+
                 Shell_Command_Runners.run_sh_command(
                     [
                         "docker",
@@ -138,6 +142,7 @@ class Containerization:
 
             elif self._container_tool == "podman":
                 pretty_print.print_build(f"Building podman image {self._container_image_tagged}...")
+
                 Shell_Command_Runners.run_sh_command(
                     [
                         "podman",

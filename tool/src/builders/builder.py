@@ -1,5 +1,6 @@
 import typing
 import os
+import pwd
 import pathlib
 import importlib.resources
 import shutil
@@ -70,9 +71,9 @@ class Builder(Containerization):
             else:
                 self._local_source_dir, self._source_repo = self._eval_single_prj_src()
 
-        # Host user
-        self._host_user = os.getlogin()
+        # Get host user and id (a bit complicated but should work in most Unix environments)
         self._host_user_id = os.getuid()
+        self._host_user = pwd.getpwuid(self._host_user_id).pw_name
 
         # Local git branches
         self._git_local_ref_branch = "__ref"
