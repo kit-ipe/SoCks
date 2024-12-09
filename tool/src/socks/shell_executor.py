@@ -171,12 +171,10 @@ class Shell_Executor:
                 if stderr_line:
                     update_last_lines(stderr_line)
 
-                # Clear previous output
+                # Move the cursor to the beginning of the scrolling output
                 for _ in range(printed_lines):
                     # Move the cursor up one line
                     print("\033[F", end="", flush=True)
-                    # Clear the line
-                    print("\033[K", end="", flush=True)
 
                 # Print output
                 printed_lines = 0
@@ -187,7 +185,8 @@ class Shell_Executor:
                         line = line.expandtabs()
                         # Limit the line length to avoid wrapping
                         line = line[: (terminal_width - 3)] + "..."
-                    print(line, end="\r\n", flush=True)
+                    # Replace content of this line. The line is cleared before anything new is printed.
+                    print("\033[K" + line, end="\r\n", flush=True)
                     printed_lines += 1
             else:
                 # Print output
