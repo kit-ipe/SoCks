@@ -65,7 +65,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         }
         self.block_cmds["clean"].extend(
             [
-                self._container_executor.build_container_image,
+                self.container_executor.build_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -77,7 +77,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
                 [
-                    self._container_executor.build_container_image,
+                    self.container_executor.build_container_image,
                     self.import_dependencies,
                     self.init_repo,
                     self.apply_patches,
@@ -89,11 +89,13 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
                 [self.build_base_ramfs, self.populate_ramfs, self.build_archive, self.export_block_package]
             )
             self.block_cmds["create-patches"].extend([self.create_patches])
-            self.block_cmds["start-container"].extend([self._container_executor.build_container_image, self._container_executor.start_container])
-            self.block_cmds["menucfg"].extend([self._container_executor.build_container_image, self.run_menuconfig])
+            self.block_cmds["start-container"].extend(
+                [self.container_executor.build_container_image, self.container_executor.start_container]
+            )
+            self.block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
             self.block_cmds["prep-clean-srcs"].extend(self.block_cmds["clean"])
             self.block_cmds["prep-clean-srcs"].extend(
-                [self._container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
+                [self.container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
             )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
@@ -216,7 +218,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RAMFS image.
-        self._container_executor.exec_sh_commands(
+        self.container_executor.exec_sh_commands(
             commands=base_ramfs_build_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
@@ -274,7 +276,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RAMFS image.
-        self._container_executor.exec_sh_commands(
+        self.container_executor.exec_sh_commands(
             commands=populate_ramfs_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
@@ -326,7 +328,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self._container_executor.exec_sh_commands(
+            self.container_executor.exec_sh_commands(
                 commands=add_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
             )
         else:
@@ -334,7 +336,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             clean_build_info_commands = [f"rm -f {self._mod_dir}/etc/fs_build_info"]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self._container_executor.exec_sh_commands(
+            self.container_executor.exec_sh_commands(
                 commands=clean_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
             )
 
@@ -352,7 +354,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RAMFS image.
-        self._container_executor.exec_sh_commands(
+        self.container_executor.exec_sh_commands(
             commands=archive_build_commands,
             dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
             run_as_root=True,

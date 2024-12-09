@@ -38,7 +38,7 @@ class ZynqMP_AMD_ATF_Builder(Builder):
         self.block_cmds = {"prepare": [], "build": [], "clean": [], "create-patches": [], "start-container": []}
         self.block_cmds["clean"].extend(
             [
-                self._container_executor.build_container_image,
+                self.container_executor.build_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -47,11 +47,15 @@ class ZynqMP_AMD_ATF_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend([self._container_executor.build_container_image, self.init_repo, self.apply_patches])
+            self.block_cmds["prepare"].extend(
+                [self.container_executor.build_container_image, self.init_repo, self.apply_patches]
+            )
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_atf, self.export_block_package])
             self.block_cmds["create-patches"].extend([self.create_patches])
-            self.block_cmds["start-container"].extend([self._container_executor.build_container_image, self._container_executor.start_container])
+            self.block_cmds["start-container"].extend(
+                [self.container_executor.build_container_image, self.container_executor.start_container]
+            )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
@@ -88,7 +92,7 @@ class ZynqMP_AMD_ATF_Builder(Builder):
             "make CROSS_COMPILE=aarch64-none-elf- PLAT=zynqmp RESET_TO_BL31=1 ZYNQMP_CONSOLE=cadence0",
         ]
 
-        self._container_executor.exec_sh_commands(
+        self.container_executor.exec_sh_commands(
             commands=atf_build_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")],
             logfile=self._block_temp_dir / "build.log",

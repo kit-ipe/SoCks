@@ -38,7 +38,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
         self.block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": [], "start-vivado-gui": []}
         self.block_cmds["clean"].extend(
             [
-                self._container_executor.build_container_image,
+                self.container_executor.build_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -47,11 +47,17 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend([self._container_executor.build_container_image, self.init_repo, self.create_vivado_project])
+            self.block_cmds["prepare"].extend(
+                [self.container_executor.build_container_image, self.init_repo, self.create_vivado_project]
+            )
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_vivado_project, self.export_block_package])
-            self.block_cmds["start-container"].extend([self._container_executor.build_container_image, self._container_executor.start_container])
-            self.block_cmds["start-vivado-gui"].extend([self._container_executor.build_container_image, self.start_vivado_gui])
+            self.block_cmds["start-container"].extend(
+                [self.container_executor.build_container_image, self.container_executor.start_container]
+            )
+            self.block_cmds["start-vivado-gui"].extend(
+                [self.container_executor.build_container_image, self.start_vivado_gui]
+            )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
@@ -86,7 +92,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             f"{self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}",
         ]
 
-        self._container_executor.exec_sh_commands(
+        self.container_executor.exec_sh_commands(
             commands=create_vivado_project_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._output_dir, "Z")],
         )
@@ -137,7 +143,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             f"{self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}",
         ]
 
-        self._container_executor.exec_sh_commands(
+        self.container_executor.exec_sh_commands(
             commands=vivado_build_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._output_dir, "Z")],
         )
@@ -188,7 +194,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             f"exit",
         ]
 
-        self._container_executor.start_gui_container(
+        self.container_executor.start_gui_container(
             start_gui_commands=start_vivado_gui_commands,
             potential_mounts=[
                 (pathlib.Path(self._amd_tools_path), "ro"),

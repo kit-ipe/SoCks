@@ -209,7 +209,7 @@ class AMD_Builder(Builder):
 
             cleaning_commands = [f"rm -rf {self._xsa_dir}/* {self._xsa_dir}/.* 2> /dev/null || true"]
 
-            self._container_executor.exec_sh_commands(commands=cleaning_commands, dirs_to_mount=[(self._xsa_dir, "Z")])
+            self.container_executor.exec_sh_commands(commands=cleaning_commands, dirs_to_mount=[(self._xsa_dir, "Z")])
 
             # Remove empty source_xsa directory
             self._xsa_dir.rmdir()

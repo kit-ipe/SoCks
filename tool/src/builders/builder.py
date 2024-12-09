@@ -129,9 +129,9 @@ class Builder:
         self._build_log = Timestamp_Logger(log_file=self._block_temp_dir / ".build_log.csv")
 
         # Shell command executor
-        self._shell_executor = Shell_Executor()
+        self.shell_executor = Shell_Executor()
         # Container command executor
-        self._container_executor = Container_Executor(
+        self.container_executor = Container_Executor(
             container_tool=self.project_cfg.external_tools.container_tool,
             container_image=self.block_cfg.container.image,
             container_image_tag=self.block_cfg.container.tag,
@@ -364,7 +364,7 @@ class Builder:
         else:
             src_ignore_str = ""
 
-        results = self._shell_executor.get_sh_results(
+        results = self.shell_executor.get_sh_results(
             [
                 "find",
                 src_search_str,
@@ -395,7 +395,7 @@ class Builder:
         else:
             out_ignore_str = ""
 
-        results = self._shell_executor.get_sh_results(
+        results = self.shell_executor.get_sh_results(
             [
                 "find",
                 out_search_str,
@@ -565,15 +565,15 @@ class Builder:
 
         build_info = ""
 
-        results = self._shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "rev-parse", "HEAD"])
+        results = self.shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "rev-parse", "HEAD"])
         build_info = build_info + f"GIT_COMMIT_SHA: {results.stdout.splitlines()[0]}\n"
 
-        results = self._shell_executor.get_sh_results(
+        results = self.shell_executor.get_sh_results(
             ["git", "-C", str(self._project_dir), "rev-parse", "--abbrev-ref", "HEAD"]
         )
         git_ref_name = results.stdout.splitlines()[0]
         if git_ref_name == "HEAD":
-            results = self._shell_executor.get_sh_results(
+            results = self.shell_executor.get_sh_results(
                 ["git", "-C", str(self._project_dir), "describe", "--exact-match", git_ref_name]
             )
             git_tag_name = results.stdout.splitlines()[0]
@@ -582,7 +582,7 @@ class Builder:
         else:
             build_info = build_info + f"GIT_BRANCH_NAME: {git_ref_name}\n"
 
-        results = self._shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "status", "--porcelain"])
+        results = self.shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "status", "--porcelain"])
         if results.stdout:
             build_info = build_info + "GIT_IS_REPO_CLEAN: false\n\n"
         else:
@@ -606,9 +606,9 @@ class Builder:
                 build_info
                 + f'BUILD_TIMESTAMP: {int(current_time)}   # {time.strftime("%Y-%m-%d %H:%M:%S (UTC)", time.gmtime(current_time))}\n'
             )
-            results = self._shell_executor.get_sh_results(["hostname"])
+            results = self.shell_executor.get_sh_results(["hostname"])
             build_info = build_info + f"MANUAL_BUILD_HOST: {results.stdout.splitlines()[0]}\n"
-            results = self._shell_executor.get_sh_results(["id", "-un"])
+            results = self.shell_executor.get_sh_results(["id", "-un"])
             build_info = build_info + f"MANUAL_BUILD_USER: {results.stdout.splitlines()[0]}\n"
 
         return build_info
@@ -653,7 +653,7 @@ class Builder:
             self.clean_repo()
             self._repo_dir.mkdir(parents=True, exist_ok=True)
             # Clone the repo
-            self._shell_executor.exec_sh_command(
+            self.shell_executor.exec_sh_command(
                 [
                     "git",
                     "clone",
@@ -667,13 +667,13 @@ class Builder:
                 ]
             )
 
-        results = self._shell_executor.get_sh_results(["git", "-C", str(self._source_repo_dir), "branch", "-a"])
+        results = self.shell_executor.get_sh_results(["git", "-C", str(self._source_repo_dir), "branch", "-a"])
         if not (
             f"  {self._git_local_ref_branch}" in results.stdout.splitlines()
             or f"* {self._git_local_ref_branch}" in results.stdout.splitlines()
         ):
             # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-            self._shell_executor.exec_sh_command(
+            self.shell_executor.exec_sh_command(
                 ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_ref_branch]
             )
         if not (
@@ -681,7 +681,7 @@ class Builder:
             or f"* {self._git_local_dev_branch}" in results.stdout.splitlines()
         ):
             # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-            self._shell_executor.exec_sh_command(
+            self.shell_executor.exec_sh_command(
                 ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_dev_branch]
             )
 
@@ -703,7 +703,7 @@ class Builder:
         """
 
         # Only create patches if there are commits on branch self._git_local_dev_branch that are not on branch self._git_local_dev_branch.
-        result_new_commits = self._shell_executor.get_sh_results(
+        result_new_commits = self.shell_executor.get_sh_results(
             [
                 "git",
                 "-C",
@@ -723,7 +723,7 @@ class Builder:
         pretty_print.print_build("Creating patches...")
 
         # Create patches
-        result_new_patches = self._shell_executor.get_sh_results(
+        result_new_patches = self.shell_executor.get_sh_results(
             [
                 "git",
                 "-C",
@@ -743,13 +743,13 @@ class Builder:
                 print(new_patch, file=f, end="\n")
 
         # Synchronize the branches ref and dev to be able to detect new commits in the future
-        self._shell_executor.exec_sh_command(
+        self.shell_executor.exec_sh_command(
             ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_ref_branch], visible_lines=0
         )
-        self._shell_executor.exec_sh_command(
+        self.shell_executor.exec_sh_command(
             ["git", "-C", str(self._source_repo_dir), "merge", self._git_local_dev_branch], visible_lines=0
         )
-        self._shell_executor.exec_sh_command(
+        self.shell_executor.exec_sh_command(
             ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
         )
 
@@ -792,18 +792,18 @@ class Builder:
                 for patch in f:
                     if patch:  # If this line in the file is not empty
                         # Apply patch
-                        self._shell_executor.exec_sh_command(
+                        self.shell_executor.exec_sh_command(
                             ["git", "-C", str(self._source_repo_dir), "am", str(self._patch_dir / patch)]
                         )
 
         # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-        self._shell_executor.exec_sh_command(
+        self.shell_executor.exec_sh_command(
             ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_ref_branch], visible_lines=0
         )
-        self._shell_executor.exec_sh_command(
+        self.shell_executor.exec_sh_command(
             ["git", "-C", str(self._source_repo_dir), "merge", self._git_local_dev_branch], visible_lines=0
         )
-        self._shell_executor.exec_sh_command(
+        self.shell_executor.exec_sh_command(
             ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
         )
 
@@ -1158,7 +1158,7 @@ class Builder:
 
         pretty_print.print_build("Opening configuration menu...")
 
-        self._container_executor.exec_sh_commands(
+        self.container_executor.exec_sh_commands(
             commands=menuconfig_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )
 
@@ -1188,7 +1188,7 @@ class Builder:
 
         pretty_print.print_build(f"Preparing clean sources...")
 
-        self._container_executor.exec_sh_commands(
+        self.container_executor.exec_sh_commands(
             commands=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
         )
 
@@ -1219,9 +1219,7 @@ class Builder:
             return
 
         # Check if there are uncommited changes in the git repo
-        results = self._shell_executor.get_sh_results(
-            ["git", "-C", str(self._source_repo_dir), "status", "--porcelain"]
-        )
+        results = self.shell_executor.get_sh_results(["git", "-C", str(self._source_repo_dir), "status", "--porcelain"])
         if results.stdout:
             pretty_print.print_error(
                 f"Unable to create clean sources, because there are uncommited changes in {self._source_repo_dir}. "
@@ -1232,8 +1230,8 @@ class Builder:
         # Prepare clean sources and create patch
         self.prep_clean_srcs()
         pretty_print.print_build("Creating a commit with the clean sources...")
-        self._shell_executor.exec_sh_command(["git", "-C", str(self._source_repo_dir), "add", "."])
-        self._shell_executor.exec_sh_command(
+        self.shell_executor.exec_sh_command(["git", "-C", str(self._source_repo_dir), "add", "."])
+        self.shell_executor.exec_sh_command(
             ["git", "-C", str(self._source_repo_dir), "commit", "-m", "'Add default config'"]
         )
         self.create_patches()
@@ -1323,9 +1321,7 @@ class Builder:
             return
 
         # Check if there are uncommited changes in the git repo
-        results = self._shell_executor.get_sh_results(
-            ["git", "-C", str(self._source_repo_dir), "status", "--porcelain"]
-        )
+        results = self.shell_executor.get_sh_results(["git", "-C", str(self._source_repo_dir), "status", "--porcelain"])
         if results.stdout:
             pretty_print.print_warning(
                 f"There are uncommited changes in {self._source_repo_dir}. Do you really want to clean this repo? (y/n) ",
@@ -1343,7 +1339,7 @@ class Builder:
 
         cleaning_commands = [f"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true"]
 
-        self._container_executor.exec_sh_commands(
+        self.container_executor.exec_sh_commands(
             commands=cleaning_commands, dirs_to_mount=[(self._repo_dir, "Z")], run_as_root=as_root
         )
 
@@ -1372,7 +1368,7 @@ class Builder:
 
         cleaning_commands = [f"rm -rf {self._output_dir}/* {self._output_dir}/.* 2> /dev/null || true"]
 
-        self._container_executor.exec_sh_commands(commands=cleaning_commands, dirs_to_mount=[(self._output_dir, "Z")])
+        self.container_executor.exec_sh_commands(commands=cleaning_commands, dirs_to_mount=[(self._output_dir, "Z")])
 
         # Remove empty output directory
         self._output_dir.rmdir()
@@ -1403,7 +1399,7 @@ class Builder:
 
         cleaning_commands = [f"rm -rf {self._work_dir}/* {self._work_dir}/.* 2> /dev/null || true"]
 
-        self._container_executor.exec_sh_commands(
+        self.container_executor.exec_sh_commands(
             commands=cleaning_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=as_root
         )
 
@@ -1432,7 +1428,7 @@ class Builder:
 
         cleaning_commands = [f"rm -rf {self._download_dir}/* {self._download_dir}/.* 2> /dev/null || true"]
 
-        self._container_executor.exec_sh_commands(commands=cleaning_commands, dirs_to_mount=[(self._download_dir, "Z")])
+        self.container_executor.exec_sh_commands(commands=cleaning_commands, dirs_to_mount=[(self._download_dir, "Z")])
 
         # Remove empty download directory
         self._download_dir.rmdir()
@@ -1469,7 +1465,9 @@ class Builder:
             f"{self._dependencies_dir}/{dependency}/.* 2> /dev/null || true"
         ]
 
-        self._container_executor.exec_sh_commands(commands=cleaning_commands, dirs_to_mount=[(self._dependencies_dir, "Z")])
+        self.container_executor.exec_sh_commands(
+            commands=cleaning_commands, dirs_to_mount=[(self._dependencies_dir, "Z")]
+        )
 
         # Remove empty download directory
         if dependency == "":
@@ -1497,7 +1495,9 @@ class Builder:
 
         cleaning_commands = [f"rm -rf {self._block_temp_dir}/* {self._block_temp_dir}/.* 2> /dev/null || true"]
 
-        self._container_executor.exec_sh_commands(commands=cleaning_commands, dirs_to_mount=[(self._block_temp_dir, "Z")])
+        self.container_executor.exec_sh_commands(
+            commands=cleaning_commands, dirs_to_mount=[(self._block_temp_dir, "Z")]
+        )
 
         # Remove empty temp directory
         self._block_temp_dir.rmdir()

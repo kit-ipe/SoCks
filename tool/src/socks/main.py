@@ -269,8 +269,8 @@ def main():
         cli.exit()
     if "raw_output" in args and args["raw_output"] == True:
         for builder in builders.values():
-            builder._shell_executor.control_output_processing(prohibit=True)
-            builder._container_executor.control_output_processing(prohibit=True)
+            builder.shell_executor.prohibit_output_processing(state=True)
+            builder.container_executor.prohibit_output_processing(state=True)
 
     target_block = args["block"]
     block_cmd = args["command"]

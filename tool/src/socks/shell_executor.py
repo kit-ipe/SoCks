@@ -204,12 +204,12 @@ class Shell_Executor:
         if process.returncode != 0:
             raise subprocess.CalledProcessError(process.returncode, " ".join(command))
 
-    def control_output_processing(self, prohibit: bool):
+    def prohibit_output_processing(self, state: bool):
         """
         Enable or disable shell output processing
 
         Args:
-            prohibit:
+            state:
                 True to prohibit processing of shell output, False to allow processing of shell output
 
         Returns:
@@ -219,4 +219,4 @@ class Shell_Executor:
             None
         """
 
-        self._prohibit_output_processing = prohibit
+        self._prohibit_output_processing = state
