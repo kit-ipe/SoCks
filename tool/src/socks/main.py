@@ -200,9 +200,16 @@ cli_blocks = cli.add_subparsers(title="blocks", dest="block")
 
 # Add argument to print project configuration to the standard output
 cli.add_argument(
+    "-c",
     "--show-configuration",
     action="store_true",
     help="Print the complete project configuration to the standard output and exit",
+)
+cli.add_argument(
+    "-r",
+    "--raw-output",
+    action="store_true",
+    help="Disable processing of shell output from build tools before it is show (Recommended for GitLab CI/CD)",
 )
 
 # Add parsers for all blocks
@@ -260,6 +267,10 @@ def main():
         cli.print_usage()
         pretty_print.print_error("The following arguments are required: block command.")
         cli.exit()
+    if "raw_output" in args and args["raw_output"] == True:
+        for builder in builders.values():
+            builder._shell_executor.control_output_processing(prohibit=True)
+            builder._container_executor.control_output_processing(prohibit=True)
 
     target_block = args["block"]
     block_cmd = args["command"]

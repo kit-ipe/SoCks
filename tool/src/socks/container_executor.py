@@ -290,12 +290,12 @@ class Container_Executor:
         else:
             raise ValueError(f"Unexpected container tool: {self._container_tool}")
 
-    def control_output_processing(prohibit_output_processing: bool):
+    def control_output_processing(self, prohibit: bool):
         """
         Enable or disable shell output processing
 
         Args:
-            prohibit_output_processing:
+            prohibit:
                 True to prohibit processing of shell output, False to allow processing of shell output
 
         Returns:
@@ -305,7 +305,7 @@ class Container_Executor:
             None
         """
 
-        self._shell_executor.control_output_processing(prohibit_output_processing)
+        self._shell_executor.control_output_processing(prohibit)
 
     def enable_multiarch(self):
         """
