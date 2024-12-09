@@ -59,7 +59,7 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
         }
         self.block_cmds["clean"].extend(
             [
-                self.build_container_image,
+                self._container_executor.build_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -71,7 +71,7 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
                 [
-                    self.build_container_image,
+                    self._container_executor.build_container_image,
                     self.import_dependencies,
                     self.init_repo,
                     self.apply_patches,
@@ -82,11 +82,11 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_uboot, self.export_block_package])
             self.block_cmds["create-patches"].extend([self.create_patches])
-            self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
-            self.block_cmds["menucfg"].extend([self.build_container_image, self.run_menuconfig])
+            self.block_cmds["start-container"].extend([self._container_executor.build_container_image, self._container_executor.start_container])
+            self.block_cmds["menucfg"].extend([self._container_executor.build_container_image, self.run_menuconfig])
             self.block_cmds["prep-clean-srcs"].extend(self.block_cmds["clean"])
             self.block_cmds["prep-clean-srcs"].extend(
-                [self.build_container_image, self.init_repo, self.prep_clean_srcs]
+                [self._container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
             )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
@@ -242,11 +242,11 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
             f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
         ]
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=uboot_build_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")],
             logfile=self._block_temp_dir / "build.log",
-            scrolling_output=True,
+            output_scrolling=True,
         )
 
         # Create symlink to the output file

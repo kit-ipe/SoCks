@@ -57,7 +57,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         self.block_cmds = {"prepare": [], "build": [], "clean": [], "create-patches": [], "start-container": []}
         self.block_cmds["clean"].extend(
             [
-                self.build_container_image,
+                self._container_executor.build_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -70,7 +70,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
                 [
-                    self.build_container_image,
+                    self._container_executor.build_container_image,
                     self.import_dependencies,
                     self.init_repo,
                     self.apply_patches,
@@ -84,7 +84,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
                 [self.build_base_devicetree, self.build_dt_overlays, self.export_block_package]
             )
             self.block_cmds["create-patches"].extend([self.create_patches])
-            self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
+            self.block_cmds["start-container"].extend([self._container_executor.build_container_image, self._container_executor.start_container])
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
@@ -157,7 +157,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             f"xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl",
         ]
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=prep_dt_srcs_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
@@ -221,11 +221,11 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             "dtc -I dtb -O dts -o system.dts system.dtb",
         ]
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=dt_build_commands,
             dirs_to_mount=[(self._base_work_dir, "Z")],
             logfile=self._block_temp_dir / "build_devicetree.log",
-            scrolling_output=True,
+            output_scrolling=True,
         )
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
@@ -315,11 +315,11 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             "done",
         ]
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=dt_overlays_build_commands,
             dirs_to_mount=[(self._overlay_work_dir, "Z")],
             logfile=self._block_temp_dir / "build_dt_overlays.log",
-            scrolling_output=True,
+            output_scrolling=True,
         )
 
         self._output_dir.mkdir(parents=True, exist_ok=True)

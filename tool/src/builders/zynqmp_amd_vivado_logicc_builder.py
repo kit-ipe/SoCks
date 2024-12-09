@@ -50,7 +50,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         self.block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": [], "start-vivado-gui": []}
         self.block_cmds["clean"].extend(
             [
-                self.build_container_image,
+                self._container_executor.build_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -59,11 +59,11 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend([self.build_container_image, self.init_repo, self.create_vivado_project])
+            self.block_cmds["prepare"].extend([self._container_executor.build_container_image, self.init_repo, self.create_vivado_project])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_vivado_project, self.export_block_package])
-            self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
-            self.block_cmds["start-vivado-gui"].extend([self.build_container_image, self.start_vivado_gui])
+            self.block_cmds["start-container"].extend([self._container_executor.build_container_image, self._container_executor.start_container])
+            self.block_cmds["start-vivado-gui"].extend([self._container_executor.build_container_image, self.start_vivado_gui])
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
@@ -107,7 +107,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             ]
         )
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=create_vivado_project_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._work_dir, "Z")],
         )
@@ -158,10 +158,10 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             ]
         )
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=vivado_build_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._work_dir, "Z")],
-            scrolling_output=True,
+            output_scrolling=True,
         )
 
         # Create symlinks to the output files
@@ -201,7 +201,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             + [f"logicc start {self.block_cfg.project.name}", "exit"]
         )
 
-        self.start_gui_container(
+        self._container_executor.start_gui_container(
             start_gui_commands=start_vivado_gui_commands,
             potential_mounts=[
                 (pathlib.Path(self._amd_tools_path), "ro"),

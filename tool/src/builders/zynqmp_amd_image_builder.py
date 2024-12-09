@@ -72,7 +72,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         self.block_cmds = {"prepare": [], "build": [], "build-sd-card": [], "clean": [], "start-container": []}
         self.block_cmds["clean"].extend(
             [
-                self.build_container_image,
+                self._container_executor.build_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_dependencies,
@@ -81,12 +81,12 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend([self.build_container_image, self.import_dependencies])
+            self.block_cmds["prepare"].extend([self._container_executor.build_container_image, self.import_dependencies])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.linux_img, self.bootscr_img, self.boot_img])
             self.block_cmds["build-sd-card"].extend(self.block_cmds["build"])
             self.block_cmds["build-sd-card"].extend([self.sd_card_img])
-            self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
+            self.block_cmds["start-container"].extend([self._container_executor.build_container_image, self._container_executor.start_container])
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
@@ -195,7 +195,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             )
         linux_img_build_commands.append(f"mkimage -f {self._work_dir}/image.its {self._output_dir}/image.ub")
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=linux_img_build_commands,
             dirs_to_mount=[
                 (self._config_dir, "Z"),
@@ -240,7 +240,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             f"mkimage -c none -A arm -T script -d {self._config_dir}/boot.cmd {self._output_dir}/boot.scr"
         ]
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=bootscr_img_build_commands, dirs_to_mount=[(self._config_dir, "Z"), (self._output_dir, "Z")]
         )
 
@@ -312,7 +312,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             f"bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN -w",
         ]
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=boot_img_build_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
@@ -384,7 +384,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             )
         sdc_img_build_commands[-1] = sdc_img_build_commands[-1] + f"    umount-all"
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=sdc_img_build_commands, dirs_to_mount=[(self._dependencies_dir, "Z"), (self._output_dir, "Z")]
         )
 

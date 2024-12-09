@@ -8,11 +8,11 @@ import inspect
 import subprocess
 
 import socks.pretty_print as pretty_print
-from socks.shell_command_runners import Shell_Command_Runners
+from socks.shell_executor import Shell_Executor
 from socks.timestamp_logger import Timestamp_Logger
 
 
-class Containerization:
+class Container_Executor:
     """
     A class to execute commands and tasks in containers
     """
@@ -24,15 +24,19 @@ class Containerization:
         container_image: str,
         container_image_tag: str,
         container_log_file: pathlib.Path,
+        prohibit_output_processing: bool = False,
     ):
 
         if container_tool not in ["docker", "podman", "none"]:
             pretty_print.print_error(f"Containerization tool {self._container_tool} is not supported.")
             sys.exit(1)
 
+        # Shell command executor
+        self._shell_executor = Shell_Executor(prohibit_output_processing=prohibit_output_processing)
+
         # Check if the selected container tool is installed
         # This detailed check is necessary to avoid being tricked by podman's Docker compatibility layer
-        results = Shell_Command_Runners.get_sh_results([container_tool, "--version"])
+        results = self._shell_executor.get_sh_results([container_tool, "--version"])
         installation_valid = True
         if container_tool == "docker":
             installation_valid = results.returncode == 0 and any(
@@ -120,7 +124,7 @@ class Containerization:
 
                 pretty_print.print_build(f"Building docker image {self._container_image_tagged}...")
 
-                Shell_Command_Runners.run_sh_command(
+                self._shell_executor.exec_sh_command(
                     [
                         "docker",
                         "buildx",
@@ -143,7 +147,7 @@ class Containerization:
             elif self._container_tool == "podman":
                 pretty_print.print_build(f"Building podman image {self._container_image_tagged}...")
 
-                Shell_Command_Runners.run_sh_command(
+                self._shell_executor.exec_sh_command(
                     [
                         "podman",
                         "build",
@@ -183,12 +187,12 @@ class Containerization:
 
         if self._container_tool in ("docker", "podman"):
             # Clean image only if it exists
-            results = Shell_Command_Runners.get_sh_results(
+            results = self._shell_executor.get_sh_results(
                 [self._container_tool, "images", "-q", self._container_image_tagged]
             )
             if results.stdout.splitlines():
                 pretty_print.print_build(f"Cleaning container image {self._container_image_tagged}...")
-                Shell_Command_Runners.run_sh_command(
+                self._shell_executor.exec_sh_command(
                     [self._container_tool, "image", "rm", self._container_image_tagged]
                 )
             else:
@@ -198,12 +202,12 @@ class Containerization:
 
         elif self._container_tool == "none":
             # This function is only supported if a container tool is used
-            Containerization._err_container_feature(f"{inspect.getframeinfo(inspect.currentframe()).function}()")
+            Container_Executor._err_container_feature(f"{inspect.getframeinfo(inspect.currentframe()).function}()")
 
         else:
             raise ValueError(f"Unexpected container tool: {self._container_tool}")
 
-    def run_containerizable_sh_command(
+    def exec_sh_commands(
         self,
         commands: typing.List[str],
         dirs_to_mount: typing.List[typing.Tuple[pathlib.Path, str]] = [],
@@ -211,12 +215,12 @@ class Containerization:
         print_commands: bool = False,
         run_as_root: bool = False,
         logfile: pathlib.Path = None,
-        scrolling_output: bool = False,
+        output_scrolling: bool = False,
         visible_lines: int = 30,
     ):
         """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
-        Runs a sh command in a container or directly on the host system.
+        Executes sh commands in a container or directly on the host system.
 
         Args:
             commands:
@@ -232,7 +236,7 @@ class Containerization:
                 Set to True if the command is to be run as root user.
             logfile:
                 Logfile as pathlib.Path object. None if no log file is to be used.
-            scrolling_output:
+            output_scrolling:
                 If True, the output of the sh command is printed in a scrolling view. The printed output is updated
                 at runtime and the latest lines are always displayed.
             visible_lines:
@@ -264,27 +268,44 @@ class Containerization:
             mounts = " ".join([f"-v {i[0]}:{i[0]}:{i[1]}" for i in existing_mounts])
             # Run commands in container
             user_opt = "-u root" if run_as_root else ""
-            Shell_Command_Runners.run_sh_command(
+            self._shell_executor.exec_sh_command(
                 command=[self._container_tool, "run", "--rm", "-it", user_opt, mounts]
                 + custom_params
                 + [self._container_image_tagged, "sh", "-c", comp_commands],
                 logfile=logfile,
-                scrolling_output=scrolling_output,
+                output_scrolling=output_scrolling,
                 visible_lines=visible_lines,
             )
 
         elif self._container_tool == "none":
             # Run commands without using a container
             sudo_opt = "sudo" if run_as_root else ""
-            Shell_Command_Runners.run_sh_command(
+            self._shell_executor.exec_sh_command(
                 command=[sudo_opt, "sh", "-c", comp_commands],
                 logfile=logfile,
-                scrolling_output=scrolling_output,
+                output_scrolling=output_scrolling,
                 visible_lines=visible_lines,
             )
 
         else:
             raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
+    def control_output_processing(prohibit_output_processing: bool):
+        """
+        Enable or disable shell output processing
+
+        Args:
+            prohibit_output_processing:
+                True to prohibit processing of shell output, False to allow processing of shell output
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._shell_executor.control_output_processing(prohibit_output_processing)
 
     def enable_multiarch(self):
         """
@@ -312,14 +333,14 @@ class Containerization:
         pretty_print.print_build("Activating multiarch support for containers...")
 
         if self._container_tool == "docker":
-            Shell_Command_Runners.run_sh_command(["docker", "pull", "multiarch/qemu-user-static:register"])
-            Shell_Command_Runners.run_sh_command(
+            self._shell_executor.exec_sh_command(["docker", "pull", "multiarch/qemu-user-static:register"])
+            self._shell_executor.exec_sh_command(
                 ["docker", "run", "--rm", "--privileged", "multiarch/qemu-user-static:register", "--reset"]
             )
 
         elif self._container_tool == "podman":
-            Shell_Command_Runners.run_sh_command(["sudo", "podman", "pull", "multiarch/qemu-user-static:register"])
-            Shell_Command_Runners.run_sh_command(
+            self._shell_executor.exec_sh_command(["sudo", "podman", "pull", "multiarch/qemu-user-static:register"])
+            self._shell_executor.exec_sh_command(
                 ["sudo", "podman", "run", "--rm", "--privileged", "multiarch/qemu-user-static:register", "--reset"]
             )
 
@@ -372,7 +393,7 @@ class Containerization:
 
             try:
                 if comp_commands:
-                    Shell_Command_Runners.run_sh_command(
+                    self._shell_executor.exec_sh_command(
                         command=[
                             self._container_tool,
                             "run",
@@ -386,7 +407,7 @@ class Containerization:
                         ]
                     )
                 else:
-                    Shell_Command_Runners.run_sh_command(
+                    self._shell_executor.exec_sh_command(
                         command=[self._container_tool, "run", "--rm", "-it", mounts, self._container_image_tagged]
                     )
             except subprocess.CalledProcessError:
@@ -394,7 +415,7 @@ class Containerization:
 
         elif self._container_tool == "none":
             # This function is only supported if a container tool is used
-            Containerization._err_container_feature(f"{inspect.getframeinfo(inspect.currentframe()).function}()")
+            Container_Executor._err_container_feature(f"{inspect.getframeinfo(inspect.currentframe()).function}()")
 
         else:
             raise ValueError(f"Unexpected container tool: {self._container_tool}")
@@ -421,7 +442,7 @@ class Containerization:
         """
 
         # Check if x11docker is installed
-        results = Shell_Command_Runners.get_sh_results(["command", "-v", "x11docker"])
+        results = self._shell_executor.get_sh_results(["command", "-v", "x11docker"])
         if not results.stdout:
             pretty_print.print_error(
                 "Command 'x11docker' not found. Install x11docker (https://github.com/mviereck/x11docker)."
@@ -445,7 +466,7 @@ class Containerization:
         pretty_print.print_build("Starting container...")
 
         if self._container_tool == "docker":
-            Shell_Command_Runners.run_sh_command(
+            self._shell_executor.exec_sh_command(
                 [
                     "x11docker",
                     "--backend=docker",
@@ -461,7 +482,7 @@ class Containerization:
             )
 
         elif self._container_tool == "podman":
-            Shell_Command_Runners.run_sh_command(
+            self._shell_executor.exec_sh_command(
                 [
                     "x11docker",
                     "--backend=podman",
@@ -479,7 +500,7 @@ class Containerization:
 
         elif self._container_tool == "none":
             # This function is only supported if a container tool is used
-            Containerization._err_container_feature(f"{inspect.getframeinfo(inspect.currentframe()).function}()")
+            Container_Executor._err_container_feature(f"{inspect.getframeinfo(inspect.currentframe()).function}()")
 
         else:
             raise ValueError(f"Unexpected container tool: {self._container_tool}")

@@ -9,7 +9,6 @@ import validators
 import inspect
 
 import socks.pretty_print as pretty_print
-from socks.shell_command_runners import Shell_Command_Runners
 from builders.builder import Builder
 from builders.zynqmp_amd_petalinux_rootfs_model import ZynqMP_AMD_PetaLinux_RootFS_Model
 
@@ -69,10 +68,10 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             "create-patches": [],
             "start-container": [],
         }
-        self.block_cmds["prepare"].extend([self.build_container_image, self.import_dependencies])
+        self.block_cmds["prepare"].extend([self._container_executor.build_container_image, self.import_dependencies])
         self.block_cmds["clean"].extend(
             [
-                self.build_container_image,
+                self._container_executor.build_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -92,7 +91,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                 [self.build_base_rootfs, self.build_archive_prebuilt, self.export_block_package]
             )
             self.block_cmds["create-patches"].extend([self.create_patches])
-            self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
+            self.block_cmds["start-container"].extend([self._container_executor.build_container_image, self._container_executor.start_container])
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend(
@@ -147,7 +146,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         self._repo_script.chmod(self._repo_script.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
         # Initialize repo in the current directory
-        Shell_Command_Runners.run_sh_command(
+        self._shell_executor.exec_sh_command(
             [
                 "printf",
                 '"y"',
@@ -162,17 +161,17 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             cwd=self._source_repo_dir,
         )
         # Clone git repos
-        Shell_Command_Runners.run_sh_command([str(self._repo_script), "sync"], cwd=self._source_repo_dir)
+        self._shell_executor.exec_sh_command([str(self._repo_script), "sync"], cwd=self._source_repo_dir)
         # Initialize local branches in all repos
-        results = Shell_Command_Runners.get_sh_results([str(self._repo_script), "list"], cwd=self._source_repo_dir)
+        results = self._shell_executor.get_sh_results([str(self._repo_script), "list"], cwd=self._source_repo_dir)
         for line in results.stdout.splitlines():
             path, colon, project = line.split(" ", 2)
             # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-            Shell_Command_Runners.run_sh_command(
+            self._shell_executor.exec_sh_command(
                 [str(self._repo_script), "start", self._git_local_ref_branch, project], cwd=self._source_repo_dir
             )
             # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-            Shell_Command_Runners.run_sh_command(
+            self._shell_executor.exec_sh_command(
                 [str(self._repo_script), "start", self._git_local_dev_branch, project], cwd=self._source_repo_dir
             )
 
@@ -194,11 +193,11 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
 
         # Iterate over all repos and check for new commits
         repos_with_commits = []
-        results = Shell_Command_Runners.get_sh_results([str(self._repo_script), "list"], cwd=self._source_repo_dir)
+        results = self._shell_executor.get_sh_results([str(self._repo_script), "list"], cwd=self._source_repo_dir)
         for line in results.stdout.splitlines():
             path, colon, project = line.split(" ", 2)
             # Check if this repo contains new commits
-            result_new_commits = Shell_Command_Runners.get_sh_results(
+            result_new_commits = self._shell_executor.get_sh_results(
                 [
                     "git",
                     "-C",
@@ -214,7 +213,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                 # This repo contains one or more new commits
                 repos_with_commits.append(project)
                 # Create patches
-                result_new_patches = Shell_Command_Runners.get_sh_results(
+                result_new_patches = self._shell_executor.get_sh_results(
                     [
                         "git",
                         "-C",
@@ -232,15 +231,15 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                     with self._patch_list_file.open("a") as f:
                         print(f"{project} {new_patch}", file=f, end="\n")
                 # Synchronize the branches ref and dev to be able to detect new commits in the future
-                Shell_Command_Runners.run_sh_command(
+                self._shell_executor.exec_sh_command(
                     ["git", "-C", str(self._source_repo_dir / path), "checkout", self._git_local_ref_branch],
                     visible_lines=0,
                 )
-                Shell_Command_Runners.run_sh_command(
+                self._shell_executor.exec_sh_command(
                     ["git", "-C", str(self._source_repo_dir / path), "merge", self._git_local_dev_branch],
                     visible_lines=0,
                 )
-                Shell_Command_Runners.run_sh_command(
+                self._shell_executor.exec_sh_command(
                     ["git", "-C", str(self._source_repo_dir / path), "checkout", self._git_local_dev_branch],
                     visible_lines=0,
                 )
@@ -280,26 +279,26 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                     if line:  # If this line in the file is not empty
                         project, patch = line.split(" ", 1)
                         # Get path of this project
-                        results = Shell_Command_Runners.get_sh_results(
+                        results = self._shell_executor.get_sh_results(
                             [str(self._repo_script), "list", "-r", project, "-p"], cwd=self._source_repo_dir
                         )
                         path = results.stdout.splitlines()[0]
                         # Apply patch
-                        Shell_Command_Runners.run_sh_command(
+                        self._shell_executor.exec_sh_command(
                             ["git", "-C", str(self._source_repo_dir / path), "am", str(self._patch_dir / patch)]
                         )
 
                         # Update the branch self._git_local_ref_branch so that it contains the applied patch and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-                        Shell_Command_Runners.run_sh_command(
+                        self._shell_executor.exec_sh_command(
                             [str(self._repo_script), "checkout", self._git_local_ref_branch, project],
                             cwd=self._source_repo_dir,
                             visible_lines=0,
                         )
-                        Shell_Command_Runners.run_sh_command(
+                        self._shell_executor.exec_sh_command(
                             ["git", "-C", str(self._source_repo_dir / path), "merge", self._git_local_dev_branch],
                             visible_lines=0,
                         )
-                        Shell_Command_Runners.run_sh_command(
+                        self._shell_executor.exec_sh_command(
                             [str(self._repo_script), "checkout", self._git_local_dev_branch, project],
                             cwd=self._source_repo_dir,
                             visible_lines=0,
@@ -337,7 +336,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             f"cat {local_conf_append} >> {self._source_repo_dir}/build/conf/local.conf",
         ]
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=yocto_init_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._block_src_dir, "Z")]
         )
 
@@ -383,14 +382,14 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
 
         base_rootfs_build_commands = [f"cd {self._source_repo_dir}", "source ./setupsdk", "bitbake core-image-minimal"]
 
-        self.run_containerizable_sh_command(commands=base_rootfs_build_commands, dirs_to_mount=[(self._repo_dir, "Z")])
+        self._container_executor.exec_sh_commands(commands=base_rootfs_build_commands, dirs_to_mount=[(self._repo_dir, "Z")])
 
         extract_rootfs_commands = [
             f'gunzip -c {self._source_repo_dir}/build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.cpio.gz | sh -c "cd {self._mod_dir}/ && cpio -i"'
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=extract_rootfs_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
@@ -447,7 +446,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=add_kmodules_commands,
             dirs_to_mount=[(self._dependencies_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
@@ -500,7 +499,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.run_containerizable_sh_command(
+            self._container_executor.exec_sh_commands(
                 commands=add_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
             )
         else:
@@ -508,7 +507,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             clean_build_info_commands = [f"rm -f {self._mod_dir}/etc/fs_build_info"]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.run_containerizable_sh_command(
+            self._container_executor.exec_sh_commands(
                 commands=clean_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
             )
 
@@ -531,7 +530,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=archive_build_commands,
             dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
             run_as_root=True,
@@ -637,7 +636,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=extract_pb_rootfs_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
         )
 
@@ -683,11 +682,11 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             return
 
         # Iterate over all repos and check if there are uncommited changes in the git repo
-        results = Shell_Command_Runners.get_sh_results([str(self._repo_script), "list"], cwd=self._source_repo_dir)
+        results = self._shell_executor.get_sh_results([str(self._repo_script), "list"], cwd=self._source_repo_dir)
         for line in results.stdout.splitlines():
             path, colon, project = line.split(" ", 2)
             # Check if this repo contains uncommited changes
-            results = Shell_Command_Runners.get_sh_results(
+            results = self._shell_executor.get_sh_results(
                 ["git", "-C", str(self._source_repo_dir / path), "status", "--porcelain"]
             )
             if results.stdout:
@@ -704,7 +703,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
 
         cleaning_commands = [f"rm -rf {self._repo_dir}/* {self._repo_dir}/.* 2> /dev/null || true"]
 
-        self.run_containerizable_sh_command(commands=cleaning_commands, dirs_to_mount=[(self._repo_dir, "Z")])
+        self._container_executor.exec_sh_commands(commands=cleaning_commands, dirs_to_mount=[(self._repo_dir, "Z")])
 
         # Remove empty repo directory
         self._repo_dir.rmdir()

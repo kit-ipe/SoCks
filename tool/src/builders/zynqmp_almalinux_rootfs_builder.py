@@ -67,10 +67,10 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
         self.block_cmds = {"prepare": [], "build": [], "prebuild": [], "clean": [], "start-container": []}
-        self.block_cmds["prepare"].extend([self.build_container_image, self.import_dependencies, self.enable_multiarch])
+        self.block_cmds["prepare"].extend([self._container_executor.build_container_image, self.import_dependencies, self._container_executor.enable_multiarch])
         self.block_cmds["clean"].extend(
             [
-                self.build_container_image,
+                self._container_executor.build_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_dependencies,
@@ -95,7 +95,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self.block_cmds["prebuild"].extend(
                 [self.build_base_rootfs, self.build_archive_prebuilt, self.export_block_package]
             )
-            self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
+            self.block_cmds["start-container"].extend([self._container_executor.build_container_image, self._container_executor.start_container])
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend(
@@ -221,12 +221,12 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         base_rootfs_build_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=base_rootfs_build_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
             logfile=self._block_temp_dir / "build_base.log",
-            scrolling_output=True,
+            output_scrolling=True,
         )
 
         # Reset timestamps
@@ -280,7 +280,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=add_pd_layers_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
@@ -360,7 +360,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                         )
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=add_bt_layer_commands,
             dirs_to_mount=[(self._repo_dir, "Z"), (self._dependencies_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
@@ -419,7 +419,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=add_users_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")], run_as_root=True
         )
 
@@ -474,7 +474,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=add_kmodules_commands,
             dirs_to_mount=[(self._dependencies_dir, "Z"), (self._work_dir, "Z")],
             run_as_root=True,
@@ -527,7 +527,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.run_containerizable_sh_command(
+            self._container_executor.exec_sh_commands(
                 commands=add_build_info_commands,
                 dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
                 run_as_root=True,
@@ -537,7 +537,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             clean_build_info_commands = [f"rm -f {self._build_dir}/etc/fs_build_info"]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.run_containerizable_sh_command(
+            self._container_executor.exec_sh_commands(
                 commands=clean_build_info_commands,
                 dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
                 run_as_root=True,
@@ -562,7 +562,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=archive_build_commands,
             dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
             run_as_root=True,
@@ -669,7 +669,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=extract_pb_rootfs_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
         )
 

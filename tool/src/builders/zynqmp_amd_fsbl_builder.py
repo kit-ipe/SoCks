@@ -5,7 +5,6 @@ import hashlib
 import inspect
 
 import socks.pretty_print as pretty_print
-from socks.shell_command_runners import Shell_Command_Runners
 from builders.amd_builder import AMD_Builder
 from builders.zynqmp_amd_fsbl_model import ZynqMP_AMD_FSBL_Model
 
@@ -47,7 +46,7 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
         self.block_cmds = {"prepare": [], "build": [], "clean": [], "create-patches": [], "start-container": []}
         self.block_cmds["clean"].extend(
             [
-                self.build_container_image,
+                self._container_executor.build_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -60,7 +59,7 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
                 [
-                    self.build_container_image,
+                    self._container_executor.build_container_image,
                     self.import_dependencies,
                     self.import_xsa,
                     self.create_fsbl_project,
@@ -70,7 +69,7 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_fsbl, self.export_block_package])
             self.block_cmds["create-patches"].extend([self.create_patches])
-            self.block_cmds["start-container"].extend([self.build_container_image, self.start_container])
+            self.block_cmds["start-container"].extend([self._container_executor.build_container_image, self._container_executor.start_container])
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
 
@@ -148,7 +147,7 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
             f"git -C {self._source_repo_dir} commit --quiet -m 'Initial commit'",
         ]
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=create_fsbl_project_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
@@ -160,11 +159,11 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
         )
 
         # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
-        Shell_Command_Runners.run_sh_command(
+        self._shell_executor.exec_sh_command(
             ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_ref_branch]
         )
         # Create new branch self._git_local_dev_branch. This branch is used as the local development branch. New patches can be created from this branch.
-        Shell_Command_Runners.run_sh_command(
+        self._shell_executor.exec_sh_command(
             ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_dev_branch]
         )
 
@@ -209,7 +208,7 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
             "make",
         ]
 
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=fsbl_build_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
@@ -218,7 +217,7 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
                 (self._output_dir, "Z"),
             ],
             logfile=self._block_temp_dir / "build.log",
-            scrolling_output=True,
+            output_scrolling=True,
         )
 
         # Create symlink to the output file

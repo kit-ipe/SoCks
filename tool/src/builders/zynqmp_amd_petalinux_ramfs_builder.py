@@ -81,7 +81,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.run_containerizable_sh_command(
+            self._container_executor.exec_sh_commands(
                 commands=add_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
             )
         else:
@@ -89,7 +89,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
             clean_build_info_commands = [f"rm -f {self._mod_dir}/etc/fs_build_info"]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.run_containerizable_sh_command(
+            self._container_executor.exec_sh_commands(
                 commands=clean_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
             )
 
@@ -107,7 +107,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.run_containerizable_sh_command(
+        self._container_executor.exec_sh_commands(
             commands=archive_build_commands,
             dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
             run_as_root=True,
