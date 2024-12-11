@@ -270,7 +270,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         bitfiles = list((self._dependencies_dir / "vivado").glob("*.bit"))
 
         if len(bitfiles) != 1:
-            pretty_print.print_error(f'Not exactly one *.bit file in {self._dependencies_dir / "vivado"}.')
+            pretty_print.print_error(f'Not exactly one *.bit file in {self._dependencies_dir / "vivado"}')
             sys.exit(1)
 
         self._vivado_bitfile_path = bitfiles[0]

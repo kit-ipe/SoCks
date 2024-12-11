@@ -110,8 +110,7 @@ class Shell_Executor:
         # Tell the user where the complete output is logged
         if logfile:
             print(
-                "The output of this process is displayed in a scrolling view. "
-                f"You can find the full output here: {logfile}\n"
+                f"The complete output of this process is logged here: {logfile}\n"
             )
 
         # Start the subprocess
@@ -174,7 +173,8 @@ class Shell_Executor:
                 # Move the cursor to the beginning of the scrolling output
                 for _ in range(printed_lines):
                     # Move the cursor up one line
-                    print("\033[F", end="", flush=True)
+                    sys.stdout.write("\033[F")
+                sys.stdout.flush()
 
                 # Print output
                 printed_lines = 0
@@ -186,14 +186,16 @@ class Shell_Executor:
                         # Limit the line length to avoid wrapping
                         line = line[: (terminal_width - 3)] + "..."
                     # Replace content of this line. The line is cleared before anything new is printed.
-                    print("\033[K" + line, end="\r\n", flush=True)
+                    sys.stdout.write("\033[K" + line + "\r\n")
                     printed_lines += 1
+                sys.stdout.flush()
             else:
                 # Print output
                 if stdout_line:
-                    print(stdout_line, end="\r\n", flush=True)
+                    sys.stdout.write(stdout_line + "\r\n")
                 if stderr_line:
-                    print(stderr_line, end="\r\n", flush=True)
+                    sys.stdout.write(stderr_line + "\r\n")
+                sys.stdout.flush()
 
         # Close the streams
         process.stdout.close()

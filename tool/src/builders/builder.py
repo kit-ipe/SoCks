@@ -914,7 +914,7 @@ class Builder:
             downloads = list(self._download_dir.glob("*"))
             # Check if there is more than one file in the download directory
             if len(downloads) != 1:
-                pretty_print.print_error(f"Not exactly one file in {self._download_dir}.")
+                pretty_print.print_error(f"Not exactly one file in {self._download_dir}")
                 sys.exit(1)
             prebuilt_block_package = downloads[0]
         else:
@@ -1051,7 +1051,7 @@ class Builder:
 
             # Check if there is more than one block package in the directory
             if len(block_pkgs) != 1:
-                pretty_print.print_error(f"Not exactly one block package that matches '{block_pkg_cfg_str}'.")
+                pretty_print.print_error(f"Not exactly one block package that matches '{block_pkg_cfg_str}'")
                 sys.exit(1)
 
             block_pkg_path = block_pkgs[0]

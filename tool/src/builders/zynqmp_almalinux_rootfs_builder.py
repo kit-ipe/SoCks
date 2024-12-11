@@ -621,7 +621,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             downloads = list(self._download_dir.glob("*"))
             # Check if there is more than one file in the download directory
             if len(downloads) != 1:
-                pretty_print.print_error(f"Not exactly one file in {self._download_dir}.")
+                pretty_print.print_error(f"Not exactly one file in {self._download_dir}")
                 sys.exit(1)
             prebuilt_block_package = downloads[0]
         else:
