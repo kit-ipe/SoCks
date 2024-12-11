@@ -65,7 +65,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_vivado_project, self.export_block_package])
             self.block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.container_executor.start_container]
+                [self.container_executor.build_container_image, self.start_container]
             )
             self.block_cmds["start-vivado-gui"].extend(
                 [self.container_executor.build_container_image, self.start_vivado_gui]
@@ -248,4 +248,4 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             'export PS1="${VIRTUAL_ENV_PROMPT}[\\u@\\h \\W]\\$ "',  # This is an ugly hack to fix the prompt in the container. It is needed because if the activated Python environment in the container.
         ] + self._logicc_cfg_cmds
 
-        super(Builder, self).start_container(potential_mounts=potential_mounts, init_commands=init_commands)
+        self.container_executor.start_container(potential_mounts=potential_mounts, init_commands=init_commands)

@@ -87,7 +87,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             self.block_cmds["build-sd-card"].extend(self.block_cmds["build"])
             self.block_cmds["build-sd-card"].extend([self.sd_card_img])
             self.block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.container_executor.start_container]
+                [self.container_executor.build_container_image, self.start_container]
             )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])
@@ -132,7 +132,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             (self._output_dir, "Z"),
         ]
 
-        super(Builder, self).start_container(potential_mounts=potential_mounts)
+        self.container_executor.start_container(potential_mounts=potential_mounts)
 
     def linux_img(self):
         """

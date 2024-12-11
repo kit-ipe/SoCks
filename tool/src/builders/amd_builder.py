@@ -145,7 +145,7 @@ class AMD_Builder(Builder):
             f"source {self._amd_vivado_path}/settings64.sh",
         ]
 
-        super(Builder, self).start_container(potential_mounts=potential_mounts, init_commands=init_commands)
+        self.container_executor.start_container(potential_mounts=potential_mounts, init_commands=init_commands)
 
     def import_xsa(self):
         """

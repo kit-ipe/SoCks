@@ -53,7 +53,7 @@ RUN echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
 # Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
 RUN getent group $user_name || groupadd --gid $user_id $user_name
-RUN getent passwd $user_name || adduser --uid $user_id --gid $user_id --base-dir "/home" $user_name
+RUN getent passwd $user_name || adduser --uid $user_id --gid $user_id --base-dir "/home" -G wheel $user_name
 USER $user_name
 WORKDIR /home/$user_name
 

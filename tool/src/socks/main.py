@@ -209,7 +209,7 @@ cli.add_argument(
     "-r",
     "--raw-output",
     action="store_true",
-    help="Disable processing of shell output from build tools before it is show (Recommended for GitLab CI/CD)",
+    help="Disable processing of shell output from build tools before it is shown (Recommended for GitLab CI/CD)",
 )
 
 # Add parsers for all blocks

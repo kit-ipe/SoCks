@@ -70,7 +70,7 @@ class ZynqMP_AMD_PMUFW_Builder(AMD_Builder):
             self.block_cmds["build"].extend([self.build_pmufw, self.export_block_package])
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.container_executor.start_container]
+                [self.container_executor.build_container_image, self.start_container]
             )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend([self.import_prebuilt])

@@ -102,7 +102,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 [self.build_base_rootfs, self.build_archive_prebuilt, self.export_block_package]
             )
             self.block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.container_executor.start_container]
+                [self.container_executor.build_container_image, self.start_container]
             )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend(self.block_cmds["prepare"])

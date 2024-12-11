@@ -56,7 +56,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend([self.build_vivado_project, self.export_block_package])
             self.block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.container_executor.start_container]
+                [self.container_executor.build_container_image, self.start_container]
             )
             self.block_cmds["start-vivado-gui"].extend(
                 [self.container_executor.build_container_image, self.start_vivado_gui]
@@ -279,7 +279,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         for path in self._local_source_dirs:
             potential_mounts.append((path, "Z"))
 
-        super(Builder, self).start_container(potential_mounts=potential_mounts)
+        self.container_executor.start_container(potential_mounts=potential_mounts)
 
     def start_vivado_gui(self):
         """

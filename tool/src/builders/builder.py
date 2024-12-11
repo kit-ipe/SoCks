@@ -1135,7 +1135,7 @@ class Builder:
             (self._output_dir, "Z"),
         ]
 
-        super().start_container(potential_mounts=potential_mounts)
+        self.container_executor.start_container(potential_mounts=potential_mounts)
 
     def _run_menuconfig(self, menuconfig_commands: typing.List[str]):
         """

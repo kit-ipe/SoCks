@@ -61,12 +61,6 @@ class Blocks_Model(BaseModel):
     vivado: Dummy_Block_Model
     image: Dummy_Block_Model
 
-    @model_validator(mode="before")
-    def any_file_system(cls, values):
-        if not any((values.get("ramfs"), values.get("rootfs"))):
-            raise ValueError("At least one file system is required. Specify 'ramfs' or 'rootfs'.")
-        return values
-
 
 class ZynqMP_Base_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)

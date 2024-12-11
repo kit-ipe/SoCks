@@ -71,7 +71,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             self.block_cmds["build"].extend([self.build_kernel, self.export_modules, self.export_block_package])
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.container_executor.start_container]
+                [self.container_executor.build_container_image, self.start_container]
             )
             self.block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
             self.block_cmds["prep-clean-srcs"].extend(self.block_cmds["clean"])
