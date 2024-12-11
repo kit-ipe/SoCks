@@ -104,6 +104,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             None
         """
 
+        super().validate_srcs()
         self.import_src_tpl()
 
     def prepare_dt_sources(self):

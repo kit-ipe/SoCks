@@ -114,6 +114,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             None
         """
 
+        super().validate_srcs()
         self.import_src_tpl()
 
         if not self._patch_dir.is_dir():

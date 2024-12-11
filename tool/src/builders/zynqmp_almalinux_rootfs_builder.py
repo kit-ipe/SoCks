@@ -132,6 +132,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             None
         """
 
+        super().validate_srcs()
         self.import_src_tpl()
 
     def build_base_rootfs(self):

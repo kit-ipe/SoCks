@@ -114,6 +114,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             None
         """
 
+        super().validate_srcs()
         self.import_src_tpl()
 
     def init_repo(self):

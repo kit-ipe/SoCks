@@ -108,6 +108,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             None
         """
 
+        super().validate_srcs()
         self.import_src_tpl()
 
     def start_container(self):

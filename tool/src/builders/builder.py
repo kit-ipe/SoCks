@@ -139,24 +139,6 @@ class Builder:
             container_log_file=self._project_temp_dir / ".container_log.csv",
         )
 
-        # Check whether the user has modified the patches since they were applied
-        patches_already_added = (
-            self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
-        )
-        if (
-            self._patch_dir.exists()
-            and patches_already_added
-            and Builder._check_rebuild_required(
-                src_search_list=[self._patch_dir],
-                out_timestamp=self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success"),
-            )
-        ):
-            pretty_print.print_error(
-                f"It seems that the patches for block '{self.block_id}' have changed since "
-                f"they were applied. This is an unexpected state. Please clean and rebuild block '{self.block_id}'."
-            )
-            sys.exit(1)
-
     @staticmethod
     def _find_last_modified_file(
         search_list: typing.List[pathlib.Path], ignore_list: typing.List[pathlib.Path] = None
@@ -537,7 +519,6 @@ class Builder:
     def validate_srcs(self):
         """
         Check whether all sources required to build this block are present.
-        This is a dummy function. Overwrite it in a child class to add functionality.
 
         Args:
             None
@@ -548,6 +529,24 @@ class Builder:
         Raises:
             None
         """
+
+        # Check whether the user has modified the patches since they were applied
+        patches_already_added = (
+            self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
+        )
+        if (
+            self._patch_dir.exists()
+            and patches_already_added
+            and Builder._check_rebuild_required(
+                src_search_list=[self._patch_dir],
+                out_timestamp=self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success"),
+            )
+        ):
+            pretty_print.print_error(
+                f"It seems that the patches for block '{self.block_id}' have changed since "
+                f"they were applied. This is an unexpected state. Please clean and rebuild block '{self.block_id}'."
+            )
+            sys.exit(1)
 
     def _compose_build_info(self) -> str:
         """

@@ -107,6 +107,8 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
             None
         """
 
+        super().validate_srcs()
+
         if not self._block_src_dir.is_dir():
             self.pre_action_warnings.append(
                 "This block requires source files, but none were found. "

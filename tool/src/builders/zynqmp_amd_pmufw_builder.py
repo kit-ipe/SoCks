@@ -89,6 +89,7 @@ class ZynqMP_AMD_PMUFW_Builder(AMD_Builder):
             None
         """
 
+        super().validate_srcs()
         self.import_src_tpl()
 
     def create_pmufw_project(self):
