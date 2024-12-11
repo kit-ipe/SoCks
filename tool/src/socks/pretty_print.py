@@ -9,21 +9,21 @@ _bold = "\033[1m"
 _underline = "\033[4m"
 
 
-def print_warning(message: str, end: str = "\n", flush: bool = False):
+def print_warning(message: str, end: str = "\n", flush: bool = True):
     print(_orange + "WARNING: " + message + _end, end=end, flush=flush)
 
 
-def print_error(message: str, end: str = "\n", flush: bool = False):
+def print_error(message: str, end: str = "\n", flush: bool = True):
     print(_red + "ERROR: " + message + _end, end=end, flush=flush)
 
 
-def print_build_stage(message: str, end: str = "\n", flush: bool = False):
+def print_build_stage(message: str, end: str = "\n", flush: bool = True):
     print(_green + "\n>>> " + message + _end, end=end, flush=flush)
 
 
-def print_build(message: str, end: str = "\n", flush: bool = False):
+def print_build(message: str, end: str = "\n", flush: bool = True):
     print(_cyan + "-> " + message + _end, end=end, flush=flush)
 
 
-def print_clean(message: str, end: str = "\n", flush: bool = False):
+def print_clean(message: str, end: str = "\n", flush: bool = True):
     print(_magenta + "-> " + message + _end, end=end, flush=flush)
