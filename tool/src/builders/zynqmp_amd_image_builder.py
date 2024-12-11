@@ -83,7 +83,9 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend([self.container_executor.build_container_image, self.import_dependencies])
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend([self.linux_img, self.bootscr_img, self.boot_img, self.export_block_package])
+            self.block_cmds["build"].extend(
+                [self.linux_img, self.bootscr_img, self.boot_img, self.export_block_package]
+            )
             self.block_cmds["build-sd-card"].extend(self.block_cmds["build"])
             self.block_cmds["build-sd-card"].extend([self.sd_card_img])
             self.block_cmds["start-container"].extend(
