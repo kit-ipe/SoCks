@@ -36,12 +36,16 @@ class Container_Executor:
 
         # Check if the selected container tool is installed
         # This detailed check is necessary to avoid being tricked by podman's Docker compatibility layer
-        results = self._shell_executor.get_sh_results([container_tool, "--version"])
+        results = self._shell_executor.get_sh_results(command=[container_tool, "--version"], check=False)
         installation_valid = False
         if container_tool == "docker":
-            installation_valid = any("Docker version" in s for s in results.stdout.splitlines())
+            installation_valid = results.returncode == 0 and any(
+                "Docker version" in s for s in results.stdout.splitlines()
+            )
         if container_tool == "podman":
-            installation_valid = any("podman version" in s for s in results.stdout.splitlines())
+            installation_valid = results.returncode == 0 and any(
+                "podman version" in s for s in results.stdout.splitlines()
+            )
         if not installation_valid:
             pretty_print.print_error(
                 f"It seems that the selected container tool '{container_tool}' is not installed correctly. "
