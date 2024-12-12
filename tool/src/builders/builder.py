@@ -573,10 +573,10 @@ class Builder:
         git_ref_name = results.stdout.splitlines()[0]
         if git_ref_name == "HEAD":
             results = self.shell_executor.get_sh_results(
-                ["git", "-C", str(self._project_dir), "describe", "--exact-match", git_ref_name]
+                ["git", "-C", str(self._project_dir), "describe", "--exact-match", git_ref_name], check=False
             )
-            git_tag_name = results.stdout.splitlines()[0]
             if results.returncode == 0:
+                git_tag_name = results.stdout.splitlines()[0]
                 build_info = build_info + f"GIT_TAG_NAME: {git_tag_name}\n"
         else:
             build_info = build_info + f"GIT_BRANCH_NAME: {git_ref_name}\n"
