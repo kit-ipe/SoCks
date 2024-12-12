@@ -23,7 +23,7 @@ class Shell_Executor:
         self._prohibit_output_processing = prohibit_output_processing
 
     @staticmethod
-    def get_sh_results(command: typing.List[str], cwd: pathlib.Path = None) -> subprocess.CompletedProcess:
+    def get_sh_results(command: typing.List[str], cwd: pathlib.Path = None, check: bool = True) -> subprocess.CompletedProcess:
         """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
         Runs a sh command and get all output.
@@ -43,7 +43,17 @@ class Shell_Executor:
             None
         """
 
-        result = subprocess.run(" ".join(command), shell=True, cwd=cwd, capture_output=True, text=True, check=False)
+        try:
+            result = subprocess.run(" ".join(command), shell=True, cwd=cwd, capture_output=True, text=True, check=check)
+        except subprocess.CalledProcessError as e:
+            pretty_print.print_error(
+                f"The following shell command returned with exit code {e.returncode} (see output below): {e.cmd}"
+            )
+            if e.stdout:
+                print(f"\n\n{e.stdout}")
+            if e.stderr:
+                print(f"\n\n{e.stderr}")
+            sys.exit(1)
 
         return result
 
@@ -51,6 +61,7 @@ class Shell_Executor:
         self,
         command: typing.List[str],
         cwd: pathlib.Path = None,
+        check: bool = True,
         logfile: pathlib.Path = None,
         output_scrolling: bool = False,
         visible_lines: int = 30,
@@ -86,7 +97,17 @@ class Shell_Executor:
         # If scolling output is disabled and the output should not be hidden or logged, subprocess.run can be used
         # to run the subprocess
         if self._prohibit_output_processing or (output_scrolling == False and visible_lines != 0 and logfile == None):
-            subprocess.run(" ".join(command), shell=True, cwd=cwd, check=True, env=os.environ.copy())
+            try:
+                subprocess.run(" ".join(command), shell=True, cwd=cwd, check=check, env=os.environ.copy())
+            except subprocess.CalledProcessError as e:
+                pretty_print.print_error(
+                    f"The following shell command returned with exit code {e.returncode} (see output below): {e.cmd}"
+                )
+                if e.stdout:
+                    print(f"\n\n{e.stdout}")
+                if e.stderr:
+                    print(f"\n\n{e.stderr}")
+                sys.exit(1)
             return
 
         # Remove old logfile
@@ -203,8 +224,11 @@ class Shell_Executor:
         process.wait()
 
         # Check return code
-        if process.returncode != 0:
-            raise subprocess.CalledProcessError(process.returncode, " ".join(command))
+        if check and process.returncode != 0:
+            pretty_print.print_error(
+                    f"The following shell command returned with exit code {process.returncode}: {' '.join(command)}"
+                )
+            sys.exit(1)
 
     def prohibit_output_processing(self, state: bool):
         """

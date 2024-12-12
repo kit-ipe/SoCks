@@ -37,15 +37,11 @@ class Container_Executor:
         # Check if the selected container tool is installed
         # This detailed check is necessary to avoid being tricked by podman's Docker compatibility layer
         results = self._shell_executor.get_sh_results([container_tool, "--version"])
-        installation_valid = True
+        installation_valid = False
         if container_tool == "docker":
-            installation_valid = results.returncode == 0 and any(
-                "Docker version" in s for s in results.stdout.splitlines()
-            )
+            installation_valid = any("Docker version" in s for s in results.stdout.splitlines())
         if container_tool == "podman":
-            installation_valid = results.returncode == 0 and any(
-                "podman version" in s for s in results.stdout.splitlines()
-            )
+            installation_valid = any("podman version" in s for s in results.stdout.splitlines())
         if not installation_valid:
             pretty_print.print_error(
                 f"It seems that the selected container tool '{container_tool}' is not installed correctly. "
@@ -391,27 +387,26 @@ class Container_Executor:
 
             pretty_print.print_build("Starting container...")
 
-            try:
-                if comp_commands:
-                    self._shell_executor.exec_sh_command(
-                        command=[
-                            self._container_tool,
-                            "run",
-                            "--rm",
-                            "-it",
-                            mounts,
-                            self._container_image_tagged,
-                            "sh",
-                            "-c",
-                            comp_commands,
-                        ]
-                    )
-                else:
-                    self._shell_executor.exec_sh_command(
-                        command=[self._container_tool, "run", "--rm", "-it", mounts, self._container_image_tagged]
-                    )
-            except subprocess.CalledProcessError:
-                pass  # It is okay if the interactive shell session is ended with an exit code not equal to 0
+            if comp_commands:
+                self._shell_executor.exec_sh_command(
+                    command=[
+                        self._container_tool,
+                        "run",
+                        "--rm",
+                        "-it",
+                        mounts,
+                        self._container_image_tagged,
+                        "sh",
+                        "-c",
+                        comp_commands,
+                    ],
+                    check=False
+                )
+            else:
+                self._shell_executor.exec_sh_command(
+                    command=[self._container_tool, "run", "--rm", "-it", mounts, self._container_image_tagged],
+                    check=False
+                )
 
         elif self._container_tool == "none":
             # This function is only supported if a container tool is used
