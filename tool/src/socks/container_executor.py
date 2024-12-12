@@ -405,12 +405,12 @@ class Container_Executor:
                         "-c",
                         comp_commands,
                     ],
-                    check=False
+                    check=False,
                 )
             else:
                 self._shell_executor.exec_sh_command(
                     command=[self._container_tool, "run", "--rm", "-it", mounts, self._container_image_tagged],
-                    check=False
+                    check=False,
                 )
 
         elif self._container_tool == "none":

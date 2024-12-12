@@ -23,7 +23,9 @@ class Shell_Executor:
         self._prohibit_output_processing = prohibit_output_processing
 
     @staticmethod
-    def get_sh_results(command: typing.List[str], cwd: pathlib.Path = None, check: bool = True) -> subprocess.CompletedProcess:
+    def get_sh_results(
+        command: typing.List[str], cwd: pathlib.Path = None, check: bool = True
+    ) -> subprocess.CompletedProcess:
         """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
         Runs a sh command and get all output.
@@ -130,9 +132,7 @@ class Shell_Executor:
 
         # Tell the user where the complete output is logged
         if logfile:
-            print(
-                f"The complete output of this process is logged here: {logfile}\n"
-            )
+            print(f"The complete output of this process is logged here: {logfile}\n")
 
         # Start the subprocess
         process = subprocess.Popen(
@@ -226,8 +226,8 @@ class Shell_Executor:
         # Check return code
         if check and process.returncode != 0:
             pretty_print.print_error(
-                    f"The following shell command returned with exit code {process.returncode}: {' '.join(command)}"
-                )
+                f"The following shell command returned with exit code {process.returncode}: {' '.join(command)}"
+            )
             sys.exit(1)
 
     def prohibit_output_processing(self, state: bool):
