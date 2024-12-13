@@ -178,7 +178,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 for i, pkg in enumerate(extra_pkgs_raw):
                     line = i + 1
                     if len(pkg) != 1:
-                        print(f"ERROR: Line {line} in {extra_pkgs_file} has more than 1 column.")
+                        pretty_print.print_error(f"Line {line} in {extra_pkgs_file} has more than 1 column.")
                         sys.exit(1)
                     pkg[0] = pkg[0].replace("\n", "")
                     extra_pkgs.append(pkg[0])

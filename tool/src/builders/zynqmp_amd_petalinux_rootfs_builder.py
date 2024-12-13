@@ -230,7 +230,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                 # Add newly created patches to self._patch_list_file
                 for line in result_new_patches.stdout.splitlines():
                     new_patch = line.rpartition("/")[2]
-                    print(f"Patch {new_patch} was created")
+                    pretty_print.print_info(f"Patch {new_patch} was created")
                     with self._patch_list_file.open("a") as f:
                         print(f"{project} {new_patch}", file=f, end="\n")
                 # Synchronize the branches ref and dev to be able to detect new commits in the future
