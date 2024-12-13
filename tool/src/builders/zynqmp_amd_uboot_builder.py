@@ -197,7 +197,7 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
         if md5_existsing_file != md5_new_file:
             shutil.copy(bl31_bin_path, self._source_repo_dir / bl31_bin_path.name)
         else:
-            pretty_print.print_warning(
+            pretty_print.print_info(
                 "No new 'bl31.bin' recognized. The file that already exists in the target directory will be used."
             )
 

@@ -138,7 +138,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
 
         # Check if the project needs to be created
         if md5_existsing_file == md5_new_file:
-            pretty_print.print_warning("No new XSA archive recognized. Devicetree sources are not recreated.")
+            pretty_print.print_info("No new XSA archive recognized. Devicetree sources are not recreated.")
             return
 
         self.check_amd_tools(required_tools=["vitis"])

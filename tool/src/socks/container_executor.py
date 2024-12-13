@@ -102,7 +102,7 @@ class Container_Executor:
 
         # Skip this function if no container tool is used
         if self._container_tool == "none":
-            pretty_print.print_warning("Container image is not built in native mode.")
+            pretty_print.print_info("Container image is not built in native mode.")
             return
 
         # Check if the required container file exists
@@ -346,7 +346,7 @@ class Container_Executor:
             )
 
         elif self._container_tool == "none":
-            pretty_print.print_warning(f"Multiarch is not activated in native mode.")
+            pretty_print.print_info(f"Multiarch is not activated in native mode.")
             return
 
         else:

@@ -183,7 +183,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     pkg[0] = pkg[0].replace("\n", "")
                     extra_pkgs.append(pkg[0])
         else:
-            pretty_print.print_warning(
+            pretty_print.print_info(
                 f"File {extra_pkgs_file} not found. No additional rpm packages will be installed."
             )
 
@@ -214,7 +214,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 ]
             )
         else:
-            pretty_print.print_warning(
+            pretty_print.print_info(
                 f"File {mod_base_install_script} not found. No user-defined changes are made to the base os."
             )
 
@@ -321,7 +321,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
         # Check whether the layer needs to be added
         if not (layer_conf_file).is_file():
-            pretty_print.print_warning(
+            pretty_print.print_info(
                 f"File {layer_conf_file} not found. No files and directories created at build time will be added."
             )
             return
