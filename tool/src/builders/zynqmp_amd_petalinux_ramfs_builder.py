@@ -40,7 +40,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
 
     def build_archive(self, prebuilt: bool = False):
         """
-        Packs the entire ramfs in a archive.
+        Packs the entire ram file system in a archive.
 
         Args:
             prebuilt:
@@ -115,3 +115,97 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
 
         # Log success of this function
         self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+
+    def import_prebuilt(self):
+        """
+        Imports a pre-built ram file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Get path of the pre-built ram file system
+        if self.block_cfg.project.import_src is None:
+            pretty_print.print_error(
+                f"The property blocks/{self.block_id}/project/import_src is required to import the block, but it is not set."
+            )
+            sys.exit(1)
+        elif urllib.parse.urlparse(self.block_cfg.project.import_src).scheme == "file":
+            prebuilt_block_package = pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.import_src).path)
+        elif validators.url(self.block_cfg.project.import_src):
+            self._download_prebuilt()
+            downloads = list(self._download_dir.glob("*"))
+            # Check if there is more than one file in the download directory
+            if len(downloads) != 1:
+                pretty_print.print_error(f"Not exactly one file in {self._download_dir}")
+                sys.exit(1)
+            prebuilt_block_package = downloads[0]
+        else:
+            raise ValueError(
+                "The following string is not a valid reference to a block package: "
+                f"{self.block_cfg.project.import_src}. Only URI schemes 'https', 'http', and 'file' "
+                "are supported."
+            )
+
+        # Check whether the file is a supported archive
+        if prebuilt_block_package.name.partition(".")[2] not in ["tar.gz", "tgz", "tar.xz", "txz"]:
+            pretty_print.print_error(
+                f'Unable to import block package. The following archive type is not supported: {prebuilt_block_package.name.partition(".")[2]}'
+            )
+            sys.exit(1)
+
+        # Calculate md5 of the provided file
+        md5_new_file = hashlib.md5(prebuilt_block_package.read_bytes()).hexdigest()
+        # Read md5 of previously used file, if any
+        md5_existsing_file = 0
+        if self._source_pb_md5_file.is_file():
+            with self._source_pb_md5_file.open("r") as f:
+                md5_existsing_file = f.read()
+
+        # Check if the pre-built ram file system needs to be imported
+        if md5_existsing_file == md5_new_file:
+            pretty_print.print_build(
+                "No need to import the pre-built ram file system. No altered source files detected..."
+            )
+            return
+
+        self.clean_work()
+        self._mod_dir.mkdir(parents=True)
+
+        pretty_print.print_build("Importing pre-built ram file system...")
+
+        # Extract pre-built files
+        with tarfile.open(prebuilt_block_package, "r:*") as archive:
+            content = archive.getnames()
+            # Filter the list to get only .tar.xz and .tar.gz files
+            tar_files = [f for f in content if f.endswith((".tar.xz", ".tar.gz"))]
+            if len(tar_files) != 1:
+                pretty_print.print_error(
+                    f"There are {len(tar_files)} *.tar.xz and *.tar.gz files in archive {prebuilt_block_package}. Expected was 1."
+                )
+                sys.exit(1)
+            prebuilt_ramfs_archive = tar_files[0]
+            # Extract ramfs archive to the work directory
+            archive.extract(member=prebuilt_ramfs_archive, path=self._work_dir)
+
+        extract_pb_ramfs_commands = [
+            f'gunzip -c {self._work_dir / prebuilt_ramfs_archive} | sh -c "cd {self._mod_dir}/ && cpio -i"'
+        ]
+
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.container_executor.exec_sh_commands(
+            commands=extract_pb_ramfs_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
+        )
+
+        # Save checksum in file
+        with self._source_pb_md5_file.open("w") as f:
+            print(md5_new_file, file=f, end="")
+
+        # Delete imported, pre-built ramfs archive
+        (self._work_dir / prebuilt_ramfs_archive).unlink()

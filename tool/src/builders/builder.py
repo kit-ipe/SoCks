@@ -1345,6 +1345,9 @@ class Builder:
         # Remove empty repo directory
         self._repo_dir.rmdir()
 
+        # Reset timestamps
+        self._build_log.del_logged_timestamp(identifier=f"function-apply_patches-success")
+
     def clean_output(self):
         """
         This function cleans the output directory.

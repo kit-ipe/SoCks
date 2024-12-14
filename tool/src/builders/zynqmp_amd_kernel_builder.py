@@ -36,6 +36,10 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
         # Project files
         # File for version & build info tracking
         self._build_info_file = self._source_repo_dir / "include" / "build_info.h"
+        # Kernel configuration file
+        self._kernel_cfg_file = self._source_repo_dir / ".config"
+        # Kernel modules output file
+        self._modules_out_file = self._output_dir / "kernel_modules.tar.gz"
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
@@ -229,6 +233,19 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             pretty_print.print_build("No output files to extract Kernel modules...")
             return
 
+        # Remove old build artifacts
+        self._modules_out_file.unlink(missing_ok=True)
+
+        # Check if the Kernel was built with loadable module support
+        with self._kernel_cfg_file.open("r") as f:
+            kernel_cfg = f.readlines()
+
+        if "CONFIG_MODULES=y\n" not in kernel_cfg:
+            pretty_print.print_info(
+                "Support for loadable modules is not activated in the Kernel configuration. Therefore, no Kernel modules are exported."
+            )
+            return
+
         # Check whether the Kernel modules need to be exported
         if not ZynqMP_AMD_Kernel_Builder._check_rebuild_required(
             src_search_list=[self._source_repo_dir],
@@ -247,7 +264,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             "export CROSS_COMPILE=aarch64-linux-gnu-",
             f"make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir}",
             f"find {self._output_dir}/lib -type l -delete",
-            f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._output_dir}/kernel_modules.tar.gz {self._output_dir}/lib",
+            f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._modules_out_file} {self._output_dir}/lib",
             f"rm -rf {self._output_dir}/lib",
         ]
 

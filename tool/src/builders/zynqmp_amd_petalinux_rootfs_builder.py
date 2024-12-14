@@ -41,6 +41,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         self._rootfs_name = f"petalinux_zynqmp_{self.project_cfg.project.name}"
 
         # Project directories
+        self._config_dir = self._block_src_dir / "config"
         self._mod_dir = self._work_dir / self._rootfs_name
 
         # Project files
@@ -56,7 +57,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         # all the required files. Regex can be used to describe the expected files.
         # Optional dependencies can also be listed here. They will be ignored if
         # they are not listed in the project configuration.
-        self._block_deps = {"kernel": ["kernel_modules.tar.gz"]}
+        self._block_deps = {"kernel": [".*"]}
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
@@ -329,7 +330,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             pretty_print.print_build("No need to initialize yocto...")
             return
 
-        local_conf_append = self._block_src_dir / "src" / "local.conf.append"
+        local_conf_append = self._config_dir / "local.conf.append"
 
         pretty_print.print_build("Initializing yocto...")
 
@@ -361,7 +362,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         if not ZynqMP_AMD_PetaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files
             + [
-                self._block_src_dir / "src",
+                self._config_dir,
                 self._source_repo_dir / "sources",
                 self._source_repo_dir / "build" / "conf",
                 self._source_repo_dir / "build" / "workspace",
@@ -417,12 +418,25 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             None
         """
 
+        kmods_archive = self._dependencies_dir / "kernel" / "kernel_modules.tar.gz"
+
+        # Skip this function if no kernel modules are available
+        if not kmods_archive.is_file():
+            pretty_print.print_info(f"File {kmods_archive} not found. No kernel modules are added.")
+            if (self._mod_dir / "lib" / "modules").is_dir():
+                delete_old_kmodules_commands = [f"rm -rf {self._mod_dir}/lib/modules"]
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                self.container_executor.exec_sh_commands(
+                    commands=delete_old_kmodules_commands,
+                    dirs_to_mount=[(self._work_dir, "Z")],
+                    run_as_root=True,
+                )
+            return
+
         # Check whether a RootFS is present
         if not self._mod_dir.is_dir():
             pretty_print.print_error(f"RootFS at {self._mod_dir} not found.")
             sys.exit(1)
-
-        kmods_archive = self._dependencies_dir / "kernel" / "kernel_modules.tar.gz"
 
         # Calculate md5 of the provided file
         md5_new_file = hashlib.md5(kmods_archive.read_bytes()).hexdigest()
@@ -445,7 +459,8 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             "chown -R root:root lib",
             "chmod -R 000 lib",
             "chmod -R u=rwX,go=rX lib",
-            f"rm -rf {self._mod_dir}/lib/modules/*",
+            f"rm -rf {self._mod_dir}/lib/modules",
+            f"mkdir -p {self._mod_dir}/lib/modules",
             f"mv lib/modules/* {self._mod_dir}/lib/modules/",
             "rm -rf lib",
         ]
@@ -580,6 +595,8 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                 f"The property blocks/{self.block_id}/project/import_src is required to import the block, but it is not set."
             )
             sys.exit(1)
+        elif urllib.parse.urlparse(self.block_cfg.project.import_src).scheme == "file":
+            prebuilt_block_package = pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.import_src).path)
         elif validators.url(self.block_cfg.project.import_src):
             self._download_prebuilt()
             downloads = list(self._download_dir.glob("*"))
@@ -589,11 +606,11 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                 sys.exit(1)
             prebuilt_block_package = downloads[0]
         else:
-            try:
-                prebuilt_block_package = pathlib.Path(self.block_cfg.project.import_src)
-            except ValueError:
-                pretty_print.print_error(f"{self.block_cfg.project.import_src} is not a valid URL and not a valid path")
-                sys.exit(1)
+            raise ValueError(
+                "The following string is not a valid reference to a block package: "
+                f"{self.block_cfg.project.import_src}. Only URI schemes 'https', 'http', and 'file' "
+                "are supported."
+            )
 
         # Check whether the file is a supported archive
         if prebuilt_block_package.name.partition(".")[2] not in ["tar.gz", "tgz", "tar.xz", "txz"]:

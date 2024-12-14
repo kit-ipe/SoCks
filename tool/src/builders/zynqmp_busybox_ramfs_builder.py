@@ -35,28 +35,31 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             block_description=block_description,
         )
 
-        self._rootfs_name = f"busybox_fs_zynqmp_{self.project_cfg.project.name}"
+        self._ramfs_name = f"busybox_fs_zynqmp_{self.project_cfg.project.name}"
 
         # Project directories
         self._config_dir = self._block_src_dir / "config"
-        self._mod_dir = self._work_dir / self._rootfs_name
+        self._mod_dir = self._work_dir / self._ramfs_name
 
         # Project files
         # File for version & build info tracking
         self._build_info_file = self._work_dir / "fs_build_info"
+        # File for saving the checksum of the Kernel module archive used
+        self._source_kmods_md5_file = self._work_dir / "source_kmodules.md5"
 
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.
         # Optional dependencies can also be listed here. They will be ignored if
         # they are not listed in the project configuration.
-        self._block_deps = {"kernel": ["kernel_modules.tar.gz"]}
+        self._block_deps = {"kernel": [".*"]}
 
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
         self.block_cmds = {
             "prepare": [],
             "build": [],
+            "prebuild": [],
             "clean": [],
             "create-patches": [],
             "start-container": [],
@@ -86,7 +89,17 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             )
             self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend(
-                [self.build_base_ramfs, self.populate_ramfs, self.build_archive, self.export_block_package]
+                [
+                    self.build_base_ramfs,
+                    self.populate_ramfs,
+                    self.add_kmodules,
+                    self.build_archive,
+                    self.export_block_package,
+                ]
+            )
+            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"])
+            self.block_cmds["prebuild"].extend(
+                [self.build_base_ramfs, self.build_archive_prebuilt, self.export_block_package]
             )
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend(
@@ -98,7 +111,9 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
                 [self.container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
             )
         elif self.block_cfg.source == "import":
-            self.block_cmds["build"].extend([self.import_prebuilt])
+            self.block_cmds["build"].extend(
+                [self.import_prebuilt, self.add_kmodules, self.build_archive, self.export_block_package]
+            )
 
     def validate_srcs(self):
         """
@@ -286,6 +301,78 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         # Log success of this function
         self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
+    def add_kmodules(self):
+        """
+        Adds kernel modules to the ram file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        kmods_archive = self._dependencies_dir / "kernel" / "kernel_modules.tar.gz"
+
+        # Skip this function if no kernel modules are available
+        if not kmods_archive.is_file():
+            pretty_print.print_info(f"File {kmods_archive} not found. No kernel modules are added.")
+            if (self._mod_dir / "lib" / "modules").is_dir():
+                delete_old_kmodules_commands = [f"rm -rf {self._mod_dir}/lib/modules"]
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                self.container_executor.exec_sh_commands(
+                    commands=delete_old_kmodules_commands,
+                    dirs_to_mount=[(self._work_dir, "Z")],
+                    run_as_root=True,
+                )
+            return
+
+        # Check whether a RootFS is present
+        if not self._mod_dir.is_dir():
+            pretty_print.print_error(f"RootFS at {self._mod_dir} not found.")
+            sys.exit(1)
+
+        # Calculate md5 of the provided file
+        md5_new_file = hashlib.md5(kmods_archive.read_bytes()).hexdigest()
+        # Read md5 of previously used Kernel module archive, if any
+        md5_existsing_file = 0
+        if self._source_kmods_md5_file.is_file():
+            with self._source_kmods_md5_file.open("r") as f:
+                md5_existsing_file = f.read()
+
+        # Check whether the Kernel modules need to be added
+        if md5_existsing_file == md5_new_file:
+            pretty_print.print_build("No need to add Kernel Modules. No altered source files detected...")
+            return
+
+        pretty_print.print_build("Adding Kernel Modules...")
+
+        add_kmodules_commands = [
+            f"cd {self._work_dir}",
+            f"tar -xzf {kmods_archive}",
+            "chown -R root:root lib",
+            "chmod -R 000 lib",
+            "chmod -R u=rwX,go=rX lib",
+            f"rm -rf {self._mod_dir}/lib/modules",
+            f"mkdir -p {self._mod_dir}/lib/modules",
+            f"mv lib/modules/* {self._mod_dir}/lib/modules/",
+            "rm -rf lib",
+        ]
+
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.container_executor.exec_sh_commands(
+            commands=add_kmodules_commands,
+            dirs_to_mount=[(self._dependencies_dir, "Z"), (self._work_dir, "Z")],
+            run_as_root=True,
+        )
+
+        # Save checksum in file
+        with self._source_kmods_md5_file.open("w") as f:
+            print(md5_new_file, file=f, end="")
+
     def build_archive(self, prebuilt: bool = False):
         """
         Packs the entire ramfs in a archive.
@@ -344,7 +431,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         if prebuilt:
             archive_name = f"busybox_fs_zynqmp_pre-built"
         else:
-            archive_name = self._rootfs_name
+            archive_name = self._ramfs_name
 
         archive_build_commands = [
             f"cd {self._mod_dir}",
@@ -363,6 +450,116 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
 
         # Log success of this function
         self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+
+    def build_archive_prebuilt(self):
+        """
+        Packs the entire pre-built ramfs in a archive.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self.build_archive(prebuilt=True)
+
+    def import_prebuilt(self):
+        """
+        Imports a pre-built ram file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Get path of the pre-built ram file system
+        if self.block_cfg.project.import_src is None:
+            pretty_print.print_error(
+                f"The property blocks/{self.block_id}/project/import_src is required to import the block, but it is not set."
+            )
+            sys.exit(1)
+        elif urllib.parse.urlparse(self.block_cfg.project.import_src).scheme == "file":
+            prebuilt_block_package = pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.import_src).path)
+        elif validators.url(self.block_cfg.project.import_src):
+            self._download_prebuilt()
+            downloads = list(self._download_dir.glob("*"))
+            # Check if there is more than one file in the download directory
+            if len(downloads) != 1:
+                pretty_print.print_error(f"Not exactly one file in {self._download_dir}")
+                sys.exit(1)
+            prebuilt_block_package = downloads[0]
+        else:
+            raise ValueError(
+                "The following string is not a valid reference to a block package: "
+                f"{self.block_cfg.project.import_src}. Only URI schemes 'https', 'http', and 'file' "
+                "are supported."
+            )
+
+        # Check whether the file is a supported archive
+        if prebuilt_block_package.name.partition(".")[2] not in ["tar.gz", "tgz", "tar.xz", "txz"]:
+            pretty_print.print_error(
+                f'Unable to import block package. The following archive type is not supported: {prebuilt_block_package.name.partition(".")[2]}'
+            )
+            sys.exit(1)
+
+        # Calculate md5 of the provided file
+        md5_new_file = hashlib.md5(prebuilt_block_package.read_bytes()).hexdigest()
+        # Read md5 of previously used file, if any
+        md5_existsing_file = 0
+        if self._source_pb_md5_file.is_file():
+            with self._source_pb_md5_file.open("r") as f:
+                md5_existsing_file = f.read()
+
+        # Check if the pre-built ram file system needs to be imported
+        if md5_existsing_file == md5_new_file:
+            pretty_print.print_build(
+                "No need to import the pre-built ram file system. No altered source files detected..."
+            )
+            return
+
+        self.clean_work()
+        self._mod_dir.mkdir(parents=True)
+
+        pretty_print.print_build("Importing pre-built ram file system...")
+
+        # Extract pre-built files
+        with tarfile.open(prebuilt_block_package, "r:*") as archive:
+            content = archive.getnames()
+            # Filter the list to get only .tar.xz and .tar.gz files
+            tar_files = [f for f in content if f.endswith((".tar.xz", ".tar.gz"))]
+            if len(tar_files) != 1:
+                pretty_print.print_error(
+                    f"There are {len(tar_files)} *.tar.xz and *.tar.gz files in archive {prebuilt_block_package}. Expected was 1."
+                )
+                sys.exit(1)
+            prebuilt_ramfs_archive = tar_files[0]
+            # Extract ramfs archive to the work directory
+            archive.extract(member=prebuilt_ramfs_archive, path=self._work_dir)
+
+        extract_pb_ramfs_commands = [
+            f'gunzip -c {self._work_dir / prebuilt_ramfs_archive} | sh -c "cd {self._mod_dir}/ && cpio -i"'
+        ]
+
+        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        self.container_executor.exec_sh_commands(
+            commands=extract_pb_ramfs_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
+        )
+
+        # Save checksum in file
+        with self._source_pb_md5_file.open("w") as f:
+            print(md5_new_file, file=f, end="")
+
+        # Delete imported, pre-built ramfs archive
+        (self._work_dir / prebuilt_ramfs_archive).unlink()
 
     def clean_work(self):
         """

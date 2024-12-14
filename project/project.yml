@@ -16,7 +16,7 @@ blocks:
   #   project:
   #     build_srcs:
   #       source: "https://github.com/Xilinx/yocto-manifests.git"
-  #       branch: "rel-v{{externalTools/xilinx/version}}"
+  #       branch: "rel-v{{external_tools/xilinx/version}}"
   #     add_build_info: true
   #     # If no 'import_src' property is specified, the block must be built locally
   #     dependencies:
