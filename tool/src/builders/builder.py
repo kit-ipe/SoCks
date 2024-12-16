@@ -1157,9 +1157,7 @@ class Builder:
 
         pretty_print.print_build("Opening configuration menu...")
 
-        self.container_executor.exec_sh_commands(
-            commands=menuconfig_commands, dirs_to_mount=[(self._repo_dir, "Z")]
-        )
+        self.container_executor.exec_sh_commands(commands=menuconfig_commands, dirs_to_mount=[(self._repo_dir, "Z")])
 
     def _prep_clean_srcs(self, prep_srcs_commands: typing.List[str]):
         """
@@ -1187,9 +1185,7 @@ class Builder:
 
         pretty_print.print_build(f"Preparing clean sources...")
 
-        self.container_executor.exec_sh_commands(
-            commands=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z")]
-        )
+        self.container_executor.exec_sh_commands(commands=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z")])
 
     def import_clean_srcs(self):
         """
@@ -1319,17 +1315,20 @@ class Builder:
             pretty_print.print_clean("No need to clean the repo directory...")
             return
 
-        # Check if there are uncommited changes in the git repo
-        results = self.shell_executor.get_sh_results(["git", "-C", str(self._source_repo_dir), "status", "--porcelain"])
-        if results.stdout:
-            pretty_print.print_warning(
-                f"There are uncommited changes in {self._source_repo_dir}. Do you really want to clean this repo? (y/n) ",
-                end="",
+        if self._source_repo_dir is not None and self._source_repo_dir.exists():
+            # Check if there are uncommited changes in the git repo
+            results = self.shell_executor.get_sh_results(
+                ["git", "-C", str(self._source_repo_dir), "status", "--porcelain"]
             )
-            answer = input("")
-            if answer.lower() not in ["y", "Y", "yes", "Yes"]:
-                pretty_print.print_clean("Cleaning abborted...")
-                sys.exit(1)
+            if results.stdout:
+                pretty_print.print_warning(
+                    f"There are uncommited changes in {self._source_repo_dir}. Do you really want to clean this repo? (y/n) ",
+                    end="",
+                )
+                answer = input("")
+                if answer.lower() not in ["y", "Y", "yes", "Yes"]:
+                    pretty_print.print_clean("Cleaning abborted...")
+                    sys.exit(1)
 
         if as_root:
             pretty_print.print_clean("Cleaning repo directory as root user...")
