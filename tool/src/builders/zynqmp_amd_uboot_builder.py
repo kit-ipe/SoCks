@@ -226,6 +226,9 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
             pretty_print.print_build("No need to rebuild U-Boot. No altered source files detected...")
             return
 
+        # Remove old build artifacts
+        (self._output_dir / "u-boot.elf").unlink(missing_ok=True)
+
         pretty_print.print_build("Building U-Boot...")
 
         if self.block_cfg.project.add_build_info == True:
@@ -254,7 +257,6 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
         )
 
         # Create symlink to the output file
-        (self._output_dir / "u-boot.elf").unlink(missing_ok=True)
         (self._output_dir / "u-boot.elf").symlink_to(self._source_repo_dir / "u-boot.elf")
 
         # Log success of this function

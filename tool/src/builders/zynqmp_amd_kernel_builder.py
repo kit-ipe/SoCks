@@ -179,6 +179,10 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             pretty_print.print_build("No need to rebuild the Linux Kernel. No altered source files detected...")
             return
 
+        # Remove old build artifacts
+        (self._output_dir / "Image").unlink(missing_ok=True)
+        (self._output_dir / "Image.gz").unlink(missing_ok=True)
+
         pretty_print.print_build("Building Linux Kernel...")
 
         if self.block_cfg.project.add_build_info == True:
@@ -206,9 +210,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
         )
 
         # Create symlink to the output files
-        (self._output_dir / "Image").unlink(missing_ok=True)
         (self._output_dir / "Image").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image")
-        (self._output_dir / "Image.gz").unlink(missing_ok=True)
         (self._output_dir / "Image.gz").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image.gz")
 
         # Log success of this function
@@ -233,17 +235,14 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             pretty_print.print_build("No output files to extract Kernel modules...")
             return
 
-        # Remove old build artifacts
-        self._modules_out_file.unlink(missing_ok=True)
-
         # Check if the Kernel was built with loadable module support
         with self._kernel_cfg_file.open("r") as f:
             kernel_cfg = f.readlines()
-
         if "CONFIG_MODULES=y\n" not in kernel_cfg:
             pretty_print.print_info(
                 "Support for loadable modules is not activated in the Kernel configuration. Therefore, no Kernel modules are exported."
             )
+            self._modules_out_file.unlink(missing_ok=True)
             return
 
         # Check whether the Kernel modules need to be exported
@@ -256,6 +255,9 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
         ):
             pretty_print.print_build("No need to export Kernel modules. No altered source files detected...")
             return
+
+        # Remove old build artifacts
+        self._modules_out_file.unlink(missing_ok=True)
 
         pretty_print.print_build("Exporting Kernel Modules...")
 

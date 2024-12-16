@@ -187,6 +187,9 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         self._work_dir.mkdir(parents=True, exist_ok=True)
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
+        # Remove old build artifacts
+        (self._output_dir / "image.ub").unlink(missing_ok=True)
+
         pretty_print.print_build("Building Linux Image...")
 
         linux_img_build_commands = [
@@ -238,6 +241,9 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             return
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Remove old build artifacts
+        (self._output_dir / "boot.scr").unlink(missing_ok=True)
 
         pretty_print.print_build("Building boot.scr...")
 
@@ -300,6 +306,9 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
 
         self._work_dir.mkdir(parents=True, exist_ok=True)
 
+        # Remove old build artifacts
+        (self._output_dir / "BOOT.BIN").unlink(missing_ok=True)
+
         pretty_print.print_build("Building BOOT.BIN...")
 
         boot_img_build_commands = [
@@ -314,7 +323,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             f'sed -i "s:<UBOOT_PATH>:{self._uboot_img_path}:g;" {self._work_dir}/bootgen.bif',
             f'sed -i "s:<LINUX_PATH>:{self._output_dir / "image.ub"}:g;" {self._work_dir}/bootgen.bif',
             f'sed -i "s:<BSCR_PATH>:{self._output_dir / "boot.scr"}:g;" {self._work_dir}/bootgen.bif',
-            f"bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN -w",
+            f"bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN",
         ]
 
         self.container_executor.exec_sh_commands(

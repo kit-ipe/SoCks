@@ -201,6 +201,9 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
 
         self.check_amd_tools(required_tools=["vitis"])
 
+        # Remove old build artifacts
+        (self._output_dir / "fsbl.elf").unlink(missing_ok=True)
+
         pretty_print.print_build("Building the FSBL...")
 
         fsbl_build_commands = [
@@ -224,7 +227,6 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
         )
 
         # Create symlink to the output file
-        (self._output_dir / "fsbl.elf").unlink(missing_ok=True)
         (self._output_dir / "fsbl.elf").symlink_to(self._source_repo_dir / "executable.elf")
 
         # Log success of this function

@@ -198,6 +198,10 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild the devicetree. No altered source files detected...")
             return
 
+        # Remove old build artifacts
+        (self._output_dir / "system.dtb").unlink(missing_ok=True)
+        (self._output_dir / "system.dts").unlink(missing_ok=True)
+
         pretty_print.print_build("Building the base devicetree...")
 
         if self._dt_incl_list_file.is_file():
@@ -234,9 +238,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
         # Create symlink to the output files
-        (self._output_dir / "system.dtb").unlink(missing_ok=True)
         (self._output_dir / "system.dtb").symlink_to(self._base_work_dir / "system.dtb")
-        (self._output_dir / "system.dts").unlink(missing_ok=True)
         (self._output_dir / "system.dts").symlink_to(self._base_work_dir / "system.dts")
 
         # Log success of this function
@@ -276,6 +278,10 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         except FileNotFoundError:
             pass  # Ignore if the directory does not exist
         self._overlay_work_dir.mkdir(parents=True)
+
+        # Remove old build artifacts
+        for symlink in self._output_dir.glob("*.dtbo"):
+            (symlink).unlink()
 
         pretty_print.print_build("Building devicetree overlays...")
 
@@ -328,8 +334,6 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
         # Create symlink to the output files
-        for symlink in self._output_dir.glob("*.dtbo"):
-            (symlink).unlink()
         for symlink in self._overlay_work_dir.glob("*.dtbo"):
             (self._output_dir / symlink.name).symlink_to(symlink)
 

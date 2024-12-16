@@ -84,6 +84,10 @@ class ZynqMP_AMD_ATF_Builder(Builder):
             pretty_print.print_build("No need to rebuild the ATF. No altered source files detected...")
             return
 
+        # Remove old build artifacts
+        (self._output_dir / "bl31.elf").unlink(missing_ok=True)
+        (self._output_dir / "bl31.bin").unlink(missing_ok=True)
+
         pretty_print.print_build("Building the ATF...")
 
         atf_build_commands = [
@@ -100,9 +104,7 @@ class ZynqMP_AMD_ATF_Builder(Builder):
         )
 
         # Create symlinks to the output files
-        (self._output_dir / "bl31.elf").unlink(missing_ok=True)
         (self._output_dir / "bl31.elf").symlink_to(self._source_repo_dir / "build/zynqmp/release/bl31/bl31.elf")
-        (self._output_dir / "bl31.bin").unlink(missing_ok=True)
         (self._output_dir / "bl31.bin").symlink_to(self._source_repo_dir / "build/zynqmp/release/bl31.bin")
 
         # Log success of this function
