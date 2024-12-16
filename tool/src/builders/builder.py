@@ -1158,7 +1158,7 @@ class Builder:
         pretty_print.print_build("Opening configuration menu...")
 
         self.container_executor.exec_sh_commands(
-            commands=menuconfig_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+            commands=menuconfig_commands, dirs_to_mount=[(self._repo_dir, "Z")]
         )
 
     def _prep_clean_srcs(self, prep_srcs_commands: typing.List[str]):
@@ -1188,7 +1188,7 @@ class Builder:
         pretty_print.print_build(f"Preparing clean sources...")
 
         self.container_executor.exec_sh_commands(
-            commands=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+            commands=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z")]
         )
 
     def import_clean_srcs(self):

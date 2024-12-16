@@ -94,7 +94,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
 
         self.container_executor.exec_sh_commands(
             commands=create_vivado_project_commands,
-            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._output_dir, "Z")],
+            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")],
         )
 
     def build_vivado_project(self):
@@ -145,7 +145,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
 
         self.container_executor.exec_sh_commands(
             commands=vivado_build_commands,
-            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._output_dir, "Z")],
+            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")],
         )
 
         # Create symlinks to the output files

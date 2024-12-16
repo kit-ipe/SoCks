@@ -157,7 +157,6 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
                 (self._xsa_dir, "Z"),
                 (self._repo_dir, "Z"),
                 (self._work_dir, "Z"),
-                (self._output_dir, "Z"),
             ],
         )
 
@@ -218,9 +217,7 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
             commands=fsbl_build_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
-                (self._xsa_dir, "Z"),
                 (self._repo_dir, "Z"),
-                (self._output_dir, "Z"),
             ],
             logfile=self._block_temp_dir / "build.log",
             output_scrolling=True,
