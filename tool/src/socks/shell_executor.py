@@ -48,13 +48,15 @@ class Shell_Executor:
         try:
             result = subprocess.run(" ".join(command), shell=True, cwd=cwd, capture_output=True, text=True, check=check)
         except subprocess.CalledProcessError as e:
-            pretty_print.print_error(
-                f"The following shell command returned with exit code {e.returncode} (see output below): {e.cmd}"
-            )
             if e.stdout:
-                print(f"\n\n{e.stdout}")
+                print(f"\n{e.stdout}")
             if e.stderr:
-                print(f"\n\n{e.stderr}")
+                print(f"\n{e.stderr}")
+            pretty_print.print_error(
+                "The return code of a sub-process was not equal to zero (see output above).\n"
+                f"return code: {e.returncode}\n"
+                f"shell command: {e.cmd}"
+            )
             sys.exit(1)
 
         return result
@@ -102,13 +104,15 @@ class Shell_Executor:
             try:
                 subprocess.run(" ".join(command), shell=True, cwd=cwd, check=check, env=os.environ.copy())
             except subprocess.CalledProcessError as e:
-                pretty_print.print_error(
-                    f"The following shell command returned with exit code {e.returncode} (see output below): {e.cmd}"
-                )
                 if e.stdout:
-                    print(f"\n\n{e.stdout}")
+                    print(f"\n{e.stdout}")
                 if e.stderr:
-                    print(f"\n\n{e.stderr}")
+                    print(f"\n{e.stderr}")
+                pretty_print.print_error(
+                    "The return code of a sub-process was not equal to zero (see output above).\n"
+                    f"return code: {e.returncode}\n"
+                    f"shell command: {e.cmd}"
+                )
                 sys.exit(1)
             return
 
@@ -226,7 +230,9 @@ class Shell_Executor:
         # Check return code
         if check and process.returncode != 0:
             pretty_print.print_error(
-                f"The following shell command returned with exit code {process.returncode}: {' '.join(command)}"
+                "The return code of a sub-process was not equal to zero (see output above).\n"
+                f"return code: {process.returncode}\n"
+                f"shell command: {' '.join(command)}"
             )
             sys.exit(1)
 
