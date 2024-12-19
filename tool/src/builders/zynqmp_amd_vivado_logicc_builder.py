@@ -88,8 +88,17 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         """
 
         # Check if the Vivado project needs to be created
-        if self._logicc_build_dir.is_dir() and self._logicc_image_dir.is_dir():
-            pretty_print.print_build("The Vivado Project already exists. It will not be recreated...")
+        if (
+            self._logicc_build_dir.is_dir()
+            and self._logicc_image_dir.is_dir()
+            and not ZynqMP_AMD_Vivado_logicc_Builder._check_rebuild_required(
+                src_search_list=self._project_cfg_files + [self._source_repo_dir],
+                out_timestamp=self._build_log.get_logged_timestamp(
+                    identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+                ),
+            )
+        ):
+            pretty_print.print_build("No need to recreated the Vivado Project. No altered source files detected...")
             return
 
         self.check_amd_tools(required_tools=["vivado"])
@@ -117,6 +126,9 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             commands=create_vivado_project_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._work_dir, "Z")],
         )
+
+        # Log success of this function
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def build_vivado_project(self):
         """
