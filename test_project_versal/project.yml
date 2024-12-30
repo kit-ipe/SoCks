@@ -1,0 +1,36 @@
+---
+import:
+  - project-versal-default.yml
+project:
+  name: "test-project"
+external_tools:
+  xilinx:
+    version: "2024.2"
+blocks:
+  vivado:
+    source: "import"
+    builder: "Versal_AMD_Vivado_logicc_Builder"
+    project:
+      import_src: "file:///home/marvin/Projects/Build_System_Tests/SoCks/test_project_versal/vivado_import.tar.gz"
+      build_srcs:
+        source: "ssh://git@gitlab.kit.edu/kit/ipe-sdr/ipe-sdr-dev/hardware/sdr_hardware.git"
+        branch: "452-use-commit-id-of-sdr-hardware-instead-of-yocto-in-the-pimc"
+      name: "cap_zcu216_echo"
+    container:
+      image: "logicc-builder-alma8"
+  rootfs:
+    source: "build"
+    builder: "Versal_AlmaLinux_RootFS_Builder"
+    release: "9"
+    project:
+      add_build_info: false
+      # If no 'import_src' property is specified, the block must be built locally
+      dependencies:
+        kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
+    container:
+      image: "alma9-rootfs-builder-alma9"
+      tag: "socks"
+  image:
+    project:
+      dependencies:
+        rootfs: "temp/rootfs/output/bp_rootfs_*.tar.gz"

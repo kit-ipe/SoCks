@@ -1,6 +1,4 @@
-import sys
 import pathlib
-import urllib
 import inspect
 
 import socks.pretty_print as pretty_print
@@ -21,16 +19,17 @@ class ZynqMP_AMD_ATF_Builder(Builder):
         project_dir: pathlib.Path,
         block_id: str = "atf",
         block_description: str = "Build the ARM Trusted Firmware for ZynqMP devices",
+        model_class: type[object] = ZynqMP_AMD_ATF_Model,
     ):
 
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
-            model_class=ZynqMP_AMD_ATF_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
             block_description=block_description,
+            model_class=model_class,
         )
 
         # The user can use block commands to interact with the block.

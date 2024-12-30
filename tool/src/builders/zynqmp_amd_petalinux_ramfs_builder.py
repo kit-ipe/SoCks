@@ -26,16 +26,17 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
         project_dir: pathlib.Path,
         block_id: str = "ramfs",
         block_description: str = "Build an AMD PetaLinux RAM file system",
+        model_class: type[object] = ZynqMP_AMD_PetaLinux_RAMFS_Model,
     ):
 
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
-            model_class=ZynqMP_AMD_PetaLinux_RAMFS_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
             block_description=block_description,
+            model_class=model_class,
         )
 
     def build_archive(self, prebuilt: bool = False):

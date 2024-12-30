@@ -1,0 +1,228 @@
+import sys
+import pathlib
+import hashlib
+import inspect
+
+import socks.pretty_print as pretty_print
+from builders.amd_builder import AMD_Builder
+from builders.versal_amd_plm_model import Versal_AMD_PLM_Model
+
+
+class Versal_AMD_PLM_Builder(AMD_Builder):
+    """
+    AMD PLM builder class
+    """
+
+    def __init__(
+        self,
+        project_cfg: dict,
+        project_cfg_files: list,
+        socks_dir: pathlib.Path,
+        project_dir: pathlib.Path,
+        block_id: str = "plm",
+        block_description: str = "Build the Platform Loader and Manager (PLM) for Versal devices",
+    ):
+
+        super().__init__(
+            project_cfg=project_cfg,
+            project_cfg_files=project_cfg_files,
+            model_class=Versal_AMD_PLM_Model,
+            socks_dir=socks_dir,
+            project_dir=project_dir,
+            block_id=block_id,
+            block_description=block_description,
+        )
+
+        self.pre_action_warnings.append(
+            "This block is experimental, it should not be used for production. "
+            "Versal blocks should use the Vitis SDT flow instead of the XSCT flow, as soon as it is stable."
+        )
+
+        # Project directories
+        self._vitis_workspace_dir = self._work_dir / "vitis_workspace"
+
+        # Products of other blocks on which this block depends
+        # This dict is used to check whether the imported block packages contain
+        # all the required files. Regex can be used to describe the expected files.
+        # Optional dependencies can also be listed here. They will be ignored if
+        # they are not listed in the project configuration.
+        self._block_deps = {"vivado": [".*.xsa"]}
+
+        # The user can use block commands to interact with the block.
+        # Each command represents a list of member functions of the builder class.
+        self.block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": []}
+        self.block_cmds["clean"].extend(
+            [
+                self.container_executor.build_container_image,
+                self.clean_download,
+                self.clean_work,
+                self.clean_source_xsa,
+                self.clean_dependencies,
+                self.clean_output,
+                self.clean_block_temp,
+            ]
+        )
+        if self.block_cfg.source == "build":
+            self.block_cmds["prepare"].extend(
+                [
+                    self.container_executor.build_container_image,
+                    self.import_dependencies,
+                    self.import_xsa,
+                    self.create_plm_project,
+                ]
+            )
+            self.block_cmds["build"].extend(self.block_cmds["prepare"])
+            self.block_cmds["build"].extend([self.build_plm, self.export_block_package])
+            self.block_cmds["start-container"].extend(
+                [self.container_executor.build_container_image, self.start_container]
+            )
+        elif self.block_cfg.source == "import":
+            self.block_cmds["build"].extend([self.import_prebuilt])
+
+    def validate_srcs(self):
+        """
+        Check whether all sources required to build this block are present.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        super().validate_srcs()
+        # self.import_src_tpl()
+
+    def create_plm_project(self):
+        """
+        Creates the PLM project.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        xsa_files = list(self._xsa_dir.glob("*.xsa"))
+
+        # Check if there is more than one XSA file in the xsa directory
+        if len(xsa_files) != 1:
+            pretty_print.print_error(f"Not exactly one XSA archive in {self._xsa_dir}")
+            sys.exit(1)
+
+        # Calculate md5 of the provided file
+        md5_new_file = hashlib.md5(xsa_files[0].read_bytes()).hexdigest()
+        # Read md5 of previously used XSA archive, if any
+        md5_existsing_file = 0
+        if self._source_xsa_md5_file.is_file():
+            with self._source_xsa_md5_file.open("r") as f:
+                md5_existsing_file = f.read()
+
+        # Check if the project needs to be created
+        if md5_existsing_file == md5_new_file:
+            pretty_print.print_info("No new XSA archive recognized. PLM project is not created.")
+            return
+
+        self.check_amd_tools(required_tools=["vitis"])
+
+        self.clean_work()
+        self._work_dir.mkdir(parents=True)
+        self._output_dir.mkdir(parents=True, exist_ok=True)
+
+        pretty_print.print_build("Creating the PLM project...")
+
+        create_plm_project_commands = [
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vitis_path}/settings64.sh",
+            f"mkdir -p {self._vitis_workspace_dir}",
+            f"SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa)",
+            'printf "import vitis'
+            "\r\n\r\nclient = vitis.create_client()"
+            f'\r\n\r\nclient.update_workspace(path=\\"{self._vitis_workspace_dir}\\")'
+            f'    \r\nclient.set_workspace(path=\\"{self._vitis_workspace_dir}\\")'
+            '\r\n\r\nplatform = client.create_platform_component(name = \\"platform\\", hw_design = \\"${SOURCE_XSA_PATH}\\", os = \\"standalone\\", cpu = \\"psv_pmc_0\\", domain_name = \\"standalone_psv_pmc_0\\")'
+            '    \r\ncomp = client.create_app_component(name = \\"versal_plm\\", platform = \\"\$COMPONENT_LOCATION/../platform/export/platform/platform.xpfm\\", domain = \\"standalone_psv_pmc_0\\", template = \\"versal_plm\\")'
+            f'\r\n\r\nvitis.dispose()" > {self._work_dir}/generate_plm_prj.py',
+            f"vitis -s {self._work_dir}/generate_plm_prj.py",
+        ]
+
+        self.container_executor.exec_sh_commands(
+            commands=create_plm_project_commands,
+            dirs_to_mount=[
+                (pathlib.Path(self._amd_tools_path), "ro"),
+                (self._xsa_dir, "Z"),
+                (self._work_dir, "Z"),
+            ],
+        )
+
+        # Save checksum in file
+        with self._source_xsa_md5_file.open("w") as f:
+            print(md5_new_file, file=f, end="")
+
+    def build_plm(self):
+        """
+        Builds the PLM.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check whether the PLM needs to be built
+        if not Versal_AMD_PLM_Builder._check_rebuild_required(
+            src_search_list=self._project_cfg_files + [self._vitis_workspace_dir],
+            out_timestamp=self._build_log.get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
+        ):
+            pretty_print.print_build("No need to rebuild the PLM. No altered source files detected...")
+            return
+
+        self.check_amd_tools(required_tools=["vitis"])
+
+        # Remove old build artifacts
+        (self._output_dir / "plm.elf").unlink(missing_ok=True)
+
+        pretty_print.print_build("Building the PLM...")
+
+        plm_build_commands = [
+            f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"source {self._amd_vitis_path}/settings64.sh",
+            'printf "import vitis'
+            "\r\n\r\nclient = vitis.create_client()"
+            f'    \r\nclient.set_workspace(path=\\"{self._vitis_workspace_dir}\\")'
+            '\r\n\r\nplatform = client.get_component(name=\\"platform\\")'
+            '    \r\ncomp = client.get_component(name=\\"versal_plm\\")'
+            "\r\n\r\nplatform.build()"
+            "    \r\ncomp.build()"
+            f'\r\n\r\nvitis.dispose()" > {self._work_dir}/build_plm_prj.py',
+            f"vitis -s {self._work_dir}/build_plm_prj.py",
+        ]
+
+        self.container_executor.exec_sh_commands(
+            commands=plm_build_commands,
+            dirs_to_mount=[
+                (pathlib.Path(self._amd_tools_path), "ro"),
+                (self._work_dir, "Z"),
+            ],
+            logfile=self._block_temp_dir / "build.log",
+            output_scrolling=True,
+        )
+
+        # Create symlink to the output file
+        (self._output_dir / "plm.elf").symlink_to(self._vitis_workspace_dir / "versal_plm" / "build" / "versal_plm.elf")
+
+        # Log success of this function
+        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

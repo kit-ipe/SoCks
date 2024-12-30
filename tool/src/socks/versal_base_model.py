@@ -1,0 +1,70 @@
+from pydantic import BaseModel, Field, ConfigDict, StringConstraints, model_validator
+from typing import Optional, Literal
+from typing_extensions import Annotated
+
+
+class Project_Model(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    type: Literal["Versal"] = Field(default=..., description="The unique identifier of the project type")
+    name: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9-]*$")] = Field(
+        default=..., description="The name of the project"
+    )
+
+
+class Make_Settings_Model(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    max_build_threads: Annotated[int, Field(strict=True, gt=0)] = Field(
+        default=..., description="Number of Makefile recipes to be executed simultaneously"
+    )
+
+
+class Xilinx_Tools_Settings_Model(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    version: Annotated[str, StringConstraints(pattern=r"\d\d\d\d\.\d")] = Field(
+        default=..., description="Version of the toolset to use"
+    )
+    max_threads_vivado: Annotated[int, Field(strict=True, gt=0)] = Field(
+        default=..., description="Maximum number of jobs to be executed simultaneously by Vivado"
+    )
+
+
+class External_Tools_Settings_Model(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    container_tool: Literal["docker", "podman", "none"] = Field(
+        default=..., description="Container management tool to be used"
+    )
+    make: Make_Settings_Model
+    xilinx: Xilinx_Tools_Settings_Model
+
+
+class Dummy_Block_Model(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    builder: str = Field(default=..., description="Builder class to be used")
+
+
+class Blocks_Model(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    atf: Dummy_Block_Model
+    devicetree: Dummy_Block_Model
+    kernel: Dummy_Block_Model
+    plm: Dummy_Block_Model
+    psm_fw: Dummy_Block_Model
+    ramfs: Optional[Dummy_Block_Model] = None
+    rootfs: Optional[Dummy_Block_Model] = None
+    uboot: Dummy_Block_Model
+    vivado: Dummy_Block_Model
+    image: Dummy_Block_Model
+
+
+class Versal_Base_Model(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    project: Project_Model
+    external_tools: External_Tools_Settings_Model
+    blocks: Blocks_Model

@@ -23,16 +23,17 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         project_dir: pathlib.Path,
         block_id: str = "ramfs",
         block_description: str = "Build an BusyBox RAM file system (initramfs)",
+        model_class: type[object] = ZynqMP_BusyBox_RAMFS_Model,
     ):
 
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
-            model_class=ZynqMP_BusyBox_RAMFS_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
             block_description=block_description,
+            model_class=model_class,
         )
 
         self._ramfs_name = f"busybox_fs_zynqmp_{self.project_cfg.project.name}"

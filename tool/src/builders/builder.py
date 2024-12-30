@@ -34,11 +34,11 @@ class Builder:
         self,
         project_cfg: dict,
         project_cfg_files: list,
-        model_class,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str,
         block_description: str,
+        model_class: type[object],
     ):
         self.block_id = block_id
         self.block_description = block_description

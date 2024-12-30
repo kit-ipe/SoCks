@@ -28,16 +28,17 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         project_dir: pathlib.Path,
         block_id: str = "rootfs",
         block_description: str = "Build an AlmaLinux root file system",
+        model_class: type[object] = ZynqMP_AlmaLinux_RootFS_Model,
     ):
 
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
-            model_class=ZynqMP_AlmaLinux_RootFS_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
             block_description=block_description,
+            model_class=model_class,
         )
 
         self._rootfs_name = f"almalinux{self.block_cfg.release}_zynqmp_{self.project_cfg.project.name}"

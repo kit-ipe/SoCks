@@ -130,7 +130,9 @@ except ImportError:
             ]
             available_prj_model_classes.extend(classes)
 
-    supported_prj_types = [cls.__name__.split(project_model_suffix)[0] for cls in available_prj_model_classes]
+    supported_prj_types = [
+        "'" + cls.__name__.split(project_model_suffix)[0] + "'" for cls in available_prj_model_classes
+    ]
 
     pretty_print.print_error(
         f"Project type '{project_cfg['project']['type']}' is not supported (No project model class '{project_model_class_name}' available)."

@@ -11,7 +11,7 @@ from builders.zynqmp_amd_vivado_logicc_model import ZynqMP_AMD_Vivado_logicc_Mod
 
 class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
     """
-    Builder class for AMD Vivado projects utilizing the Hog framework
+    Builder class for AMD Vivado projects utilizing the logicc framework
     """
 
     def __init__(
@@ -21,17 +21,18 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "vivado",
-        block_description: str = "Build an AMD/Xilinx Vivado Project with HDL on git (Hog)",
+        block_description: str = "Build an AMD/Xilinx Vivado Project with logicc",
+        model_class: type[object] = ZynqMP_AMD_Vivado_logicc_Model,
     ):
 
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
-            model_class=ZynqMP_AMD_Vivado_logicc_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
             block_description=block_description,
+            model_class=model_class,
         )
 
         # Project directories

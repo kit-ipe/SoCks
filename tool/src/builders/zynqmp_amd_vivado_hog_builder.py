@@ -21,16 +21,17 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
         project_dir: pathlib.Path,
         block_id: str = "vivado",
         block_description: str = "Build an AMD/Xilinx Vivado Project with HDL on git (Hog)",
+        model_class: type[object] = ZynqMP_AMD_Vivado_Hog_Model,
     ):
 
         super().__init__(
             project_cfg=project_cfg,
             project_cfg_files=project_cfg_files,
-            model_class=ZynqMP_AMD_Vivado_Hog_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
             block_description=block_description,
+            model_class=model_class,
         )
 
         # The user can use block commands to interact with the block.
