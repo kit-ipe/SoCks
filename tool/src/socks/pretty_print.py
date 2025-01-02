@@ -10,15 +10,15 @@ _underline = "\033[4m"
 
 
 def print_info(message: str, end: str = "\n", flush: bool = True):
-    print(_blue + "INFO: " + message + _end, end=end, flush=flush)
+    print(_blue + "[INFO] " + message + _end, end=end, flush=flush)
 
 
 def print_warning(message: str, end: str = "\n", flush: bool = True):
-    print(_orange + "WARNING: " + message + _end, end=end, flush=flush)
+    print(_orange + "[WARNING] " + message + _end, end=end, flush=flush)
 
 
 def print_error(message: str, end: str = "\n", flush: bool = True):
-    print(_red + "ERROR: " + message + _end, end=end, flush=flush)
+    print(_red + "[ERROR] " + message + _end, end=end, flush=flush)
 
 
 def print_build_stage(message: str, end: str = "\n", flush: bool = True):
