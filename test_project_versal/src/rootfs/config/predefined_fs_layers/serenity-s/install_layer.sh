@@ -14,7 +14,3 @@ target_dir=$1
 
 # Copy predefined layer
 rsync -rl --exclude "install_layer.sh" $source_dir/ $target_dir/
-
-# Create symlinks
-ln -sf -t $target_dir/etc/systemd/system/multi-user.target.wants/ /etc/systemd/system/network_init.service
-ln -sf -t $target_dir/etc/systemd/system/multi-user.target.wants/ /etc/systemd/system/pl_init.service
