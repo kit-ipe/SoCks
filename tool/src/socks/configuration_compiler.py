@@ -1,4 +1,3 @@
-import typing
 import sys
 import pathlib
 import yaml
@@ -13,7 +12,7 @@ class Configuration_Compiler:
     """
 
     @staticmethod
-    def _find_file(file_name: str, search_list: typing.List[pathlib.Path]) -> pathlib.Path:
+    def _find_file(file_name: str, search_list: list[pathlib.Path]) -> pathlib.Path:
         """
         Find file in search paths. Subdirectories are not searched.
 
@@ -78,7 +77,7 @@ class Configuration_Compiler:
     @staticmethod
     def _merge_cfg_files(
         config_file_name: str, socks_dir: pathlib.Path, project_dir: pathlib.Path
-    ) -> typing.Tuple[dict, list]:
+    ) -> tuple[dict, list]:
         """
         Recursively merge project configuration YAML files by tracing the import keys.
 
@@ -181,9 +180,7 @@ class Configuration_Compiler:
         return search_object
 
     @staticmethod
-    def compile(
-        root_cfg_file: pathlib.Path, socks_dir: pathlib.Path, project_dir: pathlib.Path
-    ) -> typing.Tuple[dict, list]:
+    def compile(root_cfg_file: pathlib.Path, socks_dir: pathlib.Path, project_dir: pathlib.Path) -> tuple[dict, list]:
         """
         Compile the project configuration.
 

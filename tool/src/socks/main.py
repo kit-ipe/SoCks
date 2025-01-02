@@ -1,4 +1,3 @@
-import typing
 import sys
 import pathlib
 import importlib.resources
@@ -15,7 +14,7 @@ import socks.pretty_print as pretty_print
 from socks.configuration_compiler import Configuration_Compiler
 
 
-def add_active_blocks(block: str, active_blocks: typing.List[str], project_cfg: dict):
+def add_active_blocks(block: str, active_blocks: list[str], project_cfg: dict):
     """
     Adds the provided block and all of its dependencies to the list of active blocks
 
@@ -59,7 +58,7 @@ def add_active_blocks(block: str, active_blocks: typing.List[str], project_cfg: 
     return active_blocks
 
 
-def sort_blocks(blocks: typing.List[str], project_cfg: dict):
+def sort_blocks(blocks: list[str], project_cfg: dict):
     """
     Sorts blocks in the order in which they are to be built.
 

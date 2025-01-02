@@ -1,4 +1,3 @@
-import typing
 import os
 import pathlib
 import shutil
@@ -50,7 +49,7 @@ class AMD_Builder(Builder):
         # File for saving the checksum of the XSA-file on which the project is based
         self._source_xsa_md5_file = self._work_dir / "source_xsa.md5"
 
-    def check_amd_tools(self, required_tools: typing.List[str]):
+    def check_amd_tools(self, required_tools: list[str]):
         """
         Collects and checks AMD Xilinx tools setup information from the host environment. This function should
         only be called immediately before one of the AMD Xilinx tools is used and not in the constructor of a class.

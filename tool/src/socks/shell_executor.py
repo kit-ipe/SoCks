@@ -1,4 +1,3 @@
-import typing
 import pathlib
 import shutil
 import sys
@@ -23,9 +22,7 @@ class Shell_Executor:
         self._prohibit_output_processing = prohibit_output_processing
 
     @staticmethod
-    def get_sh_results(
-        command: typing.List[str], cwd: pathlib.Path = None, check: bool = True
-    ) -> subprocess.CompletedProcess:
+    def get_sh_results(command: list[str], cwd: pathlib.Path = None, check: bool = True) -> subprocess.CompletedProcess:
         """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
         Runs a sh command and get all output.
@@ -63,7 +60,7 @@ class Shell_Executor:
 
     def exec_sh_command(
         self,
-        command: typing.List[str],
+        command: list[str],
         cwd: pathlib.Path = None,
         check: bool = True,
         logfile: pathlib.Path = None,

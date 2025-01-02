@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Literal, List, Union
+from typing import Optional, Literal
 
 
 class Build_Srcs_Model(BaseModel):

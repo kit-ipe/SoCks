@@ -1,4 +1,3 @@
-import typing
 import os
 import pwd
 import pathlib
@@ -210,9 +209,9 @@ class Container_Executor:
 
     def exec_sh_commands(
         self,
-        commands: typing.List[str],
-        dirs_to_mount: typing.List[typing.Tuple[pathlib.Path, str]] = [],
-        custom_params: typing.List[str] = [],
+        commands: list[str],
+        dirs_to_mount: list[tuple[pathlib.Path, str]] = [],
+        custom_params: list[str] = [],
         print_commands: bool = False,
         run_as_root: bool = False,
         logfile: pathlib.Path = None,
@@ -352,9 +351,7 @@ class Container_Executor:
         else:
             raise ValueError(f"Unexpected container tool: {self._container_tool}")
 
-    def start_container(
-        self, potential_mounts: typing.List[typing.Tuple[pathlib.Path, str]], init_commands: typing.List[str] = []
-    ):
+    def start_container(self, potential_mounts: list[tuple[pathlib.Path, str]], init_commands: list[str] = []):
         """
         Starts an interactive container with which the block can be built.
 
@@ -420,9 +417,7 @@ class Container_Executor:
         else:
             raise ValueError(f"Unexpected container tool: {self._container_tool}")
 
-    def start_gui_container(
-        self, start_gui_commands: typing.List[str], potential_mounts: typing.List[typing.Tuple[pathlib.Path, str]]
-    ):
+    def start_gui_container(self, start_gui_commands: list[str], potential_mounts: list[tuple[pathlib.Path, str]]):
         """
         Starts an interactive container with which the block can be built.
 

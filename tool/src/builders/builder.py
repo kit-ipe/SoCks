@@ -141,7 +141,7 @@ class Builder:
 
     @staticmethod
     def _find_last_modified_file(
-        search_list: typing.List[pathlib.Path], ignore_list: typing.List[pathlib.Path] = None
+        search_list: list[pathlib.Path], ignore_list: list[pathlib.Path] = None
     ) -> typing.Optional[pathlib.Path]:
         """
         Find the last modified file in a list of directories, whereby files and directories can be ignored.
@@ -233,11 +233,11 @@ class Builder:
 
     @staticmethod
     def _check_rebuild_required(
-        src_search_list: typing.List[pathlib.Path],
-        src_ignore_list: typing.List[pathlib.Path] = None,
+        src_search_list: list[pathlib.Path],
+        src_ignore_list: list[pathlib.Path] = None,
         out_timestamp: float = None,
-        out_search_list: typing.List[pathlib.Path] = None,
-        out_ignore_list: typing.List[pathlib.Path] = None,
+        out_search_list: list[pathlib.Path] = None,
+        out_ignore_list: list[pathlib.Path] = None,
     ) -> bool:
         """
         Check whether some file(s) needs to be rebuilt.
@@ -308,10 +308,10 @@ class Builder:
 
     @staticmethod
     def _check_rebuild_required_faster(
-        src_search_list: typing.List[pathlib.Path],
-        src_ignore_list: typing.List[pathlib.Path] = None,
-        out_search_list: typing.List[pathlib.Path] = None,
-        out_ignore_list: typing.List[pathlib.Path] = None,
+        src_search_list: list[pathlib.Path],
+        src_ignore_list: list[pathlib.Path] = None,
+        out_search_list: list[pathlib.Path] = None,
+        out_ignore_list: list[pathlib.Path] = None,
     ) -> bool:
         """
         Check whether some file(s) needs to be rebuilt.
@@ -409,7 +409,7 @@ class Builder:
         else:
             return True
 
-    def _eval_single_prj_src(self) -> typing.Tuple[pathlib.Path, dict]:
+    def _eval_single_prj_src(self) -> tuple[pathlib.Path, dict]:
         """
         Process the source section of a block with a single source.
 
@@ -460,7 +460,7 @@ class Builder:
 
         return local_source_dir, source_repo
 
-    def _eval_mult_prj_srcs(self) -> typing.Tuple[typing.List[pathlib.Path], typing.List[dict]]:
+    def _eval_mult_prj_srcs(self) -> tuple[list[pathlib.Path], list[dict]]:
         """
         Process the source section of a block with multiple sources.
 
@@ -1136,7 +1136,7 @@ class Builder:
 
         self.container_executor.start_container(potential_mounts=potential_mounts)
 
-    def _run_menuconfig(self, menuconfig_commands: typing.List[str]):
+    def _run_menuconfig(self, menuconfig_commands: list[str]):
         """
         Opens the menuconfig tool to enable interactive configuration of the project.
 
@@ -1159,7 +1159,7 @@ class Builder:
 
         self.container_executor.exec_sh_commands(commands=menuconfig_commands, dirs_to_mount=[(self._repo_dir, "Z")])
 
-    def _prep_clean_srcs(self, prep_srcs_commands: typing.List[str]):
+    def _prep_clean_srcs(self, prep_srcs_commands: list[str]):
         """
         This function is intended to create a new, clean Linux kernel or U-Boot project.
         After the creation of the project you should create a patch that includes .gitignore and .config.
