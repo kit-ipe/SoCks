@@ -53,8 +53,32 @@ blocks:
   rootfs:
     source: "build"
     builder: "ZynqMP_AlmaLinux_RootFS_Builder"
-    release: "9"
     project:
+      release: "9"
+      extra_rpms: ["gcc", "gcc-c++", "make", "dhclient", "python3-devel", "python3-click", "python3-numpy", "python3-pyserial", "glibc-headers", "glibc-devel", "zlib-devel", "libuuid ", "libuuid-devel", "pam-devel", "openldap-devel ", "pugixml-devel", "which", "gdb", "expect", "net-tools", "boost-chrono", "boost-regex", "boost-thread", "boost-filesystem", "boost-system", "boost-devel", "boost-program-options", "readline-devel", "emacs", "nano", "rsync", "git", "lighttpd", "strace", "minicom", "i2c-tools", "screen", "chrony", "rpm-build-libs", "rpm-build", "python3-pip", "nss", "nss-devel", "freeipmi", "cmake3", "log4cplus-devel", "yaml-cpp-devel", "msgpack-devel", "cppzmq-devel", "dosfstools", "libxml2-devel", "python3-libxml2", "python3-lxml", "libxml2 ", "libxslt ", "libxslt-devel", "python3-psutil", "python3-setuptools-wheel", "llvm-toolset", "dnf", "smash*"]
+      # alma8 # extra_rpms: ["gcc", "gcc-c++", "make", "dhclient", "python3-devel", "python3-click", "python3-numpy", "python3-pyserial", "glibc-headers", "glibc-devel", "zlib-devel", "libuuid ", "libuuid-devel", "pam-devel", "openldap-devel ", "pugixml-devel", "gdb", "expect", "net-tools", "boost-chrono", "boost-regex", "boost-thread", "boost-filesystem", "boost-system", "boost-devel", "boost-program-options", "readline-devel", "emacs", "nano", "rsync", "git", "lighttpd", "strace", "minicom", "i2c-tools", "screen", "rpm-build-libs", "rpm-build", "python3-pip", "nss", "nss-devel", "freeipmi", "cmake3", "log4cplus-devel", "yaml-cpp-devel", "msgpack-devel", "cppzmq-devel", "dosfstools", "libxml2", "libxml2-devel", "python3-libxml2", "python3-lxml", "libxslt ", "libxslt-devel", "python3-psutil", "python3-setuptools-wheel", "llvm-toolset", "podman", "locmap-release", "locmap", "smash*"]
+      build_time_fs_layer:
+        - src_block: "vivado"
+          src_name: "*.bit"
+          dest_path: "/lib/firmware"
+          dest_name: "serenity_s1_k26_pl.bit"
+          dest_owner_group: "root:root"
+          dest_permissions: "u=rw,go=r"
+        - src_block: "devicetree"
+          src_name: "*.dtbo"
+          dest_path: "/etc/dt-overlays"
+          dest_owner_group: "root:root"
+          dest_permissions: "u=rwX,go=rX"
+        - src_block: "vivado"
+          src_name: "addrtab"
+          dest_path: "/etc/serenity"
+          dest_name: "zynq-addrtab"
+      users:
+        - name: "root"
+          pw_hash: "$1$abFTnq2K$2Obyh.ZKwwExNujN/aCjQ." # alma
+        - name: "kria"
+          pw_hash: "$1$X6DWcY5/$GQ3ZFNgCGxOSgOZMT6Bkc1" # cms.higgs
+          groups: ["wheel", "dialout"]
       add_build_info: false
       # If no 'import_src' property is specified, the block must be built locally
       dependencies:
