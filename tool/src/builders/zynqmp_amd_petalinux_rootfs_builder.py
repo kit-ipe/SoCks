@@ -9,6 +9,7 @@ import validators
 import inspect
 
 import socks.pretty_print as pretty_print
+from socks.yaml_editor import YAML_Editor
 from builders.builder import Builder
 from builders.zynqmp_amd_petalinux_rootfs_model import ZynqMP_AMD_PetaLinux_RootFS_Model
 
@@ -229,12 +230,16 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                         self._git_local_ref_branch,
                     ]
                 )
-                # Add newly created patches to self._patch_list_file
+                # Add newly created patches to the project configuration file
                 for line in result_new_patches.stdout.splitlines():
                     new_patch = line.rpartition("/")[2]
                     pretty_print.print_info(f"Patch {new_patch} was created")
-                    with self._patch_list_file.open("a") as f:
-                        print(f"{project} {new_patch}", file=f, end="\n")
+                    # ToDo: Maybe the main project configuration file should not be hard coded here
+                    YAML_Editor.append_list_entry(
+                        file=self._project_dir / "project.yml",
+                        keys=["blocks", self.block_id, "project", "patches"],
+                        data={"project": project, "patch": new_patch},
+                    )
                 # Synchronize the branches ref and dev to be able to detect new commits in the future
                 self.shell_executor.exec_sh_command(
                     ["git", "-C", str(self._source_repo_dir / path), "checkout", self._git_local_ref_branch],
@@ -251,11 +256,19 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
 
         if not repos_with_commits:
             pretty_print.print_warning("No commits found that can be used as sources for patches.")
+            return
+
+        # Update the timestamp of the patches applied tag, if it exists. Otherwise, SoCks assumes
+        # that the user has modified the patches since they were applied.
+        patches_already_added = (
+            self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
+        )
+        if patches_already_added:
+            self._build_log.log_timestamp(identifier=f"function-apply_patches-success")
 
     def apply_patches(self):
         """
-        This function iterates over all patches listed in self._patch_list_file and
-        applies them.
+        This function iterates over all patches listed in the project configuration file and applies them.
 
         Args:
             None
@@ -267,47 +280,51 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             None
         """
 
-        # Skip all operations if the patches have already been applied
+        # Skip all operations if no patches are provided or if the patches have already been applied
         patches_already_added = (
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
         )
-        if patches_already_added:
+        if self.block_cfg.project.patches == None or patches_already_added:
             pretty_print.print_build("No need to apply patches...")
             return
 
         pretty_print.print_build("Applying patches...")
 
-        if self._patch_list_file.is_file():
-            with self._patch_list_file.open("r") as f:
-                for line in f:
-                    if line:  # If this line in the file is not empty
-                        project, patch = line.split(" ", 1)
-                        # Get path of this project
-                        results = self.shell_executor.get_sh_results(
-                            [str(self._repo_script), "list", "-r", project, "-p"], cwd=self._source_repo_dir
-                        )
-                        path = results.stdout.splitlines()[0]
-                        # Apply patch
-                        self.shell_executor.exec_sh_command(
-                            ["git", "-C", str(self._source_repo_dir / path), "am", str(self._patch_dir / patch)]
-                        )
+        for item in self.block_cfg.project.patches:
+            project = item.project
+            patch = item.patch
+            if not (self._patch_dir / patch).is_file():
+                pretty_print.print_error(
+                    f"Patch '{patch}' specified in 'blocks -> {self.block_id} -> project -> patches' does not exist in {self._patch_dir}"
+                )
+                sys.exit(1)
 
-                        # Update the branch self._git_local_ref_branch so that it contains the applied patch and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-                        self.shell_executor.exec_sh_command(
-                            [str(self._repo_script), "checkout", self._git_local_ref_branch, project],
-                            cwd=self._source_repo_dir,
-                            visible_lines=0,
-                        )
-                        self.shell_executor.exec_sh_command(
-                            ["git", "-C", str(self._source_repo_dir / path), "merge", self._git_local_dev_branch],
-                            visible_lines=0,
-                        )
-                        self.shell_executor.exec_sh_command(
-                            [str(self._repo_script), "checkout", self._git_local_dev_branch, project],
-                            cwd=self._source_repo_dir,
-                            visible_lines=0,
-                        )
+            # Get path of this project
+            results = self.shell_executor.get_sh_results(
+                [str(self._repo_script), "list", "-r", project, "-p"], cwd=self._source_repo_dir
+            )
+            path = results.stdout.splitlines()[0]
+            # Apply patch
+            self.shell_executor.exec_sh_command(
+                ["git", "-C", str(self._source_repo_dir / path), "am", str(self._patch_dir / patch)]
+            )
+
+            # Update the branch self._git_local_ref_branch so that it contains the applied patch and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
+            self.shell_executor.exec_sh_command(
+                [str(self._repo_script), "checkout", self._git_local_ref_branch, project],
+                cwd=self._source_repo_dir,
+                visible_lines=0,
+            )
+            self.shell_executor.exec_sh_command(
+                ["git", "-C", str(self._source_repo_dir / path), "merge", self._git_local_dev_branch],
+                visible_lines=0,
+            )
+            self.shell_executor.exec_sh_command(
+                [str(self._repo_script), "checkout", self._git_local_dev_branch, project],
+                cwd=self._source_repo_dir,
+                visible_lines=0,
+            )
 
         # Log success of this function
         self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")

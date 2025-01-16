@@ -77,7 +77,6 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
                     self.apply_patches,
                     self.import_xsa,
                     self.prepare_dt_sources,
-                    self.apply_patches,
                 ]
             )
             self.block_cmds["build"].extend(self.block_cmds["prepare"])

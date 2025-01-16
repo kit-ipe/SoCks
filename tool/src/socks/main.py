@@ -147,8 +147,16 @@ try:
     project_cfg_model = project_model_class(**project_cfg)
 except pydantic.ValidationError as e:
     for err in e.errors():
+        keys = []
+        for item in err["loc"]:
+            if isinstance(item, str):
+                # If the item is a string, just append it
+                keys.append(item)
+            if isinstance(item, int):
+                # If the item is an integer, it is an index in a list
+                keys[-1] = f"{keys[-1]}[{item}]"
         pretty_print.print_error(
-            f"The following error occured while analyzing node '{' -> '.join(err['loc'])}' "
+            f"The following error occured while analyzing node '{' -> '.join(keys)}' "
             f"of the project configuration: {err['msg']}"
         )
     sys.exit(1)

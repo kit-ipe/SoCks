@@ -20,14 +20,13 @@ class ZynqMP_AlmaLinux_RootFS_Installable_Item_Model(BaseModel):
     src_block: str = Field(
         default=..., description="Name of the block in whose block package the source file is located"
     )
-    src_name: str = Field(
-        default=..., description="Path to the source item in the block package"
-    )
+    src_name: str = Field(default=..., description="Path to the source item in the block package")
     dest_path: str = Field(
         default=..., description="Directory in the destination file system in which the item is to be placed"
     )
     dest_name: Optional[str] = Field(
-        default="", description="Name of the item at the destination. If nothing is specified here, the name of the source file is used."
+        default="",
+        description="Name of the item at the destination. If nothing is specified here, the name of the source file is used.",
     )
     dest_owner_group: Optional[str] = Field(
         default=None, description="A string to be passed to chown to set the file owner and group"
@@ -40,15 +39,9 @@ class ZynqMP_AlmaLinux_RootFS_Installable_Item_Model(BaseModel):
 class ZynqMP_AlmaLinux_RootFS_User_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    name: str = Field(
-        default=..., description="Username"
-    )
-    pw_hash: str = Field(
-        default=..., description="Password hash generated with 'openssl passwd -1'"
-    )
-    groups: Optional[list[str]] = Field(
-        default=[], description="Groups to which the user is to be added"
-    )
+    name: str = Field(default=..., description="Username")
+    pw_hash: str = Field(default=..., description="Password hash generated with 'openssl passwd -1'")
+    groups: Optional[list[str]] = Field(default=[], description="Groups to which the user is to be added")
 
 
 class ZynqMP_AlmaLinux_RootFS_Block_Project_Model(Block_Project_Model):
@@ -57,15 +50,11 @@ class ZynqMP_AlmaLinux_RootFS_Block_Project_Model(Block_Project_Model):
     release: Annotated[str, StringConstraints(pattern=r"^[0-9.]+$")] = Field(
         default=..., description="Release version of the OS to be built"
     )
-    extra_rpms: Optional[list[str]] = Field(
-        default=None, description="List of additional rpm packages to be installed"
-    )
+    extra_rpms: Optional[list[str]] = Field(default=None, description="List of additional rpm packages to be installed")
     build_time_fs_layer: Optional[list[ZynqMP_AlmaLinux_RootFS_Installable_Item_Model]] = Field(
         default=None, description="List of files to be installed that were generated at build time"
     )
-    users: list[ZynqMP_AlmaLinux_RootFS_User_Model] = Field(
-        default=None, description="List of users to be added"
-    )
+    users: list[ZynqMP_AlmaLinux_RootFS_User_Model] = Field(default=None, description="List of users to be added")
     add_build_info: bool = Field(
         default=..., description="Switch to specify whether or not build information should be included in the block"
     )

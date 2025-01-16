@@ -210,7 +210,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 ]
             )
         else:
-            pretty_print.print_info(f"'rootfs -> project -> extra_rpms' not specified. No additional rpm packages will be installed.")
+            pretty_print.print_info(
+                f"'rootfs -> project -> extra_rpms' not specified. No additional rpm packages will be installed."
+            )
 
         # The QEMU binary if only required during build, so delete it if it exists
         base_rootfs_build_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
@@ -329,17 +331,23 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         add_bt_layer_commands = []
         for item in self.block_cfg.project.build_time_fs_layer:
             if item.src_block not in self._block_deps.keys():
-                pretty_print.print_error(f"Source block '{item.src_block}' specified in 'rootfs -> project -> build_time_fs_layer' is invalid.")
+                pretty_print.print_error(
+                    f"Source block '{item.src_block}' specified in 'rootfs -> project -> build_time_fs_layer' is invalid."
+                )
                 sys.exit(1)
             srcs = (self._dependencies_dir / item.src_block).glob(item.src_name)
             if not srcs:
-                pretty_print.print_error(f"Source item '{item.src_name}' specified in 'rootfs -> project -> build_time_fs_layer' could not be found in the block package of source block '{item.src_block}'.")
+                pretty_print.print_error(
+                    f"Source item '{item.src_name}' specified in 'rootfs -> project -> build_time_fs_layer' could not be found in the block package of source block '{item.src_block}'."
+                )
                 sys.exit(1)
             add_bt_layer_commands.append(f"mkdir -p {self._build_dir}/{item.dest_path}")
             for src in srcs:
                 add_bt_layer_commands.append(f"cp -r {src} {self._build_dir}/{item.dest_path}/{item.dest_name}")
                 if item.dest_owner_group:
-                    add_bt_layer_commands.append(f"chown -R {item.dest_owner_group} {self._build_dir}/{item.dest_path}/{item.dest_name}")
+                    add_bt_layer_commands.append(
+                        f"chown -R {item.dest_owner_group} {self._build_dir}/{item.dest_path}/{item.dest_name}"
+                    )
                 if item.dest_permissions:
                     add_bt_layer_commands.append(
                         f"chmod -R {item.dest_permissions} {self._build_dir}/{item.dest_path}/{item.dest_name}"
@@ -409,7 +417,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             escaped_pw_hash = user.pw_hash.replace("$", "\\\\\\$")
             add_user_str = add_user_str + f"usermod -p {escaped_pw_hash} {user.name}"
 
-            add_users_commands.append(f"chroot {self._build_dir} /bin/bash -c \"{add_user_str}\"")
+            add_users_commands.append(f'chroot {self._build_dir} /bin/bash -c "{add_user_str}"')
 
         # The QEMU binary if only required during build, so delete it if it exists
         add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")

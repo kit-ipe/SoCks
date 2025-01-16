@@ -1,6 +1,7 @@
 import pathlib
 import yaml
 import re
+from typing import Union
 
 
 class YAML_Editor:
@@ -9,7 +10,7 @@ class YAML_Editor:
     """
 
     @staticmethod
-    def add_list_entry(file: pathlib.Path, keys: list[str], value: str):
+    def append_list_entry(file: pathlib.Path, keys: list[str], data: Union[str, dict]):
         """
         Add a new list entry to a YAML file.
 
@@ -17,15 +18,16 @@ class YAML_Editor:
             file:
                 Path of the YAML file.
             keys:
-                Keys to find the location in the YAML structure where the value is to be added.
-            value:
-                The value to add in the list.
+                Keys to find the location in the YAML structure where the data is to be added.
+            data:
+                The data to add in the list.
 
         Returns:
             None
 
         Raises:
-            None
+            ValueError:
+                If one of the input values is not valid.
         """
 
         # Load main configuration file
@@ -53,28 +55,29 @@ class YAML_Editor:
                 lines_to_append.append(indents + layer + ":\n")
                 indents = indents + "  "
 
-            # Convert value to YAML format
-            yaml_string = yaml.dump([value], default_style='"', default_flow_style=False)
-            lines_to_append.append(indents + yaml_string)
+            # Convert data to YAML format
+            yaml_string = yaml.dump([data], default_flow_style=False)
+            for yaml_line in yaml_string.splitlines(keepends=True):
+                lines_to_append.append(indents + yaml_line)
 
-            # Add a line break if the last line in 
+            # Add a line break if the last line does not end with one
             if not current_lines[-1].rstrip("\r").endswith("\n"):
                 lines_to_append = ["\n"] + lines_to_append
             modified_lines = current_lines + lines_to_append
 
-        # If at least some keys exist, insert the new value
+        # If at least some keys exist, insert the new data
         else:
             # Create a new yaml section with the provided data
-            new_yaml_sec = [value]
+            new_yaml_sec = [data]
 
             # If all keys exist, the existing node must be checked and taken into account
             if keys == existing_keys:
                 if isinstance(current_subsec, list):
                     new_yaml_sec = current_subsec
-                    new_yaml_sec.append(value)
+                    new_yaml_sec.append(data)
                 elif current_subsec is not None:
                     raise ValueError(
-                        f"Unable to add a value to node '{' -> '.join(keys)}' in file '{file}'. "
+                        f"Unable to add data to node '{' -> '.join(keys)}' in file '{file}'. "
                         f"This node was expected to be of type 'list'."
                     )
 
@@ -90,25 +93,23 @@ class YAML_Editor:
                 if existing_keys and re.search(f" *{existing_keys[0]}:", line):
                     del existing_keys[0]
                     if not existing_keys:
-                        if "[" in line and "]" in line:
-                            # Convert dictionary to YAML format
-                            yaml_string = yaml.dump(new_yaml_sec, default_style='"', default_flow_style=True)
-                            # Modify inline list
-                            line = re.sub(r'\[.*?\]', yaml_string.strip(), line)
-                        else:
-                            in_target_section = True
+                        if "[" in line:
+                            # Turn flow style list into regular list
+                            line = line.split(":")[0] + ":\n"
+                        in_target_section = True
                     modified_lines.append(line)
                     continue
-                # If we have reached the end of the target section
+                # Append new yaml section at the end of the target section
                 if in_target_section and not line.startswith(indents):
                     for layer in missing_keys:
                         modified_lines.append(indents + layer + ":\n")
                         indents = indents + "  "
                     # Convert list to YAML format
-                    yaml_string = yaml.dump(new_yaml_sec, default_style='"', default_flow_style=False)
+                    yaml_string = yaml.dump(new_yaml_sec, default_flow_style=False)
                     for yaml_line in yaml_string.splitlines(keepends=True):
                         modified_lines.append(indents + yaml_line)
                     in_target_section = False
+                # Do not append lines that will be appended as part of the new yaml section
                 if len(new_yaml_sec) == 1 or not in_target_section:
                     modified_lines.append(line)
 
@@ -118,7 +119,7 @@ class YAML_Editor:
                     modified_lines.append(indents + layer + ":\n")
                     indents = indents + "  "
                 # Convert list to YAML format
-                yaml_string = yaml.dump(new_yaml_sec, default_style='"', default_flow_style=False)
+                yaml_string = yaml.dump(new_yaml_sec, default_flow_style=False)
                 for yaml_line in yaml_string.splitlines(keepends=True):
                     modified_lines.append(indents + yaml_line)
 
@@ -126,5 +127,5 @@ class YAML_Editor:
                 raise ValueError(f"Unable to find '{' -> '.join(keys)}' in file '{file}'")
 
         # Write modified lines back to the file
-        with (file.parent / "test.yml").open("w") as f:
+        with file.open("w") as f:
             f.writelines(modified_lines)

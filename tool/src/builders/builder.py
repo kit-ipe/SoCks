@@ -22,6 +22,7 @@ import socks.pretty_print as pretty_print
 from socks.shell_executor import Shell_Executor
 from socks.container_executor import Container_Executor
 from socks.timestamp_logger import Timestamp_Logger
+from socks.yaml_editor import YAML_Editor
 import builders
 
 
@@ -49,8 +50,16 @@ class Builder:
             self.project_cfg = model_class(**project_cfg)
         except pydantic.ValidationError as e:
             for err in e.errors():
+                keys = []
+                for item in err["loc"]:
+                    if isinstance(item, str):
+                        # If the item is a string, just append it
+                        keys.append(item)
+                    if isinstance(item, int):
+                        # If the item is an integer, it is an index in a list
+                        keys[-1] = f"{keys[-1]}[{item}]"
                 pretty_print.print_error(
-                    f"The following error occured while analyzing node '{' -> '.join(err['loc'])}' "
+                    f"The following error occured while analyzing node '{' -> '.join(keys)}' "
                     f"of the project configuration: {err['msg']}"
                 )
             sys.exit(1)
@@ -120,8 +129,6 @@ class Builder:
         # Project files
         # A list of all project configuration files used. These files should only be used to determine whether a rebuild is necessary!
         self._project_cfg_files = project_cfg_files
-        # ASCII file with all patches in the order in which they are to be applied
-        self._patch_list_file = self._patch_dir / "patches.cfg"
         # File for saving the checksum of the imported, pre-built block package
         self._source_pb_md5_file = self._work_dir / "source_pb.md5"
 
@@ -734,12 +741,16 @@ class Builder:
             ]
         )
 
-        # Add newly created patches to self._patch_list_file
+        # Add newly created patches to the project configuration file
         for line in result_new_patches.stdout.splitlines():
             new_patch = line.rpartition("/")[2]
             pretty_print.print_info(f"Patch {new_patch} was created")
-            with self._patch_list_file.open("a") as f:
-                print(new_patch, file=f, end="\n")
+            # ToDo: Maybe the main project configuration file should not be hard coded here
+            YAML_Editor.append_list_entry(
+                file=self._project_dir / "project.yml",
+                keys=["blocks", self.block_id, "project", "patches"],
+                data=new_patch,
+            )
 
         # Synchronize the branches ref and dev to be able to detect new commits in the future
         self.shell_executor.exec_sh_command(
@@ -762,8 +773,7 @@ class Builder:
 
     def apply_patches(self):
         """
-        This function iterates over all patches listed in self._patch_list_file and
-        applies them to the repo.
+        This function iterates over all patches listed in the project configuration file and applies them to the repo.
 
         Args:
             None
@@ -775,25 +785,28 @@ class Builder:
             None
         """
 
-        # Skip all operations if the patches have already been applied
+        # Skip all operations if no patches are provided or if the patches have already been applied
         patches_already_added = (
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
         )
-        if patches_already_added:
+        if self.block_cfg.project.patches == None or patches_already_added:
             pretty_print.print_build("No need to apply patches...")
             return
 
         pretty_print.print_build("Applying patches...")
 
-        if self._patch_list_file.is_file():
-            with self._patch_list_file.open("r") as f:
-                for patch in f:
-                    if patch:  # If this line in the file is not empty
-                        # Apply patch
-                        self.shell_executor.exec_sh_command(
-                            ["git", "-C", str(self._source_repo_dir), "am", str(self._patch_dir / patch)]
-                        )
+        for patch in self.block_cfg.project.patches:
+            if not (self._patch_dir / patch).is_file():
+                pretty_print.print_error(
+                    f"Patch '{patch}' specified in 'blocks -> {self.block_id} -> project -> patches' does not exist in {self._patch_dir}"
+                )
+                sys.exit(1)
+
+            # Apply patch
+            self.shell_executor.exec_sh_command(
+                ["git", "-C", str(self._source_repo_dir), "am", str(self._patch_dir / patch)]
+            )
 
         # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
         self.shell_executor.exec_sh_command(
