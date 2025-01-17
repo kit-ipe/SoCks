@@ -17,6 +17,7 @@ import hashlib
 import time
 import pydantic
 import inspect
+import csv
 
 import socks.pretty_print as pretty_print
 from socks.shell_executor import Shell_Executor
@@ -745,12 +746,18 @@ class Builder:
         for line in result_new_patches.stdout.splitlines():
             new_patch = line.rpartition("/")[2]
             pretty_print.print_info(f"Patch {new_patch} was created")
+            # Add patch to project configuration file
             # ToDo: Maybe the main project configuration file should not be hard coded here
             YAML_Editor.append_list_entry(
                 file=self._project_dir / "project.yml",
                 keys=["blocks", self.block_id, "project", "patches"],
                 data=new_patch,
             )
+            # Add patch to currently used project configuration
+            if self.block_cfg.project.patches == None:
+                self.block_cfg.project.patches = [new_patch]
+            else:
+                self.block_cfg.project.patches.append(new_patch)
 
         # Synchronize the branches ref and dev to be able to detect new commits in the future
         self.shell_executor.exec_sh_command(
@@ -1256,7 +1263,8 @@ class Builder:
             None
 
         Raises:
-            None
+            ValueError:
+                If the CSV file that describes the patches has more than one column
         """
 
         # If there are already sources, there is nothing to do
@@ -1302,6 +1310,36 @@ class Builder:
         with tarfile.open(templates[choice], "r:*") as archive:
             # Extract all contents to the output directory
             archive.extractall(path=self._block_src_dir)
+
+        # Import patches into the project configuration file
+        try:
+            patches_file = self._patch_dir / "patches.csv"
+            with open(patches_file, mode="r", newline="") as file:
+                reader = csv.reader(file)
+                patches = list(reader)
+
+            # Check the entire file before anything is done
+            for patch in patches:
+                if len(patch) != 1:
+                    raise ValueError(f"File '{patches_file}' has more than one column")
+
+            for patch in patches:
+                # Add patch to project configuration file
+                # ToDo: Maybe the main project configuration file should not be hard coded here
+                YAML_Editor.append_list_entry(
+                    file=self._project_dir / "project.yml",
+                    keys=["blocks", self.block_id, "project", "patches"],
+                    data=patch[0],
+                )
+                # Add patch to currently used project configuration
+                if self.block_cfg.project.patches == None:
+                    self.block_cfg.project.patches = [patch[0]]
+                else:
+                    self.block_cfg.project.patches.append(patch[0])
+
+            os.remove(patches_file)
+        except FileNotFoundError:
+            pass
 
     def clean_repo(self, as_root: bool = False):
         """

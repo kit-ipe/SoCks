@@ -14,9 +14,6 @@ blocks:
   #   source: "build"
   #   builder: "ZynqMP_AMD_PetaLinux_RootFS_Builder"
   #   project:
-  #     patches:
-  #       - patch: 0001-Strip-everything-except-the-rootfs-from-core-image-m.patch
-  #         project: meta-xilinx
   #     build_srcs:
   #       source: "https://github.com/Xilinx/yocto-manifests.git"
   #       branch: "rel-v{{external_tools/xilinx/version}}"
@@ -101,6 +98,29 @@ blocks:
       add_build_info: false
       dependencies:
         kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
+      patches:
+        - 0001-Add-default-config.patch
     container:
       image: "busybox-ramfs-builder-alma9"
       tag: "socks"
+  fsbl:
+    project:
+      patches:
+        - 0001-Add-gitignore.patch
+  pmu_fw:
+    project:
+      patches:
+        - 0001-Add-gitignore.patch
+  kernel:
+    project:
+      patches:
+        - 0001-Add-default-config.patch
+  uboot:
+    project:
+      patches:
+        - 0001-Add-default-config-for-ZynqMP.patch
+        - 0001-Add-file2env-command.patch
+        - 0001-Add-file2env-to-boot-command.patch
+        - 0001-Restrict-SD-card-bus-with-as-fix-for-Serenity-S-1.1.patch
+        - 0001-Add-directory-with-generated-files-to-gitignore.patch
+        - 0001-Set-MAC-address-offset-for-Kria-EEPROM.patch

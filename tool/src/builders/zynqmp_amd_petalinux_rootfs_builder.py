@@ -7,11 +7,16 @@ import stat
 import urllib
 import validators
 import inspect
+import os
+import csv
 
 import socks.pretty_print as pretty_print
 from socks.yaml_editor import YAML_Editor
 from builders.builder import Builder
-from builders.zynqmp_amd_petalinux_rootfs_model import ZynqMP_AMD_PetaLinux_RootFS_Model
+from builders.zynqmp_amd_petalinux_rootfs_model import (
+    ZynqMP_AMD_PetaLinux_RootFS_Model,
+    ZynqMP_AMD_PetaLinux_RootFS_Patch_Model,
+)
 
 
 class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
@@ -118,7 +123,40 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         """
 
         super().validate_srcs()
-        self.import_src_tpl()
+        try:
+            self.import_src_tpl()
+        except ValueError:
+            # For this block it is expected that the file listing all patches has more than one column
+            # Import patches into the project configuration file
+            patches_file = self._patch_dir / "patches.csv"
+            with open(patches_file, mode="r", newline="") as file:
+                reader = csv.reader(file)
+                patches = list(reader)
+
+            # Check the entire file before anything is done
+            for patch in patches:
+                if len(patch) != 2:
+                    raise ValueError(f"File '{patches_file}' does not have two complete columns")
+
+            for patch in patches:
+                # Add patch to project configuration file
+                # ToDo: Maybe the main project configuration file should not be hard coded here
+                YAML_Editor.append_list_entry(
+                    file=self._project_dir / "project.yml",
+                    keys=["blocks", self.block_id, "project", "patches"],
+                    data={"project": patch[0], "patch": patch[1]},
+                )
+                # Add patch to currently used project configuration
+                if self.block_cfg.project.patches == None:
+                    self.block_cfg.project.patches = [
+                        ZynqMP_AMD_PetaLinux_RootFS_Patch_Model(project=patch[0], patch=patch[1])
+                    ]
+                else:
+                    self.block_cfg.project.patches.append(
+                        ZynqMP_AMD_PetaLinux_RootFS_Patch_Model(project=patch[0], patch=patch[1])
+                    )
+
+            os.remove(patches_file)
 
     def init_repo(self):
         """
@@ -240,6 +278,15 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                         keys=["blocks", self.block_id, "project", "patches"],
                         data={"project": project, "patch": new_patch},
                     )
+                    # Add patch to currently used project configuration
+                    if self.block_cfg.project.patches == None:
+                        self.block_cfg.project.patches = [
+                            ZynqMP_AMD_PetaLinux_RootFS_Patch_Model(project=project, patch=new_patch)
+                        ]
+                    else:
+                        self.block_cfg.project.patches.append(
+                            ZynqMP_AMD_PetaLinux_RootFS_Patch_Model(project=project, patch=new_patch)
+                        )
                 # Synchronize the branches ref and dev to be able to detect new commits in the future
                 self.shell_executor.exec_sh_command(
                     ["git", "-C", str(self._source_repo_dir / path), "checkout", self._git_local_ref_branch],
@@ -725,6 +772,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         results = self.shell_executor.get_sh_results([str(self._repo_script), "list"], cwd=self._source_repo_dir)
         for line in results.stdout.splitlines():
             path, colon, project = line.split(" ", 2)
+            # Skip, if the directory does not exist
+            if not (self._source_repo_dir / path).is_dir():
+                continue
             # Check if this repo contains uncommited changes
             results = self.shell_executor.get_sh_results(
                 ["git", "-C", str(self._source_repo_dir / path), "status", "--porcelain"]

@@ -5,7 +5,7 @@ from builders.block_model import Block_Model, Block_Project_Model, Build_Srcs_Mo
 from socks.zynqmp_base_model import ZynqMP_Base_Model
 
 
-class ZynqMP_AMD_PetaLinux_RootFS_Patches_Model(BaseModel):
+class ZynqMP_AMD_PetaLinux_RootFS_Patch_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     project: str
@@ -22,7 +22,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Block_Project_Model(Block_Project_Model):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     build_srcs: Build_Srcs_Model = Field(default=..., description="A single source object")
-    patches: Optional[list[ZynqMP_AMD_PetaLinux_RootFS_Patches_Model]] = Field(
+    patches: Optional[list[ZynqMP_AMD_PetaLinux_RootFS_Patch_Model]] = Field(
         default=None, description="A list of patches to be applied to the source files"
     )
     add_build_info: bool = Field(

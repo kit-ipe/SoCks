@@ -2,7 +2,6 @@ import sys
 import pathlib
 import hashlib
 import tarfile
-import csv
 from dateutil import parser
 import urllib
 import requests

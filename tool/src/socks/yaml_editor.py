@@ -1,6 +1,5 @@
 import pathlib
 import yaml
-import re
 from typing import Union
 
 
@@ -50,15 +49,15 @@ class YAML_Editor:
         # If all keys are new, append at the end of the file
         if not existing_keys:
             lines_to_append = []
-            indents = ""
+            target_indents = ""
             for layer in keys:
-                lines_to_append.append(indents + layer + ":\n")
-                indents = indents + "  "
+                lines_to_append.append(target_indents + layer + ":\n")
+                target_indents = target_indents + "  "
 
             # Convert data to YAML format
             yaml_string = yaml.dump([data], default_flow_style=False)
             for yaml_line in yaml_string.splitlines(keepends=True):
-                lines_to_append.append(indents + yaml_line)
+                lines_to_append.append(target_indents + yaml_line)
 
             # Add a line break if the last line does not end with one
             if not current_lines[-1].rstrip("\r").endswith("\n"):
@@ -81,16 +80,22 @@ class YAML_Editor:
                         f"This node was expected to be of type 'list'."
                     )
 
-            # Create string with the required number of indents for the already existing keys
-            indents = ""
+            # Create string with the required number of spaces for the target section
+            target_indents = ""
             for _ in existing_keys:
-                indents = indents + "  "
+                target_indents = target_indents + "  "
 
             modified_lines = []
             in_target_section = False
+            nr_keys_found = 0
             for line in current_lines:
+                # Determine spaces before next key
+                key_indents = ""
+                for i in range(nr_keys_found):
+                    key_indents = key_indents + "  "
                 # If this line opens a new layer in the yaml file
-                if existing_keys and re.search(f" *{existing_keys[0]}:", line):
+                if existing_keys and line.startswith(f"{key_indents}{existing_keys[0]}:"):
+                    nr_keys_found += 1
                     del existing_keys[0]
                     if not existing_keys:
                         if "[" in line:
@@ -100,14 +105,14 @@ class YAML_Editor:
                     modified_lines.append(line)
                     continue
                 # Append new yaml section at the end of the target section
-                if in_target_section and not line.startswith(indents):
+                if in_target_section and not line.startswith(target_indents):
                     for layer in missing_keys:
-                        modified_lines.append(indents + layer + ":\n")
-                        indents = indents + "  "
+                        modified_lines.append(target_indents + layer + ":\n")
+                        target_indents = target_indents + "  "
                     # Convert list to YAML format
                     yaml_string = yaml.dump(new_yaml_sec, default_flow_style=False)
                     for yaml_line in yaml_string.splitlines(keepends=True):
-                        modified_lines.append(indents + yaml_line)
+                        modified_lines.append(target_indents + yaml_line)
                     in_target_section = False
                 # Do not append lines that will be appended as part of the new yaml section
                 if len(new_yaml_sec) == 1 or not in_target_section:
@@ -115,13 +120,16 @@ class YAML_Editor:
 
             # If the target section ends at the end of the file
             if in_target_section:
+                # Add a line break if the last line does not end with one
+                if not modified_lines[-1].rstrip("\r").endswith("\n"):
+                    modified_lines.append("\n")
                 for layer in missing_keys:
-                    modified_lines.append(indents + layer + ":\n")
-                    indents = indents + "  "
+                    modified_lines.append(target_indents + layer + ":\n")
+                    target_indents = target_indents + "  "
                 # Convert list to YAML format
                 yaml_string = yaml.dump(new_yaml_sec, default_flow_style=False)
                 for yaml_line in yaml_string.splitlines(keepends=True):
-                    modified_lines.append(indents + yaml_line)
+                    modified_lines.append(target_indents + yaml_line)
 
             if existing_keys:
                 raise ValueError(f"Unable to find '{' -> '.join(keys)}' in file '{file}'")
