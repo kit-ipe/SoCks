@@ -124,3 +124,7 @@ blocks:
         - 0001-Restrict-SD-card-bus-with-as-fix-for-Serenity-S-1.1.patch
         - 0001-Add-directory-with-generated-files-to-gitignore.patch
         - 0001-Set-MAC-address-offset-for-Kria-EEPROM.patch
+  devicetree:
+    project:
+      dt_includes:
+        - system-user.dtsi

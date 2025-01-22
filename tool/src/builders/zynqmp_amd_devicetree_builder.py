@@ -4,8 +4,11 @@ import shutil
 import urllib
 import hashlib
 import inspect
+import os
+import csv
 
 import socks.pretty_print as pretty_print
+from socks.yaml_editor import YAML_Editor
 from builders.amd_builder import AMD_Builder
 from builders.zynqmp_amd_devicetree_model import ZynqMP_AMD_Devicetree_Model
 
@@ -41,10 +44,6 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         self._dt_overlay_dir = self._block_src_dir / "dt_overlays"
         self._base_work_dir = self._work_dir / "base"
         self._overlay_work_dir = self._work_dir / "overlays"
-
-        # Project files
-        # ASCII file with all devicetree includes for the base devicetree
-        self._dt_incl_list_file = self._dt_incl_dir / "includes.cfg"
 
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
@@ -204,21 +203,24 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
 
         pretty_print.print_build("Building the base devicetree...")
 
-        if self._dt_incl_list_file.is_file():
-            with self._dt_incl_list_file.open("r") as incl_list_file:
-                for incl in incl_list_file:
-                    incl = incl.strip()
-                    if incl:
-                        # Devicetree includes are copied before every build to make sure they are up to date
-                        shutil.copy(self._dt_incl_dir / incl, self._base_work_dir / incl)
-                        # Check if this file is already included, and if not, include it
-                        with (self._base_work_dir / "system-top.dts").open("r+") as dts_top_file:
-                            contents = dts_top_file.read()
-                            incl_line = f'#include "{incl}"\n'
-                            if incl_line not in contents:
-                                # If the line was not found, the file pointer is now at the end
-                                # Write the include line
-                                dts_top_file.write(incl_line)
+        if self.block_cfg.project.dt_includes != None:
+            for dt_incl in self.block_cfg.project.dt_includes:
+                if not (self._dt_incl_dir / dt_incl).is_file():
+                    pretty_print.print_error(
+                        f"File '{dt_incl}' specified in 'blocks -> {self.block_id} -> project -> dt_includes' does not exist in {self._dt_incl_dir}"
+                    )
+                    sys.exit(1)
+
+                # Devicetree includes are copied before every build to make sure they are up to date
+                shutil.copy(self._dt_incl_dir / dt_incl, self._base_work_dir / dt_incl)
+                # Check if this file is already included, and if not, include it
+                with (self._base_work_dir / "system-top.dts").open("r+") as dts_top_file:
+                    contents = dts_top_file.read()
+                    incl_line = f'#include "{dt_incl}"\n'
+                    if incl_line not in contents:
+                        # If the line was not found, the file pointer is now at the end
+                        # Write the include line
+                        dts_top_file.write(incl_line)
 
         # The *.dts file created by gcc is for humans difficult to read. Therefore, in the last step, it is replaced by one created with the devicetree compiler.
         dt_build_commands = [
@@ -339,3 +341,51 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
 
         # Log success of this function
         self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+
+    def import_src_tpl(self):
+        """
+        This function checks whether there are already sources for this block
+        and, if not, offers the user to import a source code template.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            ValueError:
+                If the CSV file that describes the devicetree includes has more than one column
+        """
+
+        super().import_src_tpl()
+
+        # Import devicetree includes into the project configuration file
+        try:
+            dt_incl_list_file = self._dt_incl_dir / "includes.csv"
+            with open(dt_incl_list_file, mode="r", newline="") as file:
+                reader = csv.reader(file)
+                dt_includes = list(reader)
+
+            # Check the entire file before anything is done
+            for dt_incl in dt_includes:
+                if len(dt_incl) != 1:
+                    raise ValueError(f"File '{dt_incl_list_file}' has more than one column")
+
+            for dt_incl in dt_includes:
+                # Add devicetree include to project configuration file
+                # ToDo: Maybe the main project configuration file should not be hard coded here
+                YAML_Editor.append_list_entry(
+                    file=self._project_dir / "project.yml",
+                    keys=["blocks", self.block_id, "project", "dt_includes"],
+                    data=dt_incl[0],
+                )
+                # Add devicetree include to currently used project configuration
+                if self.block_cfg.project.dt_includes == None:
+                    self.block_cfg.project.dt_includes = [dt_incl[0]]
+                else:
+                    self.block_cfg.project.dt_includes.append(dt_incl[0])
+
+            os.remove(dt_incl_list_file)
+        except FileNotFoundError:
+            pass

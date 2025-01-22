@@ -18,6 +18,9 @@ class AMD_Devicetree_Block_Project_Model(Block_Project_Model):
     patches: Optional[list[str]] = Field(
         default=None, description="A list of patches to be applied to the source files"
     )
+    dt_includes: Optional[list[str]] = Field(
+        default=None, description="A list of dtsi files to be included into the devicetree (system-top.dts)"
+    )
     dependencies: AMD_Devicetree_Dependencies_Model = Field(
         default=...,
         description="A dictionary mapping dependency names to paths of block packages, relative to the project directory.",
