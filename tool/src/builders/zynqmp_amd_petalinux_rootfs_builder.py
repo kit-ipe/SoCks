@@ -48,7 +48,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         self._rootfs_name = f"petalinux_zynqmp_{self.project_cfg.project.name}"
 
         # Project directories
-        self._config_dir = self._block_src_dir / "config"
+        self._resources_dir = self._block_src_dir / "resources"
         self._mod_dir = self._work_dir / self._rootfs_name
 
         # Project files
@@ -395,7 +395,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             pretty_print.print_build("No need to initialize yocto...")
             return
 
-        local_conf_append = self._config_dir / "local.conf.append"
+        local_conf_append = self._resources_dir / "local.conf.append"
 
         pretty_print.print_build("Initializing yocto...")
 
@@ -427,7 +427,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         if not ZynqMP_AMD_PetaLinux_RootFS_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files
             + [
-                self._config_dir,
+                self._resources_dir,
                 self._source_repo_dir / "sources",
                 self._source_repo_dir / "build" / "conf",
                 self._source_repo_dir / "build" / "workspace",

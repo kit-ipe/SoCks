@@ -46,7 +46,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         self._vivado_pdi_file_path = None  # Must be initialized outside the constructor, as the file needs to be extracted and the name of the file it not fixed.
 
         # Project directories
-        self._config_dir = self._block_src_dir / "config"
+        self._resources_dir = self._block_src_dir / "resources"
         self._xsa_extracted_dir = self._xsa_dir / "extracted"
 
         # Products of other blocks on which this block depends
@@ -126,7 +126,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
 
         potential_mounts = [
             (pathlib.Path(self._amd_tools_path), "ro"),
-            (self._config_dir, "Z"),
+            (self._resources_dir, "Z"),
             (self._dependencies_dir, "Z"),
             (self._xsa_dir, "Z"),
             (self._work_dir, "Z"),
@@ -151,7 +151,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
 
         # Check whether the boot script image needs to be built
         if not Versal_AMD_Image_Builder._check_rebuild_required(
-            src_search_list=[self._config_dir / "boot.cmd"],
+            src_search_list=[self._resources_dir / "boot.cmd"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
@@ -167,11 +167,11 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         pretty_print.print_build("Building boot.scr...")
 
         bootscr_img_build_commands = [
-            f"mkimage -c none -A arm -T script -d {self._config_dir}/boot.cmd {self._output_dir}/boot.scr"
+            f"mkimage -c none -A arm -T script -d {self._resources_dir}/boot.cmd {self._output_dir}/boot.scr"
         ]
 
         self.container_executor.exec_sh_commands(
-            commands=bootscr_img_build_commands, dirs_to_mount=[(self._config_dir, "Z"), (self._output_dir, "Z")]
+            commands=bootscr_img_build_commands, dirs_to_mount=[(self._resources_dir, "Z"), (self._output_dir, "Z")]
         )
 
         # Log success of this function
@@ -218,7 +218,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         if not Versal_AMD_Image_Builder._check_rebuild_required(
             src_search_list=self._project_cfg_files
             + [
-                self._config_dir / "bootgen.bif.tpl",
+                self._resources_dir / "bootgen.bif.tpl",
                 self._plm_img_path,
                 self._psmfw_img_path,
                 self._vivado_pdi_file_path,
@@ -247,7 +247,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         boot_img_build_commands = [
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"source {self._amd_vitis_path}/settings64.sh",
-            f"cp {self._config_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif",
+            f"cp {self._resources_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif",
             f'sed -i "s:<PLM_PATH>:{self._plm_img_path}:g;" {self._work_dir}/bootgen.bif',
             f'sed -i "s:<PSMFW_PATH>:{self._psmfw_img_path}:g;" {self._work_dir}/bootgen.bif',
             f'sed -i "s:<PDI_PATH>:{self._vivado_pdi_file_path}:g;" {self._work_dir}/bootgen.bif',
@@ -263,7 +263,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
             commands=boot_img_build_commands,
             dirs_to_mount=[
                 (pathlib.Path(self._amd_tools_path), "ro"),
-                (self._config_dir, "Z"),
+                (self._resources_dir, "Z"),
                 (self._dependencies_dir, "Z"),
                 (self._xsa_dir, "Z"),
                 (self._work_dir, "Z"),

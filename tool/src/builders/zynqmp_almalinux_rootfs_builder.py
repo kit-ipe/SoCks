@@ -44,7 +44,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         self._target_arch = "aarch64"
 
         # Project directories
-        self._repo_dir = self._block_src_dir / "config"
+        self._repo_dir = self._block_src_dir / "resources"
         self._build_dir = self._work_dir / self._rootfs_name
 
         # Project files

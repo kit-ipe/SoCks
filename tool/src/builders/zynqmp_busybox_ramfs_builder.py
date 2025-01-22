@@ -39,7 +39,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         self._ramfs_name = f"busybox_fs_zynqmp_{self.project_cfg.project.name}"
 
         # Project directories
-        self._config_dir = self._block_src_dir / "config"
+        self._resources_dir = self._block_src_dir / "resources"
         self._mod_dir = self._work_dir / self._ramfs_name
 
         # Project files
@@ -262,7 +262,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
 
         # Check whether the ram file system needs to be populated
         if not ZynqMP_BusyBox_RAMFS_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._config_dir],
+            src_search_list=self._project_cfg_files + [self._resources_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
@@ -274,8 +274,8 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
 
         # Copy all required files to the work directory to make them accessable in the container
         # The files are copied before every build to make sure they are up to date
-        shutil.copy(self._config_dir / "interfaces", self._work_dir / "interfaces")
-        shutil.copy(self._config_dir / "init", self._work_dir / "init")
+        shutil.copy(self._resources_dir / "interfaces", self._work_dir / "interfaces")
+        shutil.copy(self._resources_dir / "init", self._work_dir / "init")
 
         populate_ramfs_commands = [
             f"cd {self._source_repo_dir}",
