@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict, StringConstraints
 from typing_extensions import Annotated
 from typing import Optional
 
-from builders.block_model import Block_Model, Block_Project_Model
+from builders.block_model import Block_Model, Block_Project_Model, Block_Project_Model_Default_Fields
 from socks.versal_base_model import Versal_Base_Model
 
 
@@ -53,13 +53,8 @@ class Versal_AlmaLinux_RootFS_Block_Project_Model(Block_Project_Model):
         default=None, description="List of files to be installed that were generated at build time"
     )
     users: list[Versal_AlmaLinux_RootFS_User_Model] = Field(default=None, description="List of users to be added")
-    add_build_info: bool = Field(
-        default=..., description="Switch to specify whether or not build information should be included in the block"
-    )
-    dependencies: Versal_AlmaLinux_RootFS_Dependencies_Model = Field(
-        default=...,
-        description="A dictionary mapping dependency names to paths of block packages, relative to the project directory",
-    )
+    add_build_info: bool = Block_Project_Model_Default_Fields.add_build_info
+    dependencies: Versal_AlmaLinux_RootFS_Dependencies_Model = Block_Project_Model_Default_Fields.dependencies
 
 
 class Versal_AlmaLinux_RootFS_Block_Model(Block_Model):

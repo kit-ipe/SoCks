@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 
-from builders.block_model import Block_Model, Block_Project_Model
+from builders.block_model import Block_Model, Block_Project_Model, Block_Project_Model_Default_Fields
 from socks.versal_base_model import Versal_Base_Model
 
 
@@ -13,10 +13,7 @@ class Versal_AMD_PSMFW_Dependencies_Model(BaseModel):
 class Versal_AMD_PSMFW_Block_Project_Model(Block_Project_Model):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    dependencies: Versal_AMD_PSMFW_Dependencies_Model = Field(
-        default=...,
-        description="A dictionary mapping dependency names to paths of block packages, relative to the project directory.",
-    )
+    dependencies: Versal_AMD_PSMFW_Dependencies_Model = Block_Project_Model_Default_Fields.dependencies
 
 
 class Versal_AMD_PSMFW_Block_Model(Block_Model):

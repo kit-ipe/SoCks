@@ -1,17 +1,15 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
-from builders.block_model import Block_Model, Block_Project_Model, Build_Srcs_Model
+from builders.block_model import Block_Model, Block_Project_Model, Build_Srcs_Model, Block_Project_Model_Default_Fields
 from socks.zynqmp_base_model import ZynqMP_Base_Model
 
 
 class AMD_ATF_Block_Project_Model(Block_Project_Model):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    build_srcs: Build_Srcs_Model = Field(default=..., description="A single source object")
-    patches: Optional[list[str]] = Field(
-        default=None, description="A list of patches to be applied to the source files"
-    )
+    build_srcs: Build_Srcs_Model = Block_Project_Model_Default_Fields.build_srcs
+    patches: Optional[list[str]] = Block_Project_Model_Default_Fields.patches
 
 
 class AMD_ATF_Block_Model(Block_Model):

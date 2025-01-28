@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
-from builders.block_model import Block_Model, Block_Project_Model, Build_Srcs_Model
+from builders.block_model import Block_Model, Block_Project_Model, Build_Srcs_Model, Block_Project_Model_Default_Fields
 from socks.zynqmp_base_model import ZynqMP_Base_Model
 
 
@@ -14,17 +14,12 @@ class AMD_Devicetree_Dependencies_Model(BaseModel):
 class AMD_Devicetree_Block_Project_Model(Block_Project_Model):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    build_srcs: Build_Srcs_Model = Field(default=..., description="A single source object")
-    patches: Optional[list[str]] = Field(
-        default=None, description="A list of patches to be applied to the source files"
-    )
+    build_srcs: Build_Srcs_Model = Block_Project_Model_Default_Fields.build_srcs
+    patches: Optional[list[str]] = Block_Project_Model_Default_Fields.patches
     dt_includes: Optional[list[str]] = Field(
         default=None, description="A list of dtsi files to be included into the devicetree (system-top.dts)"
     )
-    dependencies: AMD_Devicetree_Dependencies_Model = Field(
-        default=...,
-        description="A dictionary mapping dependency names to paths of block packages, relative to the project directory.",
-    )
+    dependencies: AMD_Devicetree_Dependencies_Model = Block_Project_Model_Default_Fields.dependencies
 
 
 class AMD_Devicetree_Block_Model(Block_Model):
