@@ -543,7 +543,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
 
     def build_archive(self, prebuilt: bool = False):
         """
-        Packs the entire rootfs in a archive.
+        Packs the entire rootfs in an archive.
 
         Args:
             prebuilt:
