@@ -222,44 +222,39 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.check_amd_tools(required_tools=["vivado"])
 
-        self.check_amd_tools(required_tools=["vivado"])
+            # Clean output directory
+            self.clean_output()
+            self._output_dir.mkdir(parents=True)
 
-        # Clean output directory
-        self.clean_output()
-        self._output_dir.mkdir(parents=True)
+            pretty_print.print_build("Building the Vivado Project...")
 
-        pretty_print.print_build("Building the Vivado Project...")
+            vivado_build_commands = [
+                "source ~/tools/ipbb-*/env.sh",
+                f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                f"source {self._amd_vivado_path}/settings64.sh",
+                f"cd {self._ipbb_work_dir}/proj/{self.block_cfg.project.name}",
+                "ipbb vivado check-syntax",
+                f"ipbb vivado synth -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} impl -j{self.project_cfg.external_tools.xilinx.max_threads_vivado}",
+                "ipbb vivado bitfile package",
+            ]
 
-        vivado_build_commands = [
-            "source ~/tools/ipbb-*/env.sh",
-            f"export XILINXD_LICENSE_FILE={self._amd_license}",
-            f"source {self._amd_vivado_path}/settings64.sh",
-            f"cd {self._ipbb_work_dir}/proj/{self.block_cfg.project.name}",
-            "ipbb vivado check-syntax",
-            f"ipbb vivado synth -j{self.project_cfg.external_tools.xilinx.max_threads_vivado} impl -j{self.project_cfg.external_tools.xilinx.max_threads_vivado}",
-            "ipbb vivado bitfile package",
-        ]
+            local_source_mounts = []
+            for path in self._local_source_dirs:
+                local_source_mounts.append((path, "Z"))
 
-        local_source_mounts = []
-        for path in self._local_source_dirs:
-            local_source_mounts.append((path, "Z"))
+            self.container_executor.exec_sh_commands(
+                commands=vivado_build_commands,
+                dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")] + local_source_mounts,
+                logfile=self._block_temp_dir / "build.log",
+                output_scrolling=True,
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=vivado_build_commands,
-            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")] + local_source_mounts,
-            logfile=self._block_temp_dir / "build.log",
-            output_scrolling=True,
-        )
-
-        # Create symlinks to the output files
-        for item in (self._ipbb_work_dir / "proj" / self.block_cfg.project.name / "package" / "src").glob("*"):
-            (self._output_dir / item.name).symlink_to(item)
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Create symlinks to the output files
+            for item in (self._ipbb_work_dir / "proj" / self.block_cfg.project.name / "package" / "src").glob("*"):
+                (self._output_dir / item.name).symlink_to(item)
 
     def start_container(self):
         """

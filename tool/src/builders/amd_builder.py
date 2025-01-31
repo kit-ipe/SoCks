@@ -175,20 +175,15 @@ class AMD_Builder(Builder):
             pretty_print.print_build("No need to import XSA archive. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Clean source xsa directory
+            self.clean_source_xsa()
+            self._xsa_dir.mkdir(parents=True)
 
-        # Clean source xsa directory
-        self.clean_source_xsa()
-        self._xsa_dir.mkdir(parents=True)
+            pretty_print.print_build("Importing XSA archive...")
 
-        pretty_print.print_build("Importing XSA archive...")
-
-        # Copy XSA archive
-        shutil.copy(xsa_files[0], self._xsa_dir / xsa_files[0].name)
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Copy XSA archive
+            shutil.copy(xsa_files[0], self._xsa_dir / xsa_files[0].name)
 
     def clean_source_xsa(self):
         """

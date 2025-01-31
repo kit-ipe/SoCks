@@ -366,48 +366,45 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             pretty_print.print_build("No need to apply patches...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            pretty_print.print_build("Applying patches...")
 
-        pretty_print.print_build("Applying patches...")
+            for item in self.block_cfg.project.patches:
+                project = item.project
+                patch = item.patch
+                if not (self._patch_dir / patch).is_file():
+                    pretty_print.print_error(
+                        f"Patch '{patch}' specified in 'blocks -> {self.block_id} -> project -> patches' "
+                        f"does not exist in {self._patch_dir}"
+                    )
+                    sys.exit(1)
 
-        for item in self.block_cfg.project.patches:
-            project = item.project
-            patch = item.patch
-            if not (self._patch_dir / patch).is_file():
-                pretty_print.print_error(
-                    f"Patch '{patch}' specified in 'blocks -> {self.block_id} -> project -> patches' does not exist in {self._patch_dir}"
+                # Get path of this project
+                results = self.shell_executor.get_sh_results(
+                    [str(self._repo_script), "list", "-r", project, "-p"], cwd=self._source_repo_dir
                 )
-                sys.exit(1)
+                path = results.stdout.splitlines()[0]
+                # Apply patch
+                self.shell_executor.exec_sh_command(
+                    ["git", "-C", str(self._source_repo_dir / path), "am", str(self._patch_dir / patch)]
+                )
 
-            # Get path of this project
-            results = self.shell_executor.get_sh_results(
-                [str(self._repo_script), "list", "-r", project, "-p"], cwd=self._source_repo_dir
-            )
-            path = results.stdout.splitlines()[0]
-            # Apply patch
-            self.shell_executor.exec_sh_command(
-                ["git", "-C", str(self._source_repo_dir / path), "am", str(self._patch_dir / patch)]
-            )
-
-            # Update the branch self._git_local_ref_branch so that it contains the applied patch and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-            self.shell_executor.exec_sh_command(
-                [str(self._repo_script), "checkout", self._git_local_ref_branch, project],
-                cwd=self._source_repo_dir,
-                visible_lines=0,
-            )
-            self.shell_executor.exec_sh_command(
-                ["git", "-C", str(self._source_repo_dir / path), "merge", self._git_local_dev_branch],
-                visible_lines=0,
-            )
-            self.shell_executor.exec_sh_command(
-                [str(self._repo_script), "checkout", self._git_local_dev_branch, project],
-                cwd=self._source_repo_dir,
-                visible_lines=0,
-            )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+                # Update the branch self._git_local_ref_branch so that it contains the applied patch and is in
+                # sync with self._git_local_dev_branch. This is important to be able to create new patches.
+                self.shell_executor.exec_sh_command(
+                    [str(self._repo_script), "checkout", self._git_local_ref_branch, project],
+                    cwd=self._source_repo_dir,
+                    visible_lines=0,
+                )
+                self.shell_executor.exec_sh_command(
+                    ["git", "-C", str(self._source_repo_dir / path), "merge", self._git_local_dev_branch],
+                    visible_lines=0,
+                )
+                self.shell_executor.exec_sh_command(
+                    [str(self._repo_script), "checkout", self._git_local_dev_branch, project],
+                    cwd=self._source_repo_dir,
+                    visible_lines=0,
+                )
 
     def yocto_init(self):
         """
@@ -476,33 +473,28 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             )
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.clean_work()
+            self._mod_dir.mkdir(parents=True)
 
-        self.clean_work()
-        self._mod_dir.mkdir(parents=True)
+            pretty_print.print_build("Building the base root file system...")
 
-        pretty_print.print_build("Building the base root file system...")
+            base_rootfs_build_commands = [f"cd {self._source_repo_dir}", "source ./setupsdk", "bitbake core-image-minimal"]
 
-        base_rootfs_build_commands = [f"cd {self._source_repo_dir}", "source ./setupsdk", "bitbake core-image-minimal"]
+            self.container_executor.exec_sh_commands(
+                commands=base_rootfs_build_commands, dirs_to_mount=[(self._repo_dir, "Z")]
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=base_rootfs_build_commands, dirs_to_mount=[(self._repo_dir, "Z")]
-        )
+            extract_rootfs_commands = [
+                f'gunzip -c {self._source_repo_dir}/build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.cpio.gz | sh -c "cd {self._mod_dir}/ && cpio -i"'
+            ]
 
-        extract_rootfs_commands = [
-            f'gunzip -c {self._source_repo_dir}/build/tmp/deploy/images/zynqmp-generic/core-image-minimal-zynqmp-generic.cpio.gz | sh -c "cd {self._mod_dir}/ && cpio -i"'
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.container_executor.exec_sh_commands(
-            commands=extract_rootfs_commands,
-            dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
-            run_as_root=True,
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.container_executor.exec_sh_commands(
+                commands=extract_rootfs_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                run_as_root=True,
+            )
 
     def add_kmodules(self):
         """
@@ -604,65 +596,60 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.clean_output()
+            self._output_dir.mkdir(parents=True)
 
-        self.clean_output()
-        self._output_dir.mkdir(parents=True)
+            pretty_print.print_build("Building archive...")
 
-        pretty_print.print_build("Building archive...")
+            if self.block_cfg.project.add_build_info == True:
+                # Add build information file
+                with self._build_info_file.open("w") as f:
+                    print("# Filesystem build info (autogenerated)\n\n", file=f, end="")
+                    print(self._compose_build_info(), file=f, end="")
 
-        if self.block_cfg.project.add_build_info == True:
-            # Add build information file
-            with self._build_info_file.open("w") as f:
-                print("# Filesystem build info (autogenerated)\n\n", file=f, end="")
-                print(self._compose_build_info(), file=f, end="")
+                add_build_info_commands = [
+                    f"mv {self._build_info_file} {self._mod_dir}/etc/fs_build_info",
+                    f"chmod 0444 {self._mod_dir}/etc/fs_build_info",
+                ]
 
-            add_build_info_commands = [
-                f"mv {self._build_info_file} {self._mod_dir}/etc/fs_build_info",
-                f"chmod 0444 {self._mod_dir}/etc/fs_build_info",
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                self.container_executor.exec_sh_commands(
+                    commands=add_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
+                )
+            else:
+                # Remove existing build information file
+                clean_build_info_commands = [f"rm -f {self._mod_dir}/etc/fs_build_info"]
+
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                self.container_executor.exec_sh_commands(
+                    commands=clean_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
+                )
+
+            if prebuilt:
+                archive_name = f"petalinux_zynqmp_pre-built"
+            else:
+                archive_name = self._rootfs_name
+
+            # Tar was tested with three compression options:
+            # Option	Size	Duration
+            # --xz	872M	real	17m59.080s
+            # -I pxz	887M	real	3m43.987s
+            # -I pigz	1.3G	real	0m20.747s
+            archive_build_commands = [
+                f"cd {self._mod_dir}",
+                f"tar -I pxz --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.tar.xz'} ./",
+                f"if id {self._host_user} >/dev/null 2>&1; then "
+                f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.tar.xz'}; "
+                f"fi",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
-                commands=add_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
+                commands=archive_build_commands,
+                dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
+                run_as_root=True,
             )
-        else:
-            # Remove existing build information file
-            clean_build_info_commands = [f"rm -f {self._mod_dir}/etc/fs_build_info"]
-
-            # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.container_executor.exec_sh_commands(
-                commands=clean_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
-            )
-
-        if prebuilt:
-            archive_name = f"petalinux_zynqmp_pre-built"
-        else:
-            archive_name = self._rootfs_name
-
-        # Tar was tested with three compression options:
-        # Option	Size	Duration
-        # --xz	872M	real	17m59.080s
-        # -I pxz	887M	real	3m43.987s
-        # -I pigz	1.3G	real	0m20.747s
-        archive_build_commands = [
-            f"cd {self._mod_dir}",
-            f"tar -I pxz --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.tar.xz'} ./",
-            f"if id {self._host_user} >/dev/null 2>&1; then "
-            f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.tar.xz'}; "
-            f"fi",
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.container_executor.exec_sh_commands(
-            commands=archive_build_commands,
-            dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
-            run_as_root=True,
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def build_archive_prebuilt(self):
         """

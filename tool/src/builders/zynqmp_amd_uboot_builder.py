@@ -228,41 +228,36 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
             pretty_print.print_build("No need to rebuild U-Boot. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Remove old build artifacts
+            (self._output_dir / "u-boot.elf").unlink(missing_ok=True)
 
-        # Remove old build artifacts
-        (self._output_dir / "u-boot.elf").unlink(missing_ok=True)
+            pretty_print.print_build("Building U-Boot...")
 
-        pretty_print.print_build("Building U-Boot...")
+            if self.block_cfg.project.add_build_info == True:
+                # Add build information file
+                with self._build_info_file.open("w") as f:
+                    print('const char *build_info = "', file=f, end="")
+                    print(self._compose_build_info().replace("\n", "\\n"), file=f, end="")
+                    print('";', file=f, end="")
+            else:
+                # Remove existing build information file
+                self._build_info_file.unlink(missing_ok=True)
 
-        if self.block_cfg.project.add_build_info == True:
-            # Add build information file
-            with self._build_info_file.open("w") as f:
-                print('const char *build_info = "', file=f, end="")
-                print(self._compose_build_info().replace("\n", "\\n"), file=f, end="")
-                print('";', file=f, end="")
-        else:
-            # Remove existing build information file
-            self._build_info_file.unlink(missing_ok=True)
+            uboot_build_commands = [
+                f"cd {self._source_repo_dir}",
+                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                "export ARCH=aarch64",
+                "make olddefconfig",
+                f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
+            ]
 
-        uboot_build_commands = [
-            f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=aarch64-linux-gnu-",
-            "export ARCH=aarch64",
-            "make olddefconfig",
-            f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
-        ]
+            self.container_executor.exec_sh_commands(
+                commands=uboot_build_commands,
+                dirs_to_mount=[(self._repo_dir, "Z")],
+                logfile=self._block_temp_dir / "build.log",
+                output_scrolling=True,
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=uboot_build_commands,
-            dirs_to_mount=[(self._repo_dir, "Z")],
-            logfile=self._block_temp_dir / "build.log",
-            output_scrolling=True,
-        )
-
-        # Create symlink to the output file
-        (self._output_dir / "u-boot.elf").symlink_to(self._source_repo_dir / "u-boot.elf")
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Create symlink to the output file
+            (self._output_dir / "u-boot.elf").symlink_to(self._source_repo_dir / "u-boot.elf")

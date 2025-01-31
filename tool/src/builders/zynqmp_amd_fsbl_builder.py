@@ -202,36 +202,31 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild the FSBL. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.check_amd_tools(required_tools=["vitis"])
 
-        self.check_amd_tools(required_tools=["vitis"])
+            # Remove old build artifacts
+            (self._output_dir / "fsbl.elf").unlink(missing_ok=True)
 
-        # Remove old build artifacts
-        (self._output_dir / "fsbl.elf").unlink(missing_ok=True)
+            pretty_print.print_build("Building the FSBL...")
 
-        pretty_print.print_build("Building the FSBL...")
+            fsbl_build_commands = [
+                f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                f"source {self._amd_vitis_path}/settings64.sh",
+                f"cd {self._source_repo_dir}",
+                "make clean",
+                "make",
+            ]
 
-        fsbl_build_commands = [
-            f"export XILINXD_LICENSE_FILE={self._amd_license}",
-            f"source {self._amd_vitis_path}/settings64.sh",
-            f"cd {self._source_repo_dir}",
-            "make clean",
-            "make",
-        ]
+            self.container_executor.exec_sh_commands(
+                commands=fsbl_build_commands,
+                dirs_to_mount=[
+                    (pathlib.Path(self._amd_tools_path), "ro"),
+                    (self._repo_dir, "Z"),
+                ],
+                logfile=self._block_temp_dir / "build.log",
+                output_scrolling=True,
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=fsbl_build_commands,
-            dirs_to_mount=[
-                (pathlib.Path(self._amd_tools_path), "ro"),
-                (self._repo_dir, "Z"),
-            ],
-            logfile=self._block_temp_dir / "build.log",
-            output_scrolling=True,
-        )
-
-        # Create symlink to the output file
-        (self._output_dir / "fsbl.elf").symlink_to(self._source_repo_dir / "executable.elf")
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Create symlink to the output file
+            (self._output_dir / "fsbl.elf").symlink_to(self._source_repo_dir / "executable.elf")

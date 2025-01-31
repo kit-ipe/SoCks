@@ -229,39 +229,34 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             pretty_print.print_build("No need to rebuild the base ram file system. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.clean_work()
+            self._mod_dir.mkdir(parents=True)
 
-        self.clean_work()
-        self._mod_dir.mkdir(parents=True)
+            pretty_print.print_build("Building the base ram file system...")
 
-        pretty_print.print_build("Building the base ram file system...")
+            base_ramfs_build_commands = [
+                f"cd {self._source_repo_dir}",
+                f'sed -i "s%^CONFIG_PREFIX=.*$%CONFIG_PREFIX=\\"{self._mod_dir}\\"%" .config',
+                f"make -j{self.project_cfg.external_tools.make.max_build_threads} CROSS_COMPILE=aarch64-unknown-linux-uclibc-",
+                f"mkdir -p {self._mod_dir}",
+                f"cd {self._mod_dir}",
+                "mkdir -p {bin,dev,etc,lib64,proc,sbin,sys,tmp,usr,var}",
+                "mkdir -p usr/{bin,sbin}",
+                "mkdir -p var/log",
+                "ln -sf lib64 lib",
+                f"cd {self._source_repo_dir}",
+                "make CROSS_COMPILE=aarch64-unknown-linux-uclibc- install",
+            ]
 
-        base_ramfs_build_commands = [
-            f"cd {self._source_repo_dir}",
-            f'sed -i "s%^CONFIG_PREFIX=.*$%CONFIG_PREFIX=\\"{self._mod_dir}\\"%" .config',
-            f"make -j{self.project_cfg.external_tools.make.max_build_threads} CROSS_COMPILE=aarch64-unknown-linux-uclibc-",
-            f"mkdir -p {self._mod_dir}",
-            f"cd {self._mod_dir}",
-            "mkdir -p {bin,dev,etc,lib64,proc,sbin,sys,tmp,usr,var}",
-            "mkdir -p usr/{bin,sbin}",
-            "mkdir -p var/log",
-            "ln -sf lib64 lib",
-            f"cd {self._source_repo_dir}",
-            "make CROSS_COMPILE=aarch64-unknown-linux-uclibc- install",
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a RAMFS image.
-        self.container_executor.exec_sh_commands(
-            commands=base_ramfs_build_commands,
-            dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
-            run_as_root=True,
-            logfile=self._block_temp_dir / "build.log",
-            output_scrolling=True,
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # The root user is used in this container. This is necessary in order to build a RAMFS image.
+            self.container_executor.exec_sh_commands(
+                commands=base_ramfs_build_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                run_as_root=True,
+                logfile=self._block_temp_dir / "build.log",
+                output_scrolling=True,
+            )
 
     def populate_ramfs(self):
         """
@@ -287,40 +282,35 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             pretty_print.print_build("No need to populate the ramfs. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            pretty_print.print_build("Populating the initramfs...")
 
-        pretty_print.print_build("Populating the initramfs...")
+            # Copy all required files to the work directory to make them accessable in the container
+            # The files are copied before every build to make sure they are up to date
+            shutil.copy(self._resources_dir / "interfaces", self._work_dir / "interfaces")
+            shutil.copy(self._resources_dir / "init", self._work_dir / "init")
 
-        # Copy all required files to the work directory to make them accessable in the container
-        # The files are copied before every build to make sure they are up to date
-        shutil.copy(self._resources_dir / "interfaces", self._work_dir / "interfaces")
-        shutil.copy(self._resources_dir / "init", self._work_dir / "init")
+            populate_ramfs_commands = [
+                f"cd {self._source_repo_dir}",
+                f"install -D -m 755 examples/udhcp/simple.script {self._mod_dir}/usr/share/udhcpc/default.script",
+                f"cd {self._mod_dir}",
+                "mkdir -p etc/network",
+                f"mv {self._work_dir}/interfaces etc/network/",
+                "mkdir -p etc/network/if-pre-up.d",
+                "mkdir -p etc/network/if-up.d",
+                "mkdir -p etc/network/if-down.d",
+                "mkdir -p etc/network/if-post-down.d",
+                "mkdir -p var/run",
+                f"mv {self._work_dir}/init .",
+                "chmod a+x init",
+            ]
 
-        populate_ramfs_commands = [
-            f"cd {self._source_repo_dir}",
-            f"install -D -m 755 examples/udhcp/simple.script {self._mod_dir}/usr/share/udhcpc/default.script",
-            f"cd {self._mod_dir}",
-            "mkdir -p etc/network",
-            f"mv {self._work_dir}/interfaces etc/network/",
-            "mkdir -p etc/network/if-pre-up.d",
-            "mkdir -p etc/network/if-up.d",
-            "mkdir -p etc/network/if-down.d",
-            "mkdir -p etc/network/if-post-down.d",
-            "mkdir -p var/run",
-            f"mv {self._work_dir}/init .",
-            "chmod a+x init",
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a RAMFS image.
-        self.container_executor.exec_sh_commands(
-            commands=populate_ramfs_commands,
-            dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
-            run_as_root=True,
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # The root user is used in this container. This is necessary in order to build a RAMFS image.
+            self.container_executor.exec_sh_commands(
+                commands=populate_ramfs_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                run_as_root=True,
+            )
 
     def add_kmodules(self):
         """
@@ -422,60 +412,55 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.clean_output()
+            self._output_dir.mkdir(parents=True)
 
-        self.clean_output()
-        self._output_dir.mkdir(parents=True)
+            pretty_print.print_build("Building archive...")
 
-        pretty_print.print_build("Building archive...")
+            if self.block_cfg.project.add_build_info == True:
+                # Add build information file
+                with self._build_info_file.open("w") as f:
+                    print("# Filesystem build info (autogenerated)\n\n", file=f, end="")
+                    print(self._compose_build_info(), file=f, end="")
 
-        if self.block_cfg.project.add_build_info == True:
-            # Add build information file
-            with self._build_info_file.open("w") as f:
-                print("# Filesystem build info (autogenerated)\n\n", file=f, end="")
-                print(self._compose_build_info(), file=f, end="")
+                add_build_info_commands = [
+                    f"mv {self._build_info_file} {self._mod_dir}/etc/fs_build_info",
+                    f"chmod 0444 {self._mod_dir}/etc/fs_build_info",
+                ]
 
-            add_build_info_commands = [
-                f"mv {self._build_info_file} {self._mod_dir}/etc/fs_build_info",
-                f"chmod 0444 {self._mod_dir}/etc/fs_build_info",
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                self.container_executor.exec_sh_commands(
+                    commands=add_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
+                )
+            else:
+                # Remove existing build information file
+                clean_build_info_commands = [f"rm -f {self._mod_dir}/etc/fs_build_info"]
+
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                self.container_executor.exec_sh_commands(
+                    commands=clean_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
+                )
+
+            if prebuilt:
+                archive_name = f"busybox_fs_zynqmp_pre-built"
+            else:
+                archive_name = self._ramfs_name
+
+            archive_build_commands = [
+                f"cd {self._mod_dir}",
+                f"find . | cpio -H newc -o | gzip -9 > {self._output_dir / f'{archive_name}.cpio.gz'}",
+                f"if id {self._host_user} >/dev/null 2>&1; then "
+                f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.cpio.gz'}; "
+                f"fi",
             ]
 
-            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            # The root user is used in this container. This is necessary in order to build a RAMFS image.
             self.container_executor.exec_sh_commands(
-                commands=add_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
+                commands=archive_build_commands,
+                dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
+                run_as_root=True,
             )
-        else:
-            # Remove existing build information file
-            clean_build_info_commands = [f"rm -f {self._mod_dir}/etc/fs_build_info"]
-
-            # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.container_executor.exec_sh_commands(
-                commands=clean_build_info_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
-            )
-
-        if prebuilt:
-            archive_name = f"busybox_fs_zynqmp_pre-built"
-        else:
-            archive_name = self._ramfs_name
-
-        archive_build_commands = [
-            f"cd {self._mod_dir}",
-            f"find . | cpio -H newc -o | gzip -9 > {self._output_dir / f'{archive_name}.cpio.gz'}",
-            f"if id {self._host_user} >/dev/null 2>&1; then "
-            f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.cpio.gz'}; "
-            f"fi",
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a RAMFS image.
-        self.container_executor.exec_sh_commands(
-            commands=archive_build_commands,
-            dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
-            run_as_root=True,
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def build_archive_prebuilt(self):
         """

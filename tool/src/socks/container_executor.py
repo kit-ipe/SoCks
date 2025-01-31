@@ -115,8 +115,13 @@ class Container_Executor:
         )
         # Get last modification time of the container file
         last_file_mod_timestamp = self._container_file.stat().st_mtime
-        # Build image, if necessary
-        if last_build_timestamp < last_file_mod_timestamp:
+
+        # Check whether the image needs to be built
+        if last_build_timestamp > last_file_mod_timestamp:
+            pretty_print.print_build(f"No need to build {self._container_tool} image {self._container_image_tagged}...")
+            return
+
+        with self._container_log.timestamp(identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"):
             if self._container_tool == "docker":
                 # Get host user and id (a bit complicated but should work in most Unix environments)
                 host_user_id = os.getuid()
@@ -163,12 +168,6 @@ class Container_Executor:
 
             else:
                 raise ValueError(f"Unexpected container tool: {self._container_tool}")
-
-            self._container_log.log_timestamp(
-                identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
-            )
-        else:
-            pretty_print.print_build(f"No need to build {self._container_tool} image {self._container_image_tagged}...")
 
     def clean_container_image(self):
         """

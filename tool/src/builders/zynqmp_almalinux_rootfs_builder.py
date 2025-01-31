@@ -176,77 +176,72 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             )
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._work_dir.mkdir(parents=True, exist_ok=True)
 
-        self._work_dir.mkdir(parents=True, exist_ok=True)
+            if not dnf_conf_file.is_file():
+                pretty_print.print_error(f"The following dnf configuration file is required: {dnf_conf_file}")
+                sys.exit(1)
 
-        if not dnf_conf_file.is_file():
-            pretty_print.print_error(f"The following dnf configuration file is required: {dnf_conf_file}")
-            sys.exit(1)
+            pretty_print.print_build("Building the base root file system...")
 
-        pretty_print.print_build("Building the base root file system...")
+            dnf_base_command = f"dnf -y --nodocs --verbose -c {dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
+            base_rootfs_build_commands = [
+                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                f"    mkdir -p {self._build_dir}/usr/bin && "
+                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"fi",
+                # Clean all cache files generated from repository metadata
+                dnf_base_command + "clean all",
+                # Update all the installed packages
+                dnf_base_command + "update",
+                'printf "\nInstall the base os via dnf group install...\n\n"',
+                # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
+                dnf_base_command + 'groupinstall --with-optional "Minimal Install"',
+            ]
 
-        dnf_base_command = f"dnf -y --nodocs --verbose -c {dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
-        base_rootfs_build_commands = [
-            # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-            f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
-            f"    mkdir -p {self._build_dir}/usr/bin && "
-            f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
-            f"fi",
-            # Clean all cache files generated from repository metadata
-            dnf_base_command + "clean all",
-            # Update all the installed packages
-            dnf_base_command + "update",
-            'printf "\nInstall the base os via dnf group install...\n\n"',
-            # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
-            dnf_base_command + 'groupinstall --with-optional "Minimal Install"',
-        ]
+            if mod_base_install_script.is_file():
+                base_rootfs_build_commands.extend(
+                    [
+                        'printf "\nCall user-defined script to make changes to the base os...\n\n"',
+                        f"chmod a+x {mod_base_install_script}",
+                        f"{mod_base_install_script} {self._target_arch} {self.block_cfg.project.release} {dnf_conf_file} {self._build_dir}",
+                    ]
+                )
+            else:
+                pretty_print.print_info(
+                    f"File {mod_base_install_script} not found. No user-defined changes are made to the base os."
+                )
 
-        if mod_base_install_script.is_file():
-            base_rootfs_build_commands.extend(
-                [
-                    'printf "\nCall user-defined script to make changes to the base os...\n\n"',
-                    f"chmod a+x {mod_base_install_script}",
-                    f"{mod_base_install_script} {self._target_arch} {self.block_cfg.project.release} {dnf_conf_file} {self._build_dir}",
-                ]
+            if self.block_cfg.project.extra_rpms:
+                base_rootfs_build_commands.extend(
+                    [
+                        'printf "\nInstalling user defined packages...\n\n"',
+                        dnf_base_command + "install " + " ".join(self.block_cfg.project.extra_rpms),
+                    ]
+                )
+            else:
+                pretty_print.print_info(
+                    f"'rootfs -> project -> extra_rpms' not specified. No additional rpm packages will be installed."
+                )
+
+            # The QEMU binary if only required during build, so delete it if it exists
+            base_rootfs_build_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
+
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.container_executor.exec_sh_commands(
+                commands=base_rootfs_build_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                run_as_root=True,
+                logfile=self._block_temp_dir / "build_base.log",
+                output_scrolling=True,
             )
-        else:
-            pretty_print.print_info(
-                f"File {mod_base_install_script} not found. No user-defined changes are made to the base os."
-            )
 
-        if self.block_cfg.project.extra_rpms:
-            base_rootfs_build_commands.extend(
-                [
-                    'printf "\nInstalling user defined packages...\n\n"',
-                    dnf_base_command + "install " + " ".join(self.block_cfg.project.extra_rpms),
-                ]
-            )
-        else:
-            pretty_print.print_info(
-                f"'rootfs -> project -> extra_rpms' not specified. No additional rpm packages will be installed."
-            )
-
-        # The QEMU binary if only required during build, so delete it if it exists
-        base_rootfs_build_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
-
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.container_executor.exec_sh_commands(
-            commands=base_rootfs_build_commands,
-            dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
-            run_as_root=True,
-            logfile=self._block_temp_dir / "build_base.log",
-            output_scrolling=True,
-        )
-
-        # Reset timestamps
-        self._build_log.del_logged_timestamp(identifier=f"function-add_pd_layers-success")
-        self._build_log.del_logged_timestamp(identifier=f"function-add_bt_layer-success")
-        self._build_log.del_logged_timestamp(identifier=f"function-add_users-success")
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Reset timestamps
+            self._build_log.del_logged_timestamp(identifier=f"function-add_pd_layers-success")
+            self._build_log.del_logged_timestamp(identifier=f"function-add_bt_layer-success")
+            self._build_log.del_logged_timestamp(identifier=f"function-add_users-success")
 
     def add_pd_layers(self):
         """
@@ -283,25 +278,20 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             )
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            pretty_print.print_build("Adding predefined file system layers...")
 
-        pretty_print.print_build("Adding predefined file system layers...")
+            add_pd_layers_commands = [
+                f"cd {self._repo_dir / 'predefined_fs_layers'}",
+                f'for dir in ./*; do "$dir"/install_layer.sh {self._build_dir}/; done',
+            ]
 
-        add_pd_layers_commands = [
-            f"cd {self._repo_dir / 'predefined_fs_layers'}",
-            f'for dir in ./*; do "$dir"/install_layer.sh {self._build_dir}/; done',
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.container_executor.exec_sh_commands(
-            commands=add_pd_layers_commands,
-            dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
-            run_as_root=True,
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.container_executor.exec_sh_commands(
+                commands=add_pd_layers_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                run_as_root=True,
+            )
 
     def add_bt_layer(self):
         """
@@ -347,45 +337,40 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             )
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            pretty_print.print_build("Adding external files and directories created at build time...")
 
-        pretty_print.print_build("Adding external files and directories created at build time...")
-
-        add_bt_layer_commands = []
-        for item in self.block_cfg.project.build_time_fs_layer:
-            if item.src_block not in self._block_deps.keys():
-                pretty_print.print_error(
-                    f"Source block '{item.src_block}' specified in 'rootfs -> project -> build_time_fs_layer' is invalid."
-                )
-                sys.exit(1)
-            srcs = (self._dependencies_dir / item.src_block).glob(item.src_name)
-            if not srcs:
-                pretty_print.print_error(
-                    f"Source item '{item.src_name}' specified in 'rootfs -> project -> build_time_fs_layer' could not be found in the block package of source block '{item.src_block}'."
-                )
-                sys.exit(1)
-            add_bt_layer_commands.append(f"mkdir -p {self._build_dir}/{item.dest_path}")
-            for src in srcs:
-                add_bt_layer_commands.append(f"cp -r {src} {self._build_dir}/{item.dest_path}/{item.dest_name}")
-                if item.dest_owner_group:
-                    add_bt_layer_commands.append(
-                        f"chown -R {item.dest_owner_group} {self._build_dir}/{item.dest_path}/{item.dest_name}"
+            add_bt_layer_commands = []
+            for item in self.block_cfg.project.build_time_fs_layer:
+                if item.src_block not in self._block_deps.keys():
+                    pretty_print.print_error(
+                        f"Source block '{item.src_block}' specified in 'rootfs -> project -> build_time_fs_layer' is invalid."
                     )
-                if item.dest_permissions:
-                    add_bt_layer_commands.append(
-                        f"chmod -R {item.dest_permissions} {self._build_dir}/{item.dest_path}/{item.dest_name}"
+                    sys.exit(1)
+                srcs = (self._dependencies_dir / item.src_block).glob(item.src_name)
+                if not srcs:
+                    pretty_print.print_error(
+                        f"Source item '{item.src_name}' specified in 'rootfs -> project -> build_time_fs_layer' could not be found in the block package of source block '{item.src_block}'."
                     )
+                    sys.exit(1)
+                add_bt_layer_commands.append(f"mkdir -p {self._build_dir}/{item.dest_path}")
+                for src in srcs:
+                    add_bt_layer_commands.append(f"cp -r {src} {self._build_dir}/{item.dest_path}/{item.dest_name}")
+                    if item.dest_owner_group:
+                        add_bt_layer_commands.append(
+                            f"chown -R {item.dest_owner_group} {self._build_dir}/{item.dest_path}/{item.dest_name}"
+                        )
+                    if item.dest_permissions:
+                        add_bt_layer_commands.append(
+                            f"chmod -R {item.dest_permissions} {self._build_dir}/{item.dest_path}/{item.dest_name}"
+                        )
 
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.container_executor.exec_sh_commands(
-            commands=add_bt_layer_commands,
-            dirs_to_mount=[(self._repo_dir, "Z"), (self._dependencies_dir, "Z"), (self._work_dir, "Z")],
-            run_as_root=True,
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.container_executor.exec_sh_commands(
+                commands=add_bt_layer_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._dependencies_dir, "Z"), (self._work_dir, "Z")],
+                run_as_root=True,
+            )
 
     def add_users(self):
         """
@@ -417,42 +402,37 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             pretty_print.print_build("No need to add users. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            pretty_print.print_build("Adding users...")
 
-        pretty_print.print_build("Adding users...")
+            add_users_commands = [
+                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                f"    mkdir -p {self._build_dir}/usr/bin && "
+                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"fi"
+            ]
 
-        add_users_commands = [
-            # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-            f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
-            f"    mkdir -p {self._build_dir}/usr/bin && "
-            f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
-            f"fi"
-        ]
+            for user in self.block_cfg.project.users:
+                add_user_str = ""
+                if user.name != "root":
+                    add_user_str = add_user_str + f"useradd -m {user.name}; "
+                for group in user.groups:
+                    add_user_str = add_user_str + f"usermod -a -G {group} {user.name} && "
+                # Escape all $ symbols in the hash. I know this is ugly, but this is the only way I have found
+                # to make it work through all the layers of Python, docker, sh and chroot.
+                escaped_pw_hash = user.pw_hash.replace("$", "\\\\\\$")
+                add_user_str = add_user_str + f"usermod -p {escaped_pw_hash} {user.name}"
 
-        for user in self.block_cfg.project.users:
-            add_user_str = ""
-            if user.name != "root":
-                add_user_str = add_user_str + f"useradd -m {user.name}; "
-            for group in user.groups:
-                add_user_str = add_user_str + f"usermod -a -G {group} {user.name} && "
-            # Escape all $ symbols in the hash. I know this is ugly, but this is the only way I have found
-            # to make it work through all the layers of Python, docker, sh and chroot.
-            escaped_pw_hash = user.pw_hash.replace("$", "\\\\\\$")
-            add_user_str = add_user_str + f"usermod -p {escaped_pw_hash} {user.name}"
+                add_users_commands.append(f'chroot {self._build_dir} /bin/bash -c "{add_user_str}"')
 
-            add_users_commands.append(f'chroot {self._build_dir} /bin/bash -c "{add_user_str}"')
+            # The QEMU binary if only required during build, so delete it if it exists
+            add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
 
-        # The QEMU binary if only required during build, so delete it if it exists
-        add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
-
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.container_executor.exec_sh_commands(
-            commands=add_users_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")], run_as_root=True
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.container_executor.exec_sh_commands(
+                commands=add_users_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")], run_as_root=True
+            )
 
     def add_kmodules(self):
         """
@@ -552,69 +532,64 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.clean_output()
+            self._output_dir.mkdir(parents=True)
 
-        self.clean_output()
-        self._output_dir.mkdir(parents=True)
+            pretty_print.print_build("Building archive...")
 
-        pretty_print.print_build("Building archive...")
+            if self.block_cfg.project.add_build_info == True:
+                # Add build information file
+                with self._build_info_file.open("w") as f:
+                    print("# Filesystem build info (autogenerated)\n\n", file=f, end="")
+                    print(self._compose_build_info(), file=f, end="")
 
-        if self.block_cfg.project.add_build_info == True:
-            # Add build information file
-            with self._build_info_file.open("w") as f:
-                print("# Filesystem build info (autogenerated)\n\n", file=f, end="")
-                print(self._compose_build_info(), file=f, end="")
+                add_build_info_commands = [
+                    f"mv {self._build_info_file} {self._build_dir}/etc/fs_build_info",
+                    f"chmod 0444 {self._build_dir}/etc/fs_build_info",
+                ]
 
-            add_build_info_commands = [
-                f"mv {self._build_info_file} {self._build_dir}/etc/fs_build_info",
-                f"chmod 0444 {self._build_dir}/etc/fs_build_info",
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                self.container_executor.exec_sh_commands(
+                    commands=add_build_info_commands,
+                    dirs_to_mount=[(self._work_dir, "Z")],
+                    run_as_root=True,
+                )
+            else:
+                # Remove existing build information file
+                clean_build_info_commands = [f"rm -f {self._build_dir}/etc/fs_build_info"]
+
+                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                self.container_executor.exec_sh_commands(
+                    commands=clean_build_info_commands,
+                    dirs_to_mount=[(self._work_dir, "Z")],
+                    run_as_root=True,
+                )
+
+            if prebuilt:
+                archive_name = f"almalinux{self.block_cfg.project.release}_zynqmp_pre-built"
+            else:
+                archive_name = self._rootfs_name
+
+            # Tar was tested with three compression options:
+            # Option	Size	Duration
+            # --xz	872M	real	17m59.080s
+            # -I pxz	887M	real	3m43.987s
+            # -I pigz	1.3G	real	0m20.747s
+            archive_build_commands = [
+                f"cd {self._build_dir}",
+                f"tar -I pxz --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.tar.xz'} ./",
+                f"if id {self._host_user} >/dev/null 2>&1; then "
+                f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.tar.xz'}; "
+                f"fi",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
-                commands=add_build_info_commands,
-                dirs_to_mount=[(self._work_dir, "Z")],
+                commands=archive_build_commands,
+                dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
                 run_as_root=True,
             )
-        else:
-            # Remove existing build information file
-            clean_build_info_commands = [f"rm -f {self._build_dir}/etc/fs_build_info"]
-
-            # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.container_executor.exec_sh_commands(
-                commands=clean_build_info_commands,
-                dirs_to_mount=[(self._work_dir, "Z")],
-                run_as_root=True,
-            )
-
-        if prebuilt:
-            archive_name = f"almalinux{self.block_cfg.project.release}_zynqmp_pre-built"
-        else:
-            archive_name = self._rootfs_name
-
-        # Tar was tested with three compression options:
-        # Option	Size	Duration
-        # --xz	872M	real	17m59.080s
-        # -I pxz	887M	real	3m43.987s
-        # -I pigz	1.3G	real	0m20.747s
-        archive_build_commands = [
-            f"cd {self._build_dir}",
-            f"tar -I pxz --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.tar.xz'} ./",
-            f"if id {self._host_user} >/dev/null 2>&1; then "
-            f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.tar.xz'}; "
-            f"fi",
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.container_executor.exec_sh_commands(
-            commands=archive_build_commands,
-            dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
-            run_as_root=True,
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def build_archive_prebuilt(self):
         """

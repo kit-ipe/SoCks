@@ -135,53 +135,48 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.check_amd_tools(required_tools=["vivado"])
 
-        self.check_amd_tools(required_tools=["vivado"])
+            # Clean output directory
+            self.clean_output()
+            self._output_dir.mkdir(parents=True)
 
-        # Clean output directory
-        self.clean_output()
-        self._output_dir.mkdir(parents=True)
+            pretty_print.print_build("Building the Vivado Project...")
 
-        pretty_print.print_build("Building the Vivado Project...")
+            vivado_build_commands = [
+                f"rm -rf {self._source_repo_dir}/bin",
+                f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                f"source {self._amd_vivado_path}/settings64.sh",
+                f"git config --global --add safe.directory {self._source_repo_dir}",
+                f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
+                f"{self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}",
+            ]
 
-        vivado_build_commands = [
-            f"rm -rf {self._source_repo_dir}/bin",
-            f"export XILINXD_LICENSE_FILE={self._amd_license}",
-            f"source {self._amd_vivado_path}/settings64.sh",
-            f"git config --global --add safe.directory {self._source_repo_dir}",
-            f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
-            f"{self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}",
-        ]
-
-        self.container_executor.exec_sh_commands(
-            commands=vivado_build_commands,
-            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")],
-        )
-
-        # Create symlinks to the output files
-        xsa_files = list(
-            self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.xsa")
-        )
-        if len(xsa_files) != 1:
-            pretty_print.print_error(
-                f"Unexpected number of {len(xsa_files)} *.xsa files in output directory. Expected was 1."
+            self.container_executor.exec_sh_commands(
+                commands=vivado_build_commands,
+                dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")],
             )
-            sys.exit(1)
-        (self._output_dir / xsa_files[0].name).symlink_to(xsa_files[0])
-        bit_files = list(
-            self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.bit")
-        )
-        if len(bit_files) != 1:
-            pretty_print.print_error(
-                f"Unexpected number of {len(bit_files)} *.bit files in output directory. Expected was 1."
-            )
-            sys.exit(1)
-        (self._output_dir / bit_files[0].name).symlink_to(bit_files[0])
 
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Create symlinks to the output files
+            xsa_files = list(
+                self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.xsa")
+            )
+            if len(xsa_files) != 1:
+                pretty_print.print_error(
+                    f"Unexpected number of {len(xsa_files)} *.xsa files in output directory. Expected was 1."
+                )
+                sys.exit(1)
+            (self._output_dir / xsa_files[0].name).symlink_to(xsa_files[0])
+            bit_files = list(
+                self._source_repo_dir.glob(f"bin/{self.block_cfg.project.name}-*/{self.block_cfg.project.name}-*.bit")
+            )
+            if len(bit_files) != 1:
+                pretty_print.print_error(
+                    f"Unexpected number of {len(bit_files)} *.bit files in output directory. Expected was 1."
+                )
+                sys.exit(1)
+            (self._output_dir / bit_files[0].name).symlink_to(bit_files[0])
 
     def start_vivado_gui(self):
         """

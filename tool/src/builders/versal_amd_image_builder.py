@@ -166,26 +166,21 @@ class Versal_AMD_Image_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild boot.scr. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._output_dir.mkdir(parents=True, exist_ok=True)
 
-        self._output_dir.mkdir(parents=True, exist_ok=True)
+            # Remove old build artifacts
+            (self._output_dir / "boot.scr").unlink(missing_ok=True)
 
-        # Remove old build artifacts
-        (self._output_dir / "boot.scr").unlink(missing_ok=True)
+            pretty_print.print_build("Building boot.scr...")
 
-        pretty_print.print_build("Building boot.scr...")
+            bootscr_img_build_commands = [
+                f"mkimage -c none -A arm -T script -d {self._resources_dir}/boot.cmd {self._output_dir}/boot.scr"
+            ]
 
-        bootscr_img_build_commands = [
-            f"mkimage -c none -A arm -T script -d {self._resources_dir}/boot.cmd {self._output_dir}/boot.scr"
-        ]
-
-        self.container_executor.exec_sh_commands(
-            commands=bootscr_img_build_commands, dirs_to_mount=[(self._resources_dir, "Z"), (self._output_dir, "Z")]
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            self.container_executor.exec_sh_commands(
+                commands=bootscr_img_build_commands, dirs_to_mount=[(self._resources_dir, "Z"), (self._output_dir, "Z")]
+            )
 
     def boot_img(self):
         """
@@ -244,44 +239,39 @@ class Versal_AMD_Image_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild BOOT.BIN. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.check_amd_tools(required_tools=["vitis"])
 
-        self.check_amd_tools(required_tools=["vitis"])
+            self._work_dir.mkdir(parents=True, exist_ok=True)
 
-        self._work_dir.mkdir(parents=True, exist_ok=True)
+            # Remove old build artifacts
+            (self._output_dir / "BOOT.BIN").unlink(missing_ok=True)
 
-        # Remove old build artifacts
-        (self._output_dir / "BOOT.BIN").unlink(missing_ok=True)
+            pretty_print.print_build("Building BOOT.BIN...")
 
-        pretty_print.print_build("Building BOOT.BIN...")
+            boot_img_build_commands = [
+                f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                f"source {self._amd_vitis_path}/settings64.sh",
+                f"cp {self._resources_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif",
+                f'sed -i "s:<PLM_PATH>:{self._plm_img_path}:g;" {self._work_dir}/bootgen.bif',
+                f'sed -i "s:<PSMFW_PATH>:{self._psmfw_img_path}:g;" {self._work_dir}/bootgen.bif',
+                f'sed -i "s:<PDI_PATH>:{self._vivado_pdi_file_path}:g;" {self._work_dir}/bootgen.bif',
+                f'sed -i "s:<ATF_PATH>:{self._atf_img_path}:g;" {self._work_dir}/bootgen.bif',
+                f'sed -i "s:<DTB_PATH>:{self._dt_img_path}:g;" {self._work_dir}/bootgen.bif',
+                f'sed -i "s:<UBOOT_PATH>:{self._uboot_img_path}:g;" {self._work_dir}/bootgen.bif',
+                f'sed -i "s:<LINUX_PATH>:{self._output_dir / "image.ub"}:g;" {self._work_dir}/bootgen.bif',
+                f'sed -i "s:<BSCR_PATH>:{self._output_dir / "boot.scr"}:g;" {self._work_dir}/bootgen.bif',
+                f"bootgen -arch versal -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN",
+            ]
 
-        boot_img_build_commands = [
-            f"export XILINXD_LICENSE_FILE={self._amd_license}",
-            f"source {self._amd_vitis_path}/settings64.sh",
-            f"cp {self._resources_dir}/bootgen.bif.tpl {self._work_dir}/bootgen.bif",
-            f'sed -i "s:<PLM_PATH>:{self._plm_img_path}:g;" {self._work_dir}/bootgen.bif',
-            f'sed -i "s:<PSMFW_PATH>:{self._psmfw_img_path}:g;" {self._work_dir}/bootgen.bif',
-            f'sed -i "s:<PDI_PATH>:{self._vivado_pdi_file_path}:g;" {self._work_dir}/bootgen.bif',
-            f'sed -i "s:<ATF_PATH>:{self._atf_img_path}:g;" {self._work_dir}/bootgen.bif',
-            f'sed -i "s:<DTB_PATH>:{self._dt_img_path}:g;" {self._work_dir}/bootgen.bif',
-            f'sed -i "s:<UBOOT_PATH>:{self._uboot_img_path}:g;" {self._work_dir}/bootgen.bif',
-            f'sed -i "s:<LINUX_PATH>:{self._output_dir / "image.ub"}:g;" {self._work_dir}/bootgen.bif',
-            f'sed -i "s:<BSCR_PATH>:{self._output_dir / "boot.scr"}:g;" {self._work_dir}/bootgen.bif',
-            f"bootgen -arch versal -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN",
-        ]
-
-        self.container_executor.exec_sh_commands(
-            commands=boot_img_build_commands,
-            dirs_to_mount=[
-                (pathlib.Path(self._amd_tools_path), "ro"),
-                (self._resources_dir, "Z"),
-                (self._dependencies_dir, "Z"),
-                (self._xsa_dir, "Z"),
-                (self._work_dir, "Z"),
-                (self._output_dir, "Z"),
-            ],
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            self.container_executor.exec_sh_commands(
+                commands=boot_img_build_commands,
+                dirs_to_mount=[
+                    (pathlib.Path(self._amd_tools_path), "ro"),
+                    (self._resources_dir, "Z"),
+                    (self._dependencies_dir, "Z"),
+                    (self._xsa_dir, "Z"),
+                    (self._work_dir, "Z"),
+                    (self._output_dir, "Z"),
+                ],
+            )

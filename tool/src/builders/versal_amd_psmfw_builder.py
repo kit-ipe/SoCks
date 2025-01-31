@@ -193,44 +193,39 @@ class Versal_AMD_PSMFW_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild the PSM Firmware. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.check_amd_tools(required_tools=["vitis"])
 
-        self.check_amd_tools(required_tools=["vitis"])
+            # Remove old build artifacts
+            (self._output_dir / "psmfw.elf").unlink(missing_ok=True)
 
-        # Remove old build artifacts
-        (self._output_dir / "psmfw.elf").unlink(missing_ok=True)
+            pretty_print.print_build("Building the PSM Firmware...")
 
-        pretty_print.print_build("Building the PSM Firmware...")
+            psmfw_build_commands = [
+                f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                f"source {self._amd_vitis_path}/settings64.sh",
+                'printf "import vitis'
+                "\r\n\r\nclient = vitis.create_client()"
+                f'    \r\nclient.set_workspace(path=\\"{self._vitis_workspace_dir}\\")'
+                '\r\n\r\nplatform = client.get_component(name=\\"platform\\")'
+                '    \r\ncomp = client.get_component(name=\\"versal_psmfw\\")'
+                "\r\n\r\nplatform.build()"
+                "    \r\ncomp.build()"
+                f'\r\n\r\nvitis.dispose()" > {self._work_dir}/build_psmfw_prj.py',
+                f"vitis -s {self._work_dir}/build_psmfw_prj.py",
+            ]
 
-        psmfw_build_commands = [
-            f"export XILINXD_LICENSE_FILE={self._amd_license}",
-            f"source {self._amd_vitis_path}/settings64.sh",
-            'printf "import vitis'
-            "\r\n\r\nclient = vitis.create_client()"
-            f'    \r\nclient.set_workspace(path=\\"{self._vitis_workspace_dir}\\")'
-            '\r\n\r\nplatform = client.get_component(name=\\"platform\\")'
-            '    \r\ncomp = client.get_component(name=\\"versal_psmfw\\")'
-            "\r\n\r\nplatform.build()"
-            "    \r\ncomp.build()"
-            f'\r\n\r\nvitis.dispose()" > {self._work_dir}/build_psmfw_prj.py',
-            f"vitis -s {self._work_dir}/build_psmfw_prj.py",
-        ]
+            self.container_executor.exec_sh_commands(
+                commands=psmfw_build_commands,
+                dirs_to_mount=[
+                    (pathlib.Path(self._amd_tools_path), "ro"),
+                    (self._work_dir, "Z"),
+                ],
+                logfile=self._block_temp_dir / "build.log",
+                output_scrolling=True,
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=psmfw_build_commands,
-            dirs_to_mount=[
-                (pathlib.Path(self._amd_tools_path), "ro"),
-                (self._work_dir, "Z"),
-            ],
-            logfile=self._block_temp_dir / "build.log",
-            output_scrolling=True,
-        )
-
-        # Create symlink to the output file
-        (self._output_dir / "psmfw.elf").symlink_to(
-            self._vitis_workspace_dir / "versal_psmfw" / "build" / "versal_psmfw.elf"
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Create symlink to the output file
+            (self._output_dir / "psmfw.elf").symlink_to(
+                self._vitis_workspace_dir / "versal_psmfw" / "build" / "versal_psmfw.elf"
+            )

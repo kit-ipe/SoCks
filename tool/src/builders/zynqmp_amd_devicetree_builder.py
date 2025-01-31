@@ -205,57 +205,52 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild the devicetree. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Remove old build artifacts
+            (self._output_dir / "system.dtb").unlink(missing_ok=True)
+            (self._output_dir / "system.dts").unlink(missing_ok=True)
 
-        # Remove old build artifacts
-        (self._output_dir / "system.dtb").unlink(missing_ok=True)
-        (self._output_dir / "system.dts").unlink(missing_ok=True)
+            pretty_print.print_build("Building the base devicetree...")
 
-        pretty_print.print_build("Building the base devicetree...")
+            if self.block_cfg.project.dt_includes != None:
+                for dt_incl in self.block_cfg.project.dt_includes:
+                    if not (self._dt_incl_dir / dt_incl).is_file():
+                        pretty_print.print_error(
+                            f"File '{dt_incl}' specified in 'blocks -> {self.block_id} -> project -> dt_includes' does not exist in {self._dt_incl_dir}"
+                        )
+                        sys.exit(1)
 
-        if self.block_cfg.project.dt_includes != None:
-            for dt_incl in self.block_cfg.project.dt_includes:
-                if not (self._dt_incl_dir / dt_incl).is_file():
-                    pretty_print.print_error(
-                        f"File '{dt_incl}' specified in 'blocks -> {self.block_id} -> project -> dt_includes' does not exist in {self._dt_incl_dir}"
-                    )
-                    sys.exit(1)
+                    # Devicetree includes are copied before every build to make sure they are up to date
+                    shutil.copy(self._dt_incl_dir / dt_incl, self._base_work_dir / dt_incl)
+                    # Check if this file is already included, and if not, include it
+                    with (self._base_work_dir / "system-top.dts").open("r+") as dts_top_file:
+                        contents = dts_top_file.read()
+                        incl_line = f'#include "{dt_incl}"\n'
+                        if incl_line not in contents:
+                            # If the line was not found, the file pointer is now at the end
+                            # Write the include line
+                            dts_top_file.write(incl_line)
 
-                # Devicetree includes are copied before every build to make sure they are up to date
-                shutil.copy(self._dt_incl_dir / dt_incl, self._base_work_dir / dt_incl)
-                # Check if this file is already included, and if not, include it
-                with (self._base_work_dir / "system-top.dts").open("r+") as dts_top_file:
-                    contents = dts_top_file.read()
-                    incl_line = f'#include "{dt_incl}"\n'
-                    if incl_line not in contents:
-                        # If the line was not found, the file pointer is now at the end
-                        # Write the include line
-                        dts_top_file.write(incl_line)
+            # The *.dts file created by gcc is for humans difficult to read. Therefore, in the last step, it is replaced by one created with the devicetree compiler.
+            dt_build_commands = [
+                f"cd {self._base_work_dir}",
+                "gcc -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -o system.dts system-top.dts",
+                "dtc -I dts -O dtb -@ -o system.dtb system.dts",
+                "dtc -I dtb -O dts -o system.dts system.dtb",
+            ]
 
-        # The *.dts file created by gcc is for humans difficult to read. Therefore, in the last step, it is replaced by one created with the devicetree compiler.
-        dt_build_commands = [
-            f"cd {self._base_work_dir}",
-            "gcc -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -o system.dts system-top.dts",
-            "dtc -I dts -O dtb -@ -o system.dtb system.dts",
-            "dtc -I dtb -O dts -o system.dts system.dtb",
-        ]
+            self.container_executor.exec_sh_commands(
+                commands=dt_build_commands,
+                dirs_to_mount=[(self._base_work_dir, "Z")],
+                logfile=self._block_temp_dir / "build_devicetree.log",
+                output_scrolling=True,
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=dt_build_commands,
-            dirs_to_mount=[(self._base_work_dir, "Z")],
-            logfile=self._block_temp_dir / "build_devicetree.log",
-            output_scrolling=True,
-        )
+            self._output_dir.mkdir(parents=True, exist_ok=True)
 
-        self._output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create symlink to the output files
-        (self._output_dir / "system.dtb").symlink_to(self._base_work_dir / "system.dtb")
-        (self._output_dir / "system.dts").symlink_to(self._base_work_dir / "system.dts")
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Create symlink to the output files
+            (self._output_dir / "system.dtb").symlink_to(self._base_work_dir / "system.dtb")
+            (self._output_dir / "system.dts").symlink_to(self._base_work_dir / "system.dts")
 
     def build_dt_overlays(self):
         """
@@ -285,76 +280,71 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild devicetree overlays. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Clean overlay work directory
+            try:
+                shutil.rmtree(self._overlay_work_dir)
+            except FileNotFoundError:
+                pass  # Ignore if the directory does not exist
+            self._overlay_work_dir.mkdir(parents=True)
 
-        # Clean overlay work directory
-        try:
-            shutil.rmtree(self._overlay_work_dir)
-        except FileNotFoundError:
-            pass  # Ignore if the directory does not exist
-        self._overlay_work_dir.mkdir(parents=True)
+            # Remove old build artifacts
+            for symlink in self._output_dir.glob("*.dtbo"):
+                (symlink).unlink()
 
-        # Remove old build artifacts
-        for symlink in self._output_dir.glob("*.dtbo"):
-            (symlink).unlink()
+            pretty_print.print_build("Building devicetree overlays...")
 
-        pretty_print.print_build("Building devicetree overlays...")
+            # Copy and adapt generated device tree sources that can be used as includes in devicetree overlays
+            includes_dir = self._overlay_work_dir / "include"
+            includes_dir.mkdir(parents=True)
+            shutil.copy(self._base_work_dir / "pl.dtsi", includes_dir / "pl.dtsi")
+            with (includes_dir / "pl.dtsi").open("r") as f:
+                pl_dtsi_content = f.readlines()
 
-        # Copy and adapt generated device tree sources that can be used as includes in devicetree overlays
-        includes_dir = self._overlay_work_dir / "include"
-        includes_dir.mkdir(parents=True)
-        shutil.copy(self._base_work_dir / "pl.dtsi", includes_dir / "pl.dtsi")
-        with (includes_dir / "pl.dtsi").open("r") as f:
-            pl_dtsi_content = f.readlines()
+            # Modify pl.dtsi so that it can be used in devicetree overlays
+            for i, line in enumerate(pl_dtsi_content):
+                if "/ {" in line:
+                    del pl_dtsi_content[i]
+                    break
+            for i, line in enumerate(pl_dtsi_content):
+                if "amba_pl: amba_pl@0 {" in line:
+                    pl_dtsi_content[i] = pl_dtsi_content[i].replace("amba_pl: amba_pl@0 {", "&amba_pl {")
+                    break
+            for i, line in enumerate(reversed(pl_dtsi_content)):
+                if "};" in line:
+                    del pl_dtsi_content[-i - 1]
+                    break
 
-        # Modify pl.dtsi so that it can be used in devicetree overlays
-        for i, line in enumerate(pl_dtsi_content):
-            if "/ {" in line:
-                del pl_dtsi_content[i]
-                break
-        for i, line in enumerate(pl_dtsi_content):
-            if "amba_pl: amba_pl@0 {" in line:
-                pl_dtsi_content[i] = pl_dtsi_content[i].replace("amba_pl: amba_pl@0 {", "&amba_pl {")
-                break
-        for i, line in enumerate(reversed(pl_dtsi_content)):
-            if "};" in line:
-                del pl_dtsi_content[-i - 1]
-                break
+            with (includes_dir / "pl.dtsi").open("w") as f:
+                f.writelines(pl_dtsi_content)
 
-        with (includes_dir / "pl.dtsi").open("w") as f:
-            f.writelines(pl_dtsi_content)
+            # Copy all overlays to the work directory to make them accessable in the container
+            # The overlays are copied before every build to make sure they are up to date
+            for overlay in self._dt_overlay_dir.glob("*.dtsi"):
+                shutil.copy(overlay, self._overlay_work_dir / overlay.name)
 
-        # Copy all overlays to the work directory to make them accessable in the container
-        # The overlays are copied before every build to make sure they are up to date
-        for overlay in self._dt_overlay_dir.glob("*.dtsi"):
-            shutil.copy(overlay, self._overlay_work_dir / overlay.name)
+            dt_overlays_build_commands = [
+                f"cd {self._overlay_work_dir}",
+                "for file in *.dtsi; do "
+                '   name=$(printf "${file}" | awk -F/ "{print \$(NF)}" | awk -F. "{print \$(NF-1)}") && '
+                f"  gcc -I {includes_dir} -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp "
+                "-o ${name}_res.dtsi ${name}.dtsi && "
+                "   dtc -O dtb -o ${name}.dtbo -@ ${name}_res.dtsi; "
+                "done",
+            ]
 
-        dt_overlays_build_commands = [
-            f"cd {self._overlay_work_dir}",
-            "for file in *.dtsi; do "
-            '   name=$(printf "${file}" | awk -F/ "{print \$(NF)}" | awk -F. "{print \$(NF-1)}") && '
-            f"  gcc -I {includes_dir} -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp "
-            "-o ${name}_res.dtsi ${name}.dtsi && "
-            "   dtc -O dtb -o ${name}.dtbo -@ ${name}_res.dtsi; "
-            "done",
-        ]
+            self.container_executor.exec_sh_commands(
+                commands=dt_overlays_build_commands,
+                dirs_to_mount=[(self._overlay_work_dir, "Z")],
+                logfile=self._block_temp_dir / "build_dt_overlays.log",
+                output_scrolling=True,
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=dt_overlays_build_commands,
-            dirs_to_mount=[(self._overlay_work_dir, "Z")],
-            logfile=self._block_temp_dir / "build_dt_overlays.log",
-            output_scrolling=True,
-        )
+            self._output_dir.mkdir(parents=True, exist_ok=True)
 
-        self._output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create symlink to the output files
-        for symlink in self._overlay_work_dir.glob("*.dtbo"):
-            (self._output_dir / symlink.name).symlink_to(symlink)
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Create symlink to the output files
+            for symlink in self._overlay_work_dir.glob("*.dtbo"):
+                (self._output_dir / symlink.name).symlink_to(symlink)
 
     def import_src_tpl(self):
         """

@@ -193,42 +193,37 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild the PLM. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.check_amd_tools(required_tools=["vitis"])
 
-        self.check_amd_tools(required_tools=["vitis"])
+            # Remove old build artifacts
+            (self._output_dir / "plm.elf").unlink(missing_ok=True)
 
-        # Remove old build artifacts
-        (self._output_dir / "plm.elf").unlink(missing_ok=True)
+            pretty_print.print_build("Building the PLM...")
 
-        pretty_print.print_build("Building the PLM...")
+            plm_build_commands = [
+                f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                f"source {self._amd_vitis_path}/settings64.sh",
+                'printf "import vitis'
+                "\r\n\r\nclient = vitis.create_client()"
+                f'    \r\nclient.set_workspace(path=\\"{self._vitis_workspace_dir}\\")'
+                '\r\n\r\nplatform = client.get_component(name=\\"platform\\")'
+                '    \r\ncomp = client.get_component(name=\\"versal_plm\\")'
+                "\r\n\r\nplatform.build()"
+                "    \r\ncomp.build()"
+                f'\r\n\r\nvitis.dispose()" > {self._work_dir}/build_plm_prj.py',
+                f"vitis -s {self._work_dir}/build_plm_prj.py",
+            ]
 
-        plm_build_commands = [
-            f"export XILINXD_LICENSE_FILE={self._amd_license}",
-            f"source {self._amd_vitis_path}/settings64.sh",
-            'printf "import vitis'
-            "\r\n\r\nclient = vitis.create_client()"
-            f'    \r\nclient.set_workspace(path=\\"{self._vitis_workspace_dir}\\")'
-            '\r\n\r\nplatform = client.get_component(name=\\"platform\\")'
-            '    \r\ncomp = client.get_component(name=\\"versal_plm\\")'
-            "\r\n\r\nplatform.build()"
-            "    \r\ncomp.build()"
-            f'\r\n\r\nvitis.dispose()" > {self._work_dir}/build_plm_prj.py',
-            f"vitis -s {self._work_dir}/build_plm_prj.py",
-        ]
+            self.container_executor.exec_sh_commands(
+                commands=plm_build_commands,
+                dirs_to_mount=[
+                    (pathlib.Path(self._amd_tools_path), "ro"),
+                    (self._work_dir, "Z"),
+                ],
+                logfile=self._block_temp_dir / "build.log",
+                output_scrolling=True,
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=plm_build_commands,
-            dirs_to_mount=[
-                (pathlib.Path(self._amd_tools_path), "ro"),
-                (self._work_dir, "Z"),
-            ],
-            logfile=self._block_temp_dir / "build.log",
-            output_scrolling=True,
-        )
-
-        # Create symlink to the output file
-        (self._output_dir / "plm.elf").symlink_to(self._vitis_workspace_dir / "versal_plm" / "build" / "versal_plm.elf")
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Create symlink to the output file
+            (self._output_dir / "plm.elf").symlink_to(self._vitis_workspace_dir / "versal_plm" / "build" / "versal_plm.elf")

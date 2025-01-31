@@ -183,45 +183,40 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             pretty_print.print_build("No need to rebuild the Linux Kernel. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Remove old build artifacts
+            (self._output_dir / "Image").unlink(missing_ok=True)
+            (self._output_dir / "Image.gz").unlink(missing_ok=True)
 
-        # Remove old build artifacts
-        (self._output_dir / "Image").unlink(missing_ok=True)
-        (self._output_dir / "Image.gz").unlink(missing_ok=True)
+            pretty_print.print_build("Building Linux Kernel...")
 
-        pretty_print.print_build("Building Linux Kernel...")
+            if self.block_cfg.project.add_build_info == True:
+                # Add build information file
+                with self._build_info_file.open("w") as f:
+                    print('const char *build_info = "', file=f, end="")
+                    print(self._compose_build_info().replace("\n", "\\n"), file=f, end="")
+                    print('";', file=f, end="")
+            else:
+                # Remove existing build information file
+                self._build_info_file.unlink(missing_ok=True)
 
-        if self.block_cfg.project.add_build_info == True:
-            # Add build information file
-            with self._build_info_file.open("w") as f:
-                print('const char *build_info = "', file=f, end="")
-                print(self._compose_build_info().replace("\n", "\\n"), file=f, end="")
-                print('";', file=f, end="")
-        else:
-            # Remove existing build information file
-            self._build_info_file.unlink(missing_ok=True)
+            kernel_build_commands = [
+                f"cd {self._source_repo_dir}",
+                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                "make ARCH=arm64 olddefconfig",
+                f"make ARCH=arm64 -j{self.project_cfg.external_tools.make.max_build_threads}",
+            ]
 
-        kernel_build_commands = [
-            f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=aarch64-linux-gnu-",
-            "make ARCH=arm64 olddefconfig",
-            f"make ARCH=arm64 -j{self.project_cfg.external_tools.make.max_build_threads}",
-        ]
+            self.container_executor.exec_sh_commands(
+                commands=kernel_build_commands,
+                dirs_to_mount=[(self._repo_dir, "Z")],
+                logfile=self._block_temp_dir / "build.log",
+                output_scrolling=True,
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=kernel_build_commands,
-            dirs_to_mount=[(self._repo_dir, "Z")],
-            logfile=self._block_temp_dir / "build.log",
-            output_scrolling=True,
-        )
-
-        # Create symlink to the output files
-        (self._output_dir / "Image").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image")
-        (self._output_dir / "Image.gz").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image.gz")
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Create symlink to the output files
+            (self._output_dir / "Image").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image")
+            (self._output_dir / "Image.gz").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image.gz")
 
     def export_modules(self):
         """
@@ -247,7 +242,8 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             kernel_cfg = f.readlines()
         if "CONFIG_MODULES=y\n" not in kernel_cfg:
             pretty_print.print_info(
-                "Support for loadable modules is not activated in the Kernel configuration. Therefore, no Kernel modules are exported."
+                "Support for loadable modules is not activated in the Kernel configuration. "
+                "Therefore, no Kernel modules are exported."
             )
             self._modules_out_file.unlink(missing_ok=True)
             return
@@ -263,26 +259,21 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             pretty_print.print_build("No need to export Kernel modules. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Remove old build artifacts
+            self._modules_out_file.unlink(missing_ok=True)
 
-        # Remove old build artifacts
-        self._modules_out_file.unlink(missing_ok=True)
+            pretty_print.print_build("Exporting Kernel Modules...")
 
-        pretty_print.print_build("Exporting Kernel Modules...")
+            export_modules_commands = [
+                f"cd {self._source_repo_dir}",
+                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                f"make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir}",
+                f"find {self._output_dir}/lib -type l -delete",
+                f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._modules_out_file} {self._output_dir}/lib",
+                f"rm -rf {self._output_dir}/lib",
+            ]
 
-        export_modules_commands = [
-            f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=aarch64-linux-gnu-",
-            f"make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir}",
-            f"find {self._output_dir}/lib -type l -delete",
-            f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._modules_out_file} {self._output_dir}/lib",
-            f"rm -rf {self._output_dir}/lib",
-        ]
-
-        self.container_executor.exec_sh_commands(
-            commands=export_modules_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            self.container_executor.exec_sh_commands(
+                commands=export_modules_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+            )

@@ -55,31 +55,26 @@ class Versal_AMD_ATF_Builder(ZynqMP_AMD_ATF_Builder):
             pretty_print.print_build("No need to rebuild the ATF. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Remove old build artifacts
+            (self._output_dir / "bl31.elf").unlink(missing_ok=True)
+            (self._output_dir / "bl31.bin").unlink(missing_ok=True)
 
-        # Remove old build artifacts
-        (self._output_dir / "bl31.elf").unlink(missing_ok=True)
-        (self._output_dir / "bl31.bin").unlink(missing_ok=True)
+            pretty_print.print_build("Building the ATF...")
 
-        pretty_print.print_build("Building the ATF...")
+            atf_build_commands = [
+                f"cd {self._source_repo_dir}",
+                "make distclean",
+                "make CROSS_COMPILE=aarch64-none-elf- PLAT=versal RESET_TO_BL31=1 ZYNQMP_CONSOLE=pl011_0",
+            ]
 
-        atf_build_commands = [
-            f"cd {self._source_repo_dir}",
-            "make distclean",
-            "make CROSS_COMPILE=aarch64-none-elf- PLAT=versal RESET_TO_BL31=1 ZYNQMP_CONSOLE=pl011_0",
-        ]
+            self.container_executor.exec_sh_commands(
+                commands=atf_build_commands,
+                dirs_to_mount=[(self._repo_dir, "Z")],
+                logfile=self._block_temp_dir / "build.log",
+                output_scrolling=True,
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=atf_build_commands,
-            dirs_to_mount=[(self._repo_dir, "Z")],
-            logfile=self._block_temp_dir / "build.log",
-            output_scrolling=True,
-        )
-
-        # Create symlinks to the output files
-        (self._output_dir / "bl31.elf").symlink_to(self._source_repo_dir / "build/versal/release/bl31/bl31.elf")
-        (self._output_dir / "bl31.bin").symlink_to(self._source_repo_dir / "build/versal/release/bl31.bin")
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Create symlinks to the output files
+            (self._output_dir / "bl31.elf").symlink_to(self._source_repo_dir / "build/versal/release/bl31/bl31.elf")
+            (self._output_dir / "bl31.bin").symlink_to(self._source_repo_dir / "build/versal/release/bl31.bin")

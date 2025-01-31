@@ -1,6 +1,7 @@
 import pathlib
 import csv
 import time
+from contextlib import contextmanager
 
 
 class Timestamp_Logger:
@@ -125,3 +126,27 @@ class Timestamp_Logger:
         with open(self._log_file, mode="w", newline="") as file:
             writer = csv.writer(file)
             writer.writerows(logs)
+
+    @contextmanager
+    def timestamp(self, identifier: str):
+        """
+        A context manager to manage timestamp logging. E.g. if a timestamp is used to log the success of a function,
+        it makes sense to remove the timestamp before the function is executed again, as the function could fail
+        on the new attempt and the "success" timestamp could then be misleading.
+
+        Args:
+            identifier:
+                Identifier of the timestamp.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Reset function success log
+        self.del_logged_timestamp(identifier=identifier)
+        yield
+        # If this point is reached, the nested block was successful -> Log success
+        self.log_timestamp(identifier=identifier)

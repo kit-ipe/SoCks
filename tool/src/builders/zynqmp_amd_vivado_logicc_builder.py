@@ -111,37 +111,32 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             pretty_print.print_build("No need to recreated the Vivado Project. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.check_amd_tools(required_tools=["vivado"])
 
-        self.check_amd_tools(required_tools=["vivado"])
+            self.clean_work()
+            self._logicc_build_dir.mkdir(parents=True)
+            self._logicc_image_dir.mkdir(parents=True)
 
-        self.clean_work()
-        self._logicc_build_dir.mkdir(parents=True)
-        self._logicc_image_dir.mkdir(parents=True)
+            pretty_print.print_build("Creating the Vivado Project...")
 
-        pretty_print.print_build("Creating the Vivado Project...")
+            create_vivado_project_commands = (
+                [
+                    f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                    f"source {self._amd_vivado_path}/settings64.sh",
+                    "source ~/py_envs/logicc/bin/activate",
+                ]
+                + self._logicc_cfg_cmds
+                + [
+                    f"cd {self._logicc_build_dir}",  # This is done to create the logicc logfiles in this dir
+                    f"logicc create {self.block_cfg.project.name}",
+                ]
+            )
 
-        create_vivado_project_commands = (
-            [
-                f"export XILINXD_LICENSE_FILE={self._amd_license}",
-                f"source {self._amd_vivado_path}/settings64.sh",
-                "source ~/py_envs/logicc/bin/activate",
-            ]
-            + self._logicc_cfg_cmds
-            + [
-                f"cd {self._logicc_build_dir}",  # This is done to create the logicc logfiles in this dir
-                f"logicc create {self.block_cfg.project.name}",
-            ]
-        )
-
-        self.container_executor.exec_sh_commands(
-            commands=create_vivado_project_commands,
-            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._work_dir, "Z")],
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            self.container_executor.exec_sh_commands(
+                commands=create_vivado_project_commands,
+                dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._work_dir, "Z")],
+            )
 
     def build_vivado_project(self):
         """
@@ -169,47 +164,42 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.check_amd_tools(required_tools=["vivado"])
 
-        self.check_amd_tools(required_tools=["vivado"])
+            # Clean output directory
+            self.clean_output()
+            self._output_dir.mkdir(parents=True)
 
-        # Clean output directory
-        self.clean_output()
-        self._output_dir.mkdir(parents=True)
+            pretty_print.print_build("Building the Vivado Project...")
 
-        pretty_print.print_build("Building the Vivado Project...")
+            vivado_build_commands = (
+                [
+                    f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                    f"source {self._amd_vivado_path}/settings64.sh",
+                    "source ~/py_envs/logicc/bin/activate",
+                ]
+                + self._logicc_cfg_cmds
+                + [
+                    f"cd {self._logicc_build_dir}",  # This is done to create the logicc logfiles in this dir
+                    f"logicc run {self.block_cfg.project.name}",
+                    "true",  # This is a ugly fix, but without it logicc sometimes gets stuck after synthesis (I think the issue is not really in logicc. It looks like Vivado simply does not return after finishing the job.)
+                ]
+            )
 
-        vivado_build_commands = (
-            [
-                f"export XILINXD_LICENSE_FILE={self._amd_license}",
-                f"source {self._amd_vivado_path}/settings64.sh",
-                "source ~/py_envs/logicc/bin/activate",
-            ]
-            + self._logicc_cfg_cmds
-            + [
-                f"cd {self._logicc_build_dir}",  # This is done to create the logicc logfiles in this dir
-                f"logicc run {self.block_cfg.project.name}",
-                "true",  # This is a ugly fix, but without it logicc sometimes gets stuck after synthesis (I think the issue is not really in logicc. It looks like Vivado simply does not return after finishing the job.)
-            ]
-        )
+            self.container_executor.exec_sh_commands(
+                commands=vivado_build_commands,
+                dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._work_dir, "Z")],
+                output_scrolling=True,
+            )
 
-        self.container_executor.exec_sh_commands(
-            commands=vivado_build_commands,
-            dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z"), (self._work_dir, "Z")],
-            output_scrolling=True,
-        )
+            # Create symlinks to the output files
+            for file in (self._logicc_image_dir / self.block_cfg.project.name).glob("*"):
+                (self._output_dir / file.name).symlink_to(self._logicc_image_dir / self.block_cfg.project.name / file.name)
 
-        # Create symlinks to the output files
-        for file in (self._logicc_image_dir / self.block_cfg.project.name).glob("*"):
-            (self._output_dir / file.name).symlink_to(self._logicc_image_dir / self.block_cfg.project.name / file.name)
-
-        # Extract bit-file
-        with zipfile.ZipFile(self._output_dir / "system_top.xsa", "r") as archive:
-            archive.extract("system_top.bit", path=str(self._output_dir))
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Extract bit-file
+            with zipfile.ZipFile(self._output_dir / "system_top.xsa", "r") as archive:
+                archive.extract("system_top.bit", path=str(self._output_dir))
 
     def start_vivado_gui(self):
         """

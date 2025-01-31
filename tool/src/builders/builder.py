@@ -859,36 +859,31 @@ class Builder:
             pretty_print.print_build("No need to apply patches...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            pretty_print.print_build("Applying patches...")
 
-        pretty_print.print_build("Applying patches...")
+            for patch in self.block_cfg.project.patches:
+                if not (self._patch_dir / patch).is_file():
+                    pretty_print.print_error(
+                        f"Patch '{patch}' specified in 'blocks -> {self.block_id} -> project -> patches' does not exist in {self._patch_dir}"
+                    )
+                    sys.exit(1)
 
-        for patch in self.block_cfg.project.patches:
-            if not (self._patch_dir / patch).is_file():
-                pretty_print.print_error(
-                    f"Patch '{patch}' specified in 'blocks -> {self.block_id} -> project -> patches' does not exist in {self._patch_dir}"
+                # Apply patch
+                self.shell_executor.exec_sh_command(
+                    ["git", "-C", str(self._source_repo_dir), "am", str(self._patch_dir / patch)]
                 )
-                sys.exit(1)
 
-            # Apply patch
+            # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
             self.shell_executor.exec_sh_command(
-                ["git", "-C", str(self._source_repo_dir), "am", str(self._patch_dir / patch)]
+                ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_ref_branch], visible_lines=0
             )
-
-        # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
-        self.shell_executor.exec_sh_command(
-            ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_ref_branch], visible_lines=0
-        )
-        self.shell_executor.exec_sh_command(
-            ["git", "-C", str(self._source_repo_dir), "merge", self._git_local_dev_branch], visible_lines=0
-        )
-        self.shell_executor.exec_sh_command(
-            ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
-        )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            self.shell_executor.exec_sh_command(
+                ["git", "-C", str(self._source_repo_dir), "merge", self._git_local_dev_branch], visible_lines=0
+            )
+            self.shell_executor.exec_sh_command(
+                ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
+            )
 
     def _download_prebuilt(self):
         """
@@ -1090,24 +1085,19 @@ class Builder:
             pretty_print.print_build("No need to export block package. No altered source files detected...")
             return
 
-        # Reset function success log
-        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Delete old block package
+            old_block_pkgs = list(self._output_dir.glob(f"bp_{self.block_id}_*.tar.gz"))
+            for old_pkg in old_block_pkgs:
+                old_pkg.unlink(missing_ok=True)
 
-        # Delete old block package
-        old_block_pkgs = list(self._output_dir.glob(f"bp_{self.block_id}_*.tar.gz"))
-        for old_pkg in old_block_pkgs:
-            old_pkg.unlink(missing_ok=True)
+            pretty_print.print_build("Exporting block package...")
 
-        pretty_print.print_build("Exporting block package...")
-
-        # Export block package
-        with tarfile.open(block_pkg_path, "w:gz") as archive:
-            for file in self._output_dir.iterdir():
-                if not file.samefile(block_pkg_path):
-                    archive.add(file.resolve(strict=True), arcname=file.name)
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            # Export block package
+            with tarfile.open(block_pkg_path, "w:gz") as archive:
+                for file in self._output_dir.iterdir():
+                    if not file.samefile(block_pkg_path):
+                        archive.add(file.resolve(strict=True), arcname=file.name)
 
     def _save_project_cfg(self, file: pathlib.Path):
         """
