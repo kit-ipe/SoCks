@@ -18,7 +18,6 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "uboot",
@@ -28,7 +27,6 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -78,10 +76,11 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
                     self.apply_patches,
                     self.import_clean_srcs,
                     self.copy_atf,
+                    self.save_project_cfg_prepare,
                 ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend([self.build_uboot, self.export_block_package])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend([self.build_uboot, self.export_block_package, self.save_project_cfg_build])
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
@@ -217,15 +216,18 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
         """
 
         # Check whether das U-Boot needs to be built
-        if not ZynqMP_AMD_UBoot_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._source_repo_dir],
+        if not ZynqMP_AMD_UBoot_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "u-boot.elf", self._source_repo_dir / "spl/.boot.bin.cmd"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ):
+        ) and not self._check_rebuild_bc_config(keys=[["blocks", self.block_id, "project", "add_build_info"]]):
             pretty_print.print_build("No need to rebuild U-Boot. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         # Remove old build artifacts
         (self._output_dir / "u-boot.elf").unlink(missing_ok=True)

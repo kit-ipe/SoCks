@@ -15,7 +15,6 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "vivado",
@@ -25,7 +24,6 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -52,10 +50,17 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         )
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
-                [self.container_executor.build_container_image, self.init_repo, self.create_vivado_project]
+                [
+                    self.container_executor.build_container_image,
+                    self.init_repo,
+                    self.create_vivado_project,
+                    self.save_project_cfg_prepare,
+                ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend([self.build_vivado_project, self.export_block_package])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend(
+                [self.build_vivado_project, self.export_block_package, self.save_project_cfg_build]
+            )
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
             )
@@ -79,17 +84,17 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             None
         """
 
-        # Skip all operations if the IPBB environment is already initialized
-        ipbb_init_done = (
-            self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
-            != 0.0
-        )
-        if ipbb_init_done:
-            pretty_print.print_build("The IPBB environment has already been initialized. It is not reinitialized...")
+        # Skip all operations if the repo config hasn't changed
+        if not self._check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "build_srcs"]], accept_prep=True
+        ):
+            pretty_print.print_build("No need to initialize the IPBB environment...")
             return
 
-        self._output_dir.mkdir(parents=True, exist_ok=True)
-        self._repo_dir.mkdir(parents=True, exist_ok=True)
+        self.clean_output()
+        self._output_dir.mkdir(parents=True)
+        self.clean_repo()
+        self._repo_dir.mkdir(parents=True)
 
         pretty_print.print_build("Initializing the IPBB environment...")
 
@@ -124,9 +129,6 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             dirs_to_mount=[(self._repo_dir, "Z")] + local_source_mounts,
             custom_params=["-v", "$SSH_AUTH_SOCK:/ssh-auth-sock", "--env", "SSH_AUTH_SOCK=/ssh-auth-sock"],
         )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def create_vivado_project(self):
         """
@@ -190,9 +192,8 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         """
 
         # Check if the project needs to be build
-        if not ZynqMP_AMD_Vivado_IPBB_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files
-            + [
+        if not ZynqMP_AMD_Vivado_IPBB_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[
                 self._ipbb_work_dir / "src",
                 self._ipbb_work_dir / "var",
                 self._ipbb_work_dir / "proj" / self.block_cfg.project.name / "decoders",
@@ -213,9 +214,14 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
+        ) and not self._check_rebuild_bc_config(
+            keys=[["external_tools", "xilinx"], ["blocks", self.block_id, "project", "name"]]
         ):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self.check_amd_tools(required_tools=["vivado"])
 

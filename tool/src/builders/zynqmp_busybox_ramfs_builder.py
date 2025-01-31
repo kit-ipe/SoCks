@@ -18,7 +18,6 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "ramfs",
@@ -28,7 +27,6 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -86,9 +84,10 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
                     self.init_repo,
                     self.apply_patches,
                     self.import_clean_srcs,
+                    self.save_project_cfg_prepare,
                 ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
             self.block_cmds["build"].extend(
                 [
                     self.build_base_ramfs,
@@ -96,11 +95,17 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
                     self.add_kmodules,
                     self.build_archive,
                     self.export_block_package,
+                    self.save_project_cfg_build,
                 ]
             )
-            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"])
+            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
             self.block_cmds["prebuild"].extend(
-                [self.build_base_ramfs, self.build_archive_prebuilt, self.export_block_package]
+                [
+                    self.build_base_ramfs,
+                    self.build_archive_prebuilt,
+                    self.export_block_package,
+                    self.save_project_cfg_build,
+                ]
             )
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend(
@@ -113,7 +118,13 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend(
-                [self.import_prebuilt, self.add_kmodules, self.build_archive, self.export_block_package]
+                [
+                    self.import_prebuilt,
+                    self.add_kmodules,
+                    self.build_archive,
+                    self.export_block_package,
+                    self.save_project_cfg_build,
+                ]
             )
 
     def validate_srcs(self):
@@ -201,8 +212,8 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         """
 
         # Check whether the base ram file system needs to be built
-        if not ZynqMP_BusyBox_RAMFS_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._source_repo_dir],
+        if not ZynqMP_BusyBox_RAMFS_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[self._source_repo_dir],
             src_ignore_list=[
                 self._source_repo_dir / "busybox",
                 self._source_repo_dir / "busybox.links",
@@ -214,6 +225,9 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         ):
             pretty_print.print_build("No need to rebuild the base ram file system. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self.clean_work()
         self._mod_dir.mkdir(parents=True)
@@ -261,14 +275,17 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         """
 
         # Check whether the ram file system needs to be populated
-        if not ZynqMP_BusyBox_RAMFS_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._resources_dir],
+        if not ZynqMP_BusyBox_RAMFS_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[self._resources_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ):
             pretty_print.print_build("No need to populate the ramfs. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         pretty_print.print_build("Populating the initramfs...")
 
@@ -391,14 +408,19 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         """
 
         # Check if the archive needs to be built
-        if not ZynqMP_BusyBox_RAMFS_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._mod_dir],
+        if not ZynqMP_BusyBox_RAMFS_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[self._mod_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
+        ) and not self._check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "add_build_info"], ["project", "name"]]
         ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self.clean_output()
         self._output_dir.mkdir(parents=True)

@@ -17,7 +17,6 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "image",
@@ -27,7 +26,6 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -82,13 +80,23 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend([self.container_executor.build_container_image, self.import_dependencies])
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend(
-                [self.linux_img, self.bootscr_img, self.boot_img, self.export_block_package]
+            self.block_cmds["prepare"].extend(
+                [self.container_executor.build_container_image, self.import_dependencies, self.save_project_cfg_prepare]
             )
-            self.block_cmds["build-sd-card"].extend(self.block_cmds["build"])
-            self.block_cmds["build-sd-card"].extend([self.sd_card_img])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend(
+                [
+                    self.linux_img,
+                    self.bootscr_img,
+                    self.boot_img,
+                    self.export_block_package,
+                    self.save_project_cfg_build,
+                ]
+            )
+            self.block_cmds["build-sd-card"].extend(
+                self.block_cmds["build"][:-1]  # Remove save_project_cfg when adding
+            )
+            self.block_cmds["build-sd-card"].extend([self.sd_card_img, self.save_project_cfg_build])
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
             )
@@ -171,7 +179,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                     sys.exit(1)
 
         # Check whether the Linux image needs to be built
-        if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
+        if not ZynqMP_AMD_Image_Builder._check_rebuild_bc_timestamp(
             src_search_list=[
                 self._resources_dir / "image.its.tpl",
                 self._dependencies_dir / "kernel",
@@ -184,6 +192,9 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         ):
             pretty_print.print_build("No need to rebuild Linux Image. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self._work_dir.mkdir(parents=True, exist_ok=True)
         self._output_dir.mkdir(parents=True, exist_ok=True)
@@ -232,7 +243,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         """
 
         # Check whether the boot script image needs to be built
-        if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
+        if not ZynqMP_AMD_Image_Builder._check_rebuild_bc_timestamp(
             src_search_list=[self._resources_dir / "boot.cmd"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -240,6 +251,9 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         ):
             pretty_print.print_build("No need to rebuild boot.scr. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -283,9 +297,8 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         self._vivado_bitfile_path = bitfiles[0]
 
         # Check whether the boot script image needs to be built
-        if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files
-            + [
+        if not ZynqMP_AMD_Image_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[
                 self._resources_dir / "bootgen.bif.tpl",
                 self._fsbl_img_path,
                 self._pmufw_img_path,
@@ -299,9 +312,12 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ):
+        ) and not self._check_rebuild_bc_config(keys=[["external_tools", "xilinx"]]):
             pretty_print.print_build("No need to rebuild BOOT.BIN. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self.check_amd_tools(required_tools=["vitis"])
 
@@ -366,7 +382,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             sys.exit(1)
 
         # Check whether the sd card image needs to be built
-        if not ZynqMP_AMD_Image_Builder._check_rebuild_required(
+        if not ZynqMP_AMD_Image_Builder._check_rebuild_bc_timestamp(
             src_search_list=[
                 self._output_dir / "BOOT.BIN",
                 self._output_dir / "boot.scr",
@@ -379,6 +395,9 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         ):
             pretty_print.print_build("No need to rebuild the SD card image. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         pretty_print.print_build(f"Building SD card image {self._sdc_image_name} (This may take a few minutes)...")
 

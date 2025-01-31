@@ -16,7 +16,6 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "plm",
@@ -25,7 +24,6 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             model_class=Versal_AMD_PLM_Model,
             socks_dir=socks_dir,
             project_dir=project_dir,
@@ -69,10 +67,11 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
                     self.import_dependencies,
                     self.import_xsa,
                     self.create_plm_project,
+                    self.save_project_cfg_prepare,
                 ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend([self.build_plm, self.export_block_package])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend([self.build_plm, self.export_block_package, self.save_project_cfg_build])
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
             )
@@ -126,7 +125,9 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
                 md5_existsing_file = f.read()
 
         # Check if the project needs to be created
-        if md5_existsing_file == md5_new_file:
+        if (md5_existsing_file == md5_new_file) and not self._check_rebuild_bc_config(
+            keys=[["external_tools", "xilinx"]], accept_prep=True
+        ):
             pretty_print.print_info("No new XSA archive recognized. PLM project is not created.")
             return
 
@@ -181,14 +182,17 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
         """
 
         # Check whether the PLM needs to be built
-        if not Versal_AMD_PLM_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._vitis_workspace_dir],
+        if not Versal_AMD_PLM_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[self._vitis_workspace_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ):
+        ) and not self._check_rebuild_bc_config(keys=[["external_tools", "xilinx"]]):
             pretty_print.print_build("No need to rebuild the PLM. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self.check_amd_tools(required_tools=["vitis"])
 

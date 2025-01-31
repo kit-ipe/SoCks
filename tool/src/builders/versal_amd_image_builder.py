@@ -18,7 +18,6 @@ class Versal_AMD_Image_Builder(AMD_Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "image",
@@ -28,7 +27,6 @@ class Versal_AMD_Image_Builder(AMD_Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -81,10 +79,17 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         )
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
-                [self.container_executor.build_container_image, self.import_dependencies, self.import_xsa]
+                [
+                    self.container_executor.build_container_image,
+                    self.import_dependencies,
+                    self.import_xsa,
+                    self.save_project_cfg_prepare,
+                ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend([self.bootscr_img, self.boot_img, self.export_block_package])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend(
+                [self.bootscr_img, self.boot_img, self.export_block_package, self.save_project_cfg_build]
+            )
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
             )
@@ -150,7 +155,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         """
 
         # Check whether the boot script image needs to be built
-        if not Versal_AMD_Image_Builder._check_rebuild_required(
+        if not Versal_AMD_Image_Builder._check_rebuild_bc_timestamp(
             src_search_list=[self._resources_dir / "boot.cmd"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -158,6 +163,9 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         ):
             pretty_print.print_build("No need to rebuild boot.scr. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -215,9 +223,8 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         self._vivado_pdi_file_path = pdi_files[0]
 
         # Check whether the boot script image needs to be built
-        if not Versal_AMD_Image_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files
-            + [
+        if not Versal_AMD_Image_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[
                 self._resources_dir / "bootgen.bif.tpl",
                 self._plm_img_path,
                 self._psmfw_img_path,
@@ -231,9 +238,12 @@ class Versal_AMD_Image_Builder(AMD_Builder):
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ):
+        ) and not self._check_rebuild_bc_config(keys=[["external_tools", "xilinx"]]):
             pretty_print.print_build("No need to rebuild BOOT.BIN. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self.check_amd_tools(required_tools=["vitis"])
 

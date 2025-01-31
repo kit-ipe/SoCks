@@ -16,7 +16,6 @@ class AMD_Builder(Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         model_class,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
@@ -26,7 +25,6 @@ class AMD_Builder(Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             model_class=model_class,
             socks_dir=socks_dir,
             project_dir=project_dir,
@@ -168,7 +166,7 @@ class AMD_Builder(Builder):
             sys.exit(1)
 
         # Check whether the xsa archive needs to be imported
-        if not AMD_Builder._check_rebuild_required(
+        if not AMD_Builder._check_rebuild_bc_timestamp(
             src_search_list=[xsa_files[0]],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -176,6 +174,9 @@ class AMD_Builder(Builder):
         ):
             pretty_print.print_build("No need to import XSA archive. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         # Clean source xsa directory
         self.clean_source_xsa()

@@ -27,7 +27,6 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "rootfs",
@@ -37,7 +36,6 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -76,7 +74,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             "create-patches": [],
             "start-container": [],
         }
-        self.block_cmds["prepare"].extend([self.container_executor.build_container_image, self.import_dependencies])
+        self.block_cmds["prepare"].extend(
+            [self.container_executor.build_container_image, self.import_dependencies, self.save_project_cfg_prepare]
+        )
         self.block_cmds["clean"].extend(
             [
                 self.container_executor.build_container_image,
@@ -89,23 +89,43 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend([self.init_repo, self.apply_patches, self.yocto_init])
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend(
-                [self.build_base_rootfs, self.add_kmodules, self.build_archive, self.export_block_package]
+            del self.block_cmds["prepare"][-1]  # Remove save_project_cfg before extending
+            self.block_cmds["prepare"].extend(
+                [self.init_repo, self.apply_patches, self.yocto_init, self.save_project_cfg_prepare]
             )
-            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend(
+                [
+                    self.build_base_rootfs,
+                    self.add_kmodules,
+                    self.build_archive,
+                    self.export_block_package,
+                    self.save_project_cfg_build,
+                ]
+            )
+            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
             self.block_cmds["prebuild"].extend(
-                [self.build_base_rootfs, self.build_archive_prebuilt, self.export_block_package]
+                [
+                    self.build_base_rootfs,
+                    self.build_archive_prebuilt,
+                    self.export_block_package,
+                    self.save_project_cfg_build,
+                ]
             )
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
             )
         elif self.block_cfg.source == "import":
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
             self.block_cmds["build"].extend(
-                [self.import_prebuilt, self.add_kmodules, self.build_archive, self.export_block_package]
+                [
+                    self.import_prebuilt,
+                    self.add_kmodules,
+                    self.build_archive,
+                    self.export_block_package,
+                    self.save_project_cfg_build,
+                ]
             )
 
     def validate_srcs(self):
@@ -173,12 +193,17 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             None
         """
 
-        # Skip all operations if the repo already exists
-        if self._source_repo_dir.exists():
+        # Skip all operations if the repo config hasn't changed
+        if not self._check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "build_srcs"]], accept_prep=True
+        ):
             pretty_print.print_build("No need to initialize the local repos...")
             return
 
-        self._source_repo_dir.mkdir(parents=True, exist_ok=True)
+        self.clean_output()
+        self._output_dir.mkdir(parents=True)
+        self.clean_repo()
+        self._source_repo_dir.mkdir(parents=True)
 
         pretty_print.print_build("Initializing local repos...")
 
@@ -336,6 +361,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             pretty_print.print_build("No need to apply patches...")
             return
 
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+
         pretty_print.print_build("Applying patches...")
 
         for item in self.block_cfg.project.patches:
@@ -424,9 +452,8 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         """
 
         # Check whether the base root file system needs to be built
-        if not ZynqMP_AMD_PetaLinux_RootFS_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files
-            + [
+        if not ZynqMP_AMD_PetaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[
                 self._resources_dir,
                 self._source_repo_dir / "sources",
                 self._source_repo_dir / "build" / "conf",
@@ -438,11 +465,14 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ):
+        ) and not self._check_rebuild_bc_config(keys=[["project", "name"]]):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
             )
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self.clean_work()
         self._mod_dir.mkdir(parents=True)
@@ -558,14 +588,19 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         """
 
         # Check if the archive needs to be built
-        if not ZynqMP_AMD_PetaLinux_RootFS_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._work_dir],
+        if not ZynqMP_AMD_PetaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[self._work_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
+        ) and not self._check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "add_build_info"], ["project", "name"]]
         ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self.clean_output()
         self._output_dir.mkdir(parents=True)

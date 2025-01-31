@@ -107,7 +107,7 @@ if not project_cfg_root_file.exists():
     sys.exit(1)
 
 # Get project configuration
-project_cfg, project_cfg_files = Configuration_Compiler.compile(
+project_cfg, _ = Configuration_Compiler.compile(
     root_cfg_file=project_cfg_root_file, socks_dir=socks_dir, project_dir=project_dir
 )
 
@@ -179,7 +179,6 @@ for block in project_cfg_model.blocks.model_fields:
         # Add builder object to dict
         builders[block_cfg.builder] = builder_class(
             project_cfg=builder_project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
         )

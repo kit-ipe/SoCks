@@ -22,7 +22,6 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "rootfs",
@@ -32,7 +31,6 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -72,6 +70,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 self.container_executor.build_container_image,
                 self.import_dependencies,
                 self.container_executor.enable_multiarch,
+                self.save_project_cfg_prepare,
             ]
         )
         self.block_cmds["clean"].extend(
@@ -85,7 +84,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
             self.block_cmds["build"].extend(
                 [
                     self.build_base_rootfs,
@@ -95,17 +94,23 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     self.add_bt_layer,
                     self.build_archive,
                     self.export_block_package,
+                    self.save_project_cfg_build,
                 ]
             )
-            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"])
+            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
             self.block_cmds["prebuild"].extend(
-                [self.build_base_rootfs, self.build_archive_prebuilt, self.export_block_package]
+                [
+                    self.build_base_rootfs,
+                    self.build_archive_prebuilt,
+                    self.export_block_package,
+                    self.save_project_cfg_build,
+                ]
             )
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
             )
         elif self.block_cfg.source == "import":
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
             self.block_cmds["build"].extend(
                 [
                     self.import_prebuilt,
@@ -115,6 +120,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     self.add_bt_layer,
                     self.build_archive,
                     self.export_block_package,
+                    self.save_project_cfg_build,
                 ]
             )
 
@@ -153,16 +159,19 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         mod_base_install_script = self._repo_dir / "mod_base_install.sh"
 
         # Check whether the base root file system needs to be built
-        if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [dnf_conf_file, mod_base_install_script],
+        if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[dnf_conf_file, mod_base_install_script],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ):
+        ) and not self._check_rebuild_bc_config(keys=[["blocks", self.block_id, "project"], ["project", "name"]]):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
             )
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self._work_dir.mkdir(parents=True, exist_ok=True)
 
@@ -257,7 +266,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
         )
-        if layers_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
+        if layers_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
             src_search_list=[self._repo_dir / "predefined_fs_layers"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -267,6 +276,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 "No need to add predefined file system layers. No altered source files detected..."
             )
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         pretty_print.print_build("Adding predefined file system layers...")
 
@@ -314,16 +326,23 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
         )
-        if layer_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
-            src_search_list=[self._dependencies_dir],
-            out_timestamp=self._build_log.get_logged_timestamp(
-                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
-            ),
+        if (
+            layer_already_added
+            and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+                src_search_list=[self._dependencies_dir],
+                out_timestamp=self._build_log.get_logged_timestamp(
+                    identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+                ),
+            )
+            and not self._check_rebuild_bc_config(keys=[["blocks", self.block_id, "project", "build_time_fs_layer"]])
         ):
             pretty_print.print_build(
                 "No need to add external files and directories created at build time. No altered source files detected..."
             )
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         pretty_print.print_build("Adding external files and directories created at build time...")
 
@@ -386,14 +405,14 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
         )
-        if users_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files,
-            out_timestamp=self._build_log.get_logged_timestamp(
-                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
-            ),
+        if users_already_added and not self._check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "users"]]
         ):
             pretty_print.print_build("No need to add users. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         pretty_print.print_build("Adding users...")
 
@@ -518,14 +537,17 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         """
 
         # Check if the archive needs to be built
-        if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._work_dir],
+        if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[self._work_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ):
+        ) and not self._check_rebuild_bc_config(keys=[["blocks", self.block_id, "project"], ["project", "name"]]):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self.clean_output()
         self._output_dir.mkdir(parents=True)

@@ -38,9 +38,7 @@ class Block_Project_Model_Default_Fields:
         description="A dictionary mapping dependency names to paths of block packages, relative to the project directory",
     )
     build_srcs = Field(default=..., description="A single source object")
-    patches = Field(
-        default=None, description="A list of patches to be applied to the source files"
-    )
+    patches = Field(default=None, description="A list of patches to be applied to the source files")
     add_build_info = Field(
         default=..., description="Switch to specify whether or not build information should be included in the block"
     )

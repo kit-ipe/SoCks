@@ -16,7 +16,6 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "kernel",
@@ -26,7 +25,6 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -70,10 +68,13 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
                     self.init_repo,
                     self.apply_patches,
                     self.import_clean_srcs,
+                    self.save_project_cfg_prepare,
                 ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend([self.build_kernel, self.export_modules, self.export_block_package])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend(
+                [self.build_kernel, self.export_modules, self.export_block_package, self.save_project_cfg_build]
+            )
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
@@ -170,15 +171,18 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
         """
 
         # Check whether the Kernel needs to be built
-        if not ZynqMP_AMD_Kernel_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._source_repo_dir],
+        if not ZynqMP_AMD_Kernel_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ):
+        ) and not self._check_rebuild_bc_config(keys=[["blocks", self.block_id, "project", "add_build_info"]]):
             pretty_print.print_build("No need to rebuild the Linux Kernel. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         # Remove old build artifacts
         (self._output_dir / "Image").unlink(missing_ok=True)
@@ -247,7 +251,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             return
 
         # Check whether the Kernel modules need to be exported
-        if not ZynqMP_AMD_Kernel_Builder._check_rebuild_required(
+        if not ZynqMP_AMD_Kernel_Builder._check_rebuild_bc_timestamp(
             src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
             out_timestamp=self._build_log.get_logged_timestamp(
@@ -256,6 +260,9 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
         ):
             pretty_print.print_build("No need to export Kernel modules. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         # Remove old build artifacts
         self._modules_out_file.unlink(missing_ok=True)

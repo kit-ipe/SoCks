@@ -18,6 +18,7 @@ import time
 import pydantic
 import inspect
 import csv
+import yaml
 
 import socks.pretty_print as pretty_print
 from socks.shell_executor import Shell_Executor
@@ -35,7 +36,6 @@ class Builder:
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str,
@@ -128,10 +128,26 @@ class Builder:
             self._source_repo_dir = self._repo_dir / "runtime-generated"
 
         # Project files
-        # A list of all project configuration files used. These files should only be used to determine whether a rebuild is necessary!
-        self._project_cfg_files = project_cfg_files
         # File for saving the checksum of the imported, pre-built block package
         self._source_pb_md5_file = self._work_dir / "source_pb.md5"
+        # File with the project configuration that was used for this block in the last build sequence
+        self.prev_build_cfg_file = self._block_temp_dir / ".previous_build_config.yml"
+        # File with the project configuration that was used for this block in the last prepare sequence
+        self.prev_prep_cfg_file = self._block_temp_dir / ".previous_prepare_config.yml"
+
+        # Read the project configuration that was used for this block in the last build or prepare sequence, if any
+        try:
+            with self.prev_build_cfg_file.open("r") as f:
+                prev_cfg = yaml.safe_load(f)
+            self.prev_build_cfg = model_class(**prev_cfg)
+        except (pydantic.ValidationError, FileNotFoundError):
+            self.prev_build_cfg = None
+        try:
+            with self.prev_prep_cfg_file.open("r") as f:
+                prev_cfg = yaml.safe_load(f)
+            self.prev_prep_cfg = model_class(**prev_cfg)
+        except (pydantic.ValidationError, FileNotFoundError):
+            self.prev_prep_cfg = None
 
         # Timestamp logger
         self._build_log = Timestamp_Logger(log_file=self._block_temp_dir / ".build_log.csv")
@@ -240,7 +256,7 @@ class Builder:
         return latest_file
 
     @staticmethod
-    def _check_rebuild_required(
+    def _check_rebuild_bc_timestamp(
         src_search_list: list[pathlib.Path],
         src_ignore_list: list[pathlib.Path] = None,
         out_timestamp: float = None,
@@ -248,7 +264,7 @@ class Builder:
         out_ignore_list: list[pathlib.Path] = None,
     ) -> bool:
         """
-        Check whether some file(s) needs to be rebuilt.
+        Uses timestamps to check whether some file(s) need to be rebuilt.
 
         Args:
             src_search_list:
@@ -315,7 +331,7 @@ class Builder:
             return True
 
     @staticmethod
-    def _check_rebuild_required_faster(
+    def _check_rebuild_bc_timestamp_faster(
         src_search_list: list[pathlib.Path],
         src_ignore_list: list[pathlib.Path] = None,
         out_search_list: list[pathlib.Path] = None,
@@ -416,6 +432,53 @@ class Builder:
         # A rebuild is required if source or output files are missing
         else:
             return True
+
+    def _check_rebuild_bc_config(self, keys: list[list[str]], accept_prep: bool = False) -> bool:
+        """
+        Uses the project configuration to check whether some file(s) need to be rebuilt.
+
+        Args:
+            keys:
+                A list containing lists of strings. Each list of strings represents a key sequence in the dicts
+                that is to be compared.
+            accept_prep:
+                Whether a configuration from a prepare sequence should be evaluated if no configuration from a
+                build sequence exists. Should be True in places where this function is executed as part of a
+                prepare sequence.
+
+        Returns:
+            True if a rebuild is required, i.e. if the checked configuration parameters have changed. False if
+            a rebuild is not required, i.e. if the checked configuration parameters are unchanged.
+
+        Raises:
+            None
+        """
+
+        # Convert pydantic models to dicts
+        current_cfg_dict = self.project_cfg.model_dump()
+        try:
+            if accept_prep and self.prev_build_cfg is None:
+                previous_cfg_dict = self.prev_prep_cfg.model_dump()
+            else:
+                previous_cfg_dict = self.prev_build_cfg.model_dump()
+        except:
+            # A rebuild is required if the project configuration that was used for the last build or
+            # prepare sequence cannot be loaded
+            return True
+
+        for key_list in keys:
+            # Iterate over all keys in the list to find the units to be compared
+            to_compare_current = current_cfg_dict
+            to_compare_previous = previous_cfg_dict
+            for key in key_list:
+                to_compare_current = to_compare_current[key]
+                to_compare_previous = to_compare_previous[key]
+
+            # Compare units
+            if to_compare_current != to_compare_previous:
+                return True
+
+        return False
 
     def _eval_single_prj_src(self) -> tuple[pathlib.Path, dict]:
         """
@@ -545,7 +608,7 @@ class Builder:
         if (
             self._patch_dir.exists()
             and patches_already_added
-            and Builder._check_rebuild_required(
+            and Builder._check_rebuild_bc_timestamp(
                 src_search_list=[self._patch_dir],
                 out_timestamp=self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success"),
             )
@@ -634,12 +697,9 @@ class Builder:
             None
         """
 
-        # Skip all operations if the repo has already been initialized
-        if not Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files,
-            out_timestamp=self._build_log.get_logged_timestamp(
-                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
-            ),
+        # Skip all operations if the repo config hasn't changed
+        if not self._check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "build_srcs"]], accept_prep=True
         ):
             pretty_print.print_build("No need to initialize the local repo...")
             return
@@ -653,12 +713,13 @@ class Builder:
 
         pretty_print.print_build("Initializing local repo...")
 
-        self._output_dir.mkdir(parents=True, exist_ok=True)
+        self.clean_output()
+        self._output_dir.mkdir(parents=True)
 
         # Check if the source code of this block project is online and needs to be downloaded
         if self._source_repo is not None:
             self.clean_repo()
-            self._repo_dir.mkdir(parents=True, exist_ok=True)
+            self._repo_dir.mkdir(parents=True)
             # Clone the repo
             self.shell_executor.exec_sh_command(
                 [
@@ -691,9 +752,6 @@ class Builder:
             self.shell_executor.exec_sh_command(
                 ["git", "-C", str(self._source_repo_dir), "switch", "-c", self._git_local_dev_branch]
             )
-
-        # Log success of this function
-        self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
     def create_patches(self):
         """
@@ -800,6 +858,9 @@ class Builder:
         if self.block_cfg.project.patches == None or patches_already_added:
             pretty_print.print_build("No need to apply patches...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         pretty_print.print_build("Applying patches...")
 
@@ -1019,15 +1080,18 @@ class Builder:
             sys.exit(1)
 
         # Check whether a package needs to be created
-        if not Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files + [self._output_dir],
+        if not Builder._check_rebuild_bc_timestamp(
+            src_search_list=[self._output_dir],
             src_ignore_list=[block_pkg_path],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ):
+        ) and not self._check_rebuild_bc_config(keys=[["project", "name"]]):
             pretty_print.print_build("No need to export block package. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         # Delete old block package
         old_block_pkgs = list(self._output_dir.glob(f"bp_{self.block_id}_*.tar.gz"))
@@ -1044,6 +1108,77 @@ class Builder:
 
         # Log success of this function
         self._build_log.log_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+
+    def _save_project_cfg(self, file: pathlib.Path):
+        """
+        Writes the project configuration that is currently used for this block to a file. The file is only written
+        if the current config is different to the one already saved in the file. This makes it possible to use
+        the checksum of this file to check when the project configuration of this block was last changed.
+
+        Args:
+            file:
+                File to which the configuration is to be written
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Create a list of lists with all top level keys of the block specific project config
+        cfg_keys = list(self.project_cfg.model_dump().keys())
+        cfg_key_lists = [[key] for key in cfg_keys]
+
+        # Compare the entire block specific project config
+        if not self._check_rebuild_bc_config(keys=cfg_key_lists, accept_prep=True):
+            # The file does not need to be written if the current config is the same as the old one
+            return
+
+        # Write to file
+        with file.open("w") as f:
+            f.write("# This file was created automatically, please do not modify!\n")
+            f.write(yaml.dump(self.project_cfg.model_dump()))
+
+    def save_project_cfg_prepare(self):
+        """
+        Writes the project configuration that is currently used for preparing this block to a file.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Rename config file so that it can still be used
+        if self.prev_build_cfg_file.exists():
+            shutil.move(self.prev_build_cfg_file, self.prev_prep_cfg_file)
+
+        self._save_project_cfg(self.prev_prep_cfg_file)
+
+    def save_project_cfg_build(self):
+        """
+        Writes the project configuration that is currently used for building this block to a file.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Rename config file so that it can still be used
+        if self.prev_prep_cfg_file.exists():
+            shutil.move(self.prev_prep_cfg_file, self.prev_build_cfg_file)
+
+        self._save_project_cfg(self.prev_build_cfg_file)
 
     def import_dependencies(self):
         """

@@ -12,7 +12,6 @@ class Versal_AMD_UBoot_Builder(ZynqMP_AMD_UBoot_Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "uboot",
@@ -22,7 +21,6 @@ class Versal_AMD_UBoot_Builder(ZynqMP_AMD_UBoot_Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,

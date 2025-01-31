@@ -16,7 +16,6 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "vivado",
@@ -26,7 +25,6 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
@@ -49,10 +47,17 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
         )
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
-                [self.container_executor.build_container_image, self.init_repo, self.create_vivado_project]
+                [
+                    self.container_executor.build_container_image,
+                    self.init_repo,
+                    self.create_vivado_project,
+                    self.save_project_cfg_prepare,
+                ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend([self.build_vivado_project, self.export_block_package])
+            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend(
+                [self.build_vivado_project, self.export_block_package, self.save_project_cfg_build]
+            )
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
             )
@@ -113,9 +118,8 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
         """
 
         # Check if the project needs to be build
-        if not ZynqMP_AMD_Vivado_Hog_Builder._check_rebuild_required(
-            src_search_list=self._project_cfg_files
-            + [
+        if not ZynqMP_AMD_Vivado_Hog_Builder._check_rebuild_bc_timestamp(
+            src_search_list=[
                 self._source_repo_dir / "Top",
                 self._source_repo_dir / "Hog",
                 self._source_repo_dir / f"lib_{self.block_cfg.project.name}",
@@ -123,9 +127,14 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
+        ) and not self._check_rebuild_bc_config(
+            keys=[["external_tools", "xilinx"], ["blocks", self.block_id, "project", "name"]]
         ):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")
             return
+
+        # Reset function success log
+        self._build_log.del_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
 
         self.check_amd_tools(required_tools=["vivado"])
 

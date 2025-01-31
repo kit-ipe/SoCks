@@ -22,7 +22,6 @@ class Versal_AlmaLinux_RootFS_Builder(ZynqMP_AlmaLinux_RootFS_Builder):
     def __init__(
         self,
         project_cfg: dict,
-        project_cfg_files: list,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "rootfs",
@@ -32,7 +31,6 @@ class Versal_AlmaLinux_RootFS_Builder(ZynqMP_AlmaLinux_RootFS_Builder):
 
         super().__init__(
             project_cfg=project_cfg,
-            project_cfg_files=project_cfg_files,
             socks_dir=socks_dir,
             project_dir=project_dir,
             block_id=block_id,
