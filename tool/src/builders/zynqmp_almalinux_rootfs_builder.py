@@ -10,6 +10,7 @@ import tqdm
 import inspect
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from builders.builder import Builder
 from builders.zynqmp_almalinux_rootfs_model import ZynqMP_AlmaLinux_RootFS_Model
 
@@ -70,7 +71,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 self.container_executor.build_container_image,
                 self.import_dependencies,
                 self.container_executor.enable_multiarch,
-                self.save_project_cfg_prepare,
+                self._build_validator.save_project_cfg_prepare,
             ]
         )
         self.block_cmds["clean"].extend(
@@ -85,7 +86,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         )
         if self.block_cfg.source == "build":
             self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
                 [
@@ -96,18 +97,18 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     self.add_bt_layer,
                     self.build_archive,
                     self.export_block_package,
-                    self.save_project_cfg_build,
+                    self._build_validator.save_project_cfg_build,
                 ]
             )
             self.block_cmds["prebuild"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
             self.block_cmds["prebuild"].extend(
                 [
                     self.build_base_rootfs,
                     self.build_archive_prebuilt,
                     self.export_block_package,
-                    self.save_project_cfg_build,
+                    self._build_validator.save_project_cfg_build,
                 ]
             )
             self.block_cmds["start-container"].extend(
@@ -115,7 +116,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
                 [
@@ -126,7 +127,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     self.add_bt_layer,
                     self.build_archive,
                     self.export_block_package,
-                    self.save_project_cfg_build,
+                    self._build_validator.save_project_cfg_build,
                 ]
             )
 
@@ -165,12 +166,14 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         mod_base_install_script = self._repo_dir / "mod_base_install.sh"
 
         # Check whether the base root file system needs to be built
-        if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[dnf_conf_file, mod_base_install_script],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ) and not self._check_rebuild_bc_config(keys=[["blocks", self.block_id, "project"], ["project", "name"]]):
+        ) and not self._build_validator.check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project"], ["project", "name"]]
+        ):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
             )
@@ -267,7 +270,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
         )
-        if layers_already_added and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+        if layers_already_added and not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._repo_dir / "predefined_fs_layers"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -324,13 +327,15 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         )
         if (
             layer_already_added
-            and not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+            and not Build_Validator.check_rebuild_bc_timestamp(
                 src_search_list=[self._dependencies_dir],
                 out_timestamp=self._build_log.get_logged_timestamp(
                     identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
                 ),
             )
-            and not self._check_rebuild_bc_config(keys=[["blocks", self.block_id, "project", "build_time_fs_layer"]])
+            and not self._build_validator.check_rebuild_bc_config(
+                keys=[["blocks", self.block_id, "project", "build_time_fs_layer"]]
+            )
         ):
             pretty_print.print_build(
                 "No need to add external files and directories created at build time. No altered source files detected..."
@@ -396,7 +401,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
         )
-        if users_already_added and not self._check_rebuild_bc_config(
+        if users_already_added and not self._build_validator.check_rebuild_bc_config(
             keys=[["blocks", self.block_id, "project", "users"]]
         ):
             pretty_print.print_build("No need to add users. No altered source files detected...")
@@ -431,7 +436,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
-                commands=add_users_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")], run_as_root=True
+                commands=add_users_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                run_as_root=True,
             )
 
     def add_kmodules(self):
@@ -523,12 +530,14 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         """
 
         # Check if the archive needs to be built
-        if not ZynqMP_AlmaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._work_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ) and not self._check_rebuild_bc_config(keys=[["blocks", self.block_id, "project"], ["project", "name"]]):
+        ) and not self._build_validator.check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project"], ["project", "name"]]
+        ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
             return
 

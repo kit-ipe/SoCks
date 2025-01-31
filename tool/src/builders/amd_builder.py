@@ -5,6 +5,7 @@ import sys
 import inspect
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from builders.builder import Builder
 
 
@@ -166,7 +167,7 @@ class AMD_Builder(Builder):
             sys.exit(1)
 
         # Check whether the xsa archive needs to be imported
-        if not AMD_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[xsa_files[0]],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"

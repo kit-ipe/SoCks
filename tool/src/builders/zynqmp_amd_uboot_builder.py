@@ -6,6 +6,7 @@ import hashlib
 import inspect
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from builders.builder import Builder
 from builders.zynqmp_amd_uboot_model import ZynqMP_AMD_UBoot_Model
 
@@ -76,13 +77,15 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
                     self.apply_patches,
                     self.import_clean_srcs,
                     self.copy_atf,
-                    self.save_project_cfg_prepare,
+                    self._build_validator.save_project_cfg_prepare,
                 ]
             )
             self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
-            self.block_cmds["build"].extend([self.build_uboot, self.export_block_package, self.save_project_cfg_build])
+            self.block_cmds["build"].extend(
+                [self.build_uboot, self.export_block_package, self._build_validator.save_project_cfg_build]
+            )
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
@@ -218,13 +221,15 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
         """
 
         # Check whether das U-Boot needs to be built
-        if not ZynqMP_AMD_UBoot_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "u-boot.elf", self._source_repo_dir / "spl/.boot.bin.cmd"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ) and not self._check_rebuild_bc_config(keys=[["blocks", self.block_id, "project", "add_build_info"]]):
+        ) and not self._build_validator.check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "add_build_info"]]
+        ):
             pretty_print.print_build("No need to rebuild U-Boot. No altered source files detected...")
             return
 

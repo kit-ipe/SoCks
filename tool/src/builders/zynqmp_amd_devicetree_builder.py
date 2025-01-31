@@ -8,6 +8,7 @@ import os
 import csv
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from socks.yaml_editor import YAML_Editor
 from builders.amd_builder import AMD_Builder
 from builders.zynqmp_amd_devicetree_model import ZynqMP_AMD_Devicetree_Model
@@ -74,18 +75,18 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
                     self.apply_patches,
                     self.import_xsa,
                     self.prepare_dt_sources,
-                    self.save_project_cfg_prepare,
+                    self._build_validator.save_project_cfg_prepare,
                 ]
             )
             self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
                 [
                     self.build_base_devicetree,
                     self.build_dt_overlays,
                     self.export_block_package,
-                    self.save_project_cfg_build,
+                    self._build_validator.save_project_cfg_build,
                 ]
             )
             self.block_cmds["create-patches"].extend([self.create_patches])
@@ -142,7 +143,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
                 md5_existsing_file = f.read()
 
         # Check if the project needs to be created
-        if (md5_existsing_file == md5_new_file) and not self._check_rebuild_bc_config(
+        if (md5_existsing_file == md5_new_file) and not self._build_validator.check_rebuild_bc_config(
             keys=[["external_tools", "xilinx"]], accept_prep=True
         ):
             pretty_print.print_info("No new XSA archive recognized. Devicetree sources are not recreated.")
@@ -196,7 +197,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         """
 
         # Check whether the devicetree needs to be built
-        if not ZynqMP_AMD_Devicetree_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._dt_incl_dir, self._base_work_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -270,7 +271,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         if (
             not self._dt_overlay_dir.is_dir()
             or not any(self._dt_overlay_dir.iterdir())
-            or not ZynqMP_AMD_Devicetree_Builder._check_rebuild_bc_timestamp(
+            or not Build_Validator.check_rebuild_bc_timestamp(
                 src_search_list=[self._dt_overlay_dir, self._base_work_dir],
                 out_timestamp=self._build_log.get_logged_timestamp(
                     identifier=f"function-{inspect.currentframe().f_code.co_name}-success"

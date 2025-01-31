@@ -11,6 +11,7 @@ import os
 import csv
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from socks.yaml_editor import YAML_Editor
 from builders.builder import Builder
 from builders.zynqmp_amd_petalinux_rootfs_model import (
@@ -75,7 +76,11 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             "start-container": [],
         }
         self.block_cmds["prepare"].extend(
-            [self.container_executor.build_container_image, self.import_dependencies, self.save_project_cfg_prepare]
+            [
+                self.container_executor.build_container_image,
+                self.import_dependencies,
+                self._build_validator.save_project_cfg_prepare,
+            ]
         )
         self.block_cmds["clean"].extend(
             [
@@ -90,10 +95,10 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         )
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"] = [  # Move save_project_cfg_prepare to the end of the new list
-                func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare
-            ] + [self.init_repo, self.apply_patches, self.yocto_init, self.save_project_cfg_prepare]
+                func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare
+            ] + [self.init_repo, self.apply_patches, self.yocto_init, self._build_validator.save_project_cfg_prepare]
             self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
                 [
@@ -101,18 +106,18 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                     self.add_kmodules,
                     self.build_archive,
                     self.export_block_package,
-                    self.save_project_cfg_build,
+                    self._build_validator.save_project_cfg_build,
                 ]
             )
             self.block_cmds["prebuild"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
             self.block_cmds["prebuild"].extend(
                 [
                     self.build_base_rootfs,
                     self.build_archive_prebuilt,
                     self.export_block_package,
-                    self.save_project_cfg_build,
+                    self._build_validator.save_project_cfg_build,
                 ]
             )
             self.block_cmds["create-patches"].extend([self.create_patches])
@@ -121,7 +126,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             )
         elif self.block_cfg.source == "import":
             self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
                 [
@@ -129,7 +134,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                     self.add_kmodules,
                     self.build_archive,
                     self.export_block_package,
-                    self.save_project_cfg_build,
+                    self._build_validator.save_project_cfg_build,
                 ]
             )
 
@@ -199,7 +204,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         """
 
         # Skip all operations if the repo config hasn't changed
-        if not self._check_rebuild_bc_config(
+        if not self._build_validator.check_rebuild_bc_config(
             keys=[["blocks", self.block_id, "project", "build_srcs"]], accept_prep=True
         ):
             pretty_print.print_build("No need to initialize the local repos...")
@@ -454,7 +459,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         """
 
         # Check whether the base root file system needs to be built
-        if not ZynqMP_AMD_PetaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[
                 self._resources_dir,
                 self._source_repo_dir / "sources",
@@ -467,7 +472,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ) and not self._check_rebuild_bc_config(keys=[["project", "name"]]):
+        ) and not self._build_validator.check_rebuild_bc_config(keys=[["project", "name"]]):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
             )
@@ -479,7 +484,11 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
 
             pretty_print.print_build("Building the base root file system...")
 
-            base_rootfs_build_commands = [f"cd {self._source_repo_dir}", "source ./setupsdk", "bitbake core-image-minimal"]
+            base_rootfs_build_commands = [
+                f"cd {self._source_repo_dir}",
+                "source ./setupsdk",
+                "bitbake core-image-minimal",
+            ]
 
             self.container_executor.exec_sh_commands(
                 commands=base_rootfs_build_commands, dirs_to_mount=[(self._repo_dir, "Z")]
@@ -585,12 +594,12 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         """
 
         # Check if the archive needs to be built
-        if not ZynqMP_AMD_PetaLinux_RootFS_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._work_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ) and not self._check_rebuild_bc_config(
+        ) and not self._build_validator.check_rebuild_bc_config(
             keys=[["blocks", self.block_id, "project", "add_build_info"], ["project", "name"]]
         ):
             pretty_print.print_build("No need to rebuild archive. No altered source files detected...")

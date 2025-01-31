@@ -2,6 +2,7 @@ import pathlib
 import inspect
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from builders.zynqmp_amd_atf_builder import ZynqMP_AMD_ATF_Builder
 from builders.versal_amd_atf_model import Versal_AMD_ATF_Model
 
@@ -45,7 +46,7 @@ class Versal_AMD_ATF_Builder(ZynqMP_AMD_ATF_Builder):
         """
 
         # Check whether the ATF needs to be built
-        if not Versal_AMD_ATF_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "build"],
             out_timestamp=self._build_log.get_logged_timestamp(

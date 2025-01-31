@@ -4,6 +4,7 @@ import urllib
 import inspect
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from builders.amd_builder import AMD_Builder
 from builders.zynqmp_amd_vivado_hog_model import ZynqMP_AMD_Vivado_Hog_Model
 
@@ -51,14 +52,14 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
                     self.container_executor.build_container_image,
                     self.init_repo,
                     self.create_vivado_project,
-                    self.save_project_cfg_prepare,
+                    self._build_validator.save_project_cfg_prepare,
                 ]
             )
             self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
-                [self.build_vivado_project, self.export_block_package, self.save_project_cfg_build]
+                [self.build_vivado_project, self.export_block_package, self._build_validator.save_project_cfg_build]
             )
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
@@ -120,7 +121,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
         """
 
         # Check if the project needs to be build
-        if not ZynqMP_AMD_Vivado_Hog_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[
                 self._source_repo_dir / "Top",
                 self._source_repo_dir / "Hog",
@@ -129,7 +130,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ) and not self._check_rebuild_bc_config(
+        ) and not self._build_validator.check_rebuild_bc_config(
             keys=[["external_tools", "xilinx"], ["blocks", self.block_id, "project", "name"]]
         ):
             pretty_print.print_build("No need to rebuild the Vivado Project. No altered source files detected...")

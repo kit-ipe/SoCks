@@ -4,6 +4,7 @@ import hashlib
 import inspect
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from builders.amd_builder import AMD_Builder
 from builders.versal_amd_psmfw_model import Versal_AMD_PSMFW_Model
 
@@ -67,13 +68,15 @@ class Versal_AMD_PSMFW_Builder(AMD_Builder):
                     self.import_dependencies,
                     self.import_xsa,
                     self.create_psmfw_project,
-                    self.save_project_cfg_prepare,
+                    self._build_validator.save_project_cfg_prepare,
                 ]
             )
             self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
-            self.block_cmds["build"].extend([self.build_psmfw, self.export_block_package, self.save_project_cfg_build])
+            self.block_cmds["build"].extend(
+                [self.build_psmfw, self.export_block_package, self._build_validator.save_project_cfg_build]
+            )
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
             )
@@ -127,7 +130,7 @@ class Versal_AMD_PSMFW_Builder(AMD_Builder):
                 md5_existsing_file = f.read()
 
         # Check if the project needs to be created
-        if (md5_existsing_file == md5_new_file) and not self._check_rebuild_bc_config(
+        if (md5_existsing_file == md5_new_file) and not self._build_validator.check_rebuild_bc_config(
             keys=[["external_tools", "xilinx"]], accept_prep=True
         ):
             pretty_print.print_info("No new XSA archive recognized. PSM Firmware project is not created.")
@@ -184,12 +187,12 @@ class Versal_AMD_PSMFW_Builder(AMD_Builder):
         """
 
         # Check whether the PSM Firmware needs to be built
-        if not Versal_AMD_PSMFW_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._vitis_workspace_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ) and not self._check_rebuild_bc_config(keys=[["external_tools", "xilinx"]]):
+        ) and not self._build_validator.check_rebuild_bc_config(keys=[["external_tools", "xilinx"]]):
             pretty_print.print_build("No need to rebuild the PSM Firmware. No altered source files detected...")
             return
 

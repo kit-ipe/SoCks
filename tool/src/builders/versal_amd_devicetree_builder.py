@@ -69,7 +69,7 @@ class Versal_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
                 md5_existsing_file = f.read()
 
         # Check if the project needs to be created
-        if (md5_existsing_file == md5_new_file) and not self._check_rebuild_bc_config(
+        if (md5_existsing_file == md5_new_file) and not self._build_validator.check_rebuild_bc_config(
             keys=[["external_tools", "xilinx"]], accept_prep=True
         ):
             pretty_print.print_info("No new XSA archive recognized. Devicetree sources are not recreated.")

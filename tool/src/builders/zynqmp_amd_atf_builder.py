@@ -2,6 +2,7 @@ import pathlib
 import inspect
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from builders.builder import Builder
 from builders.zynqmp_amd_atf_model import ZynqMP_AMD_ATF_Model
 
@@ -49,13 +50,15 @@ class ZynqMP_AMD_ATF_Builder(Builder):
                     self.container_executor.build_container_image,
                     self.init_repo,
                     self.apply_patches,
-                    self.save_project_cfg_prepare,
+                    self._build_validator.save_project_cfg_prepare,
                 ]
             )
             self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
-            self.block_cmds["build"].extend([self.build_atf, self.export_block_package, self.save_project_cfg_build])
+            self.block_cmds["build"].extend(
+                [self.build_atf, self.export_block_package, self._build_validator.save_project_cfg_build]
+            )
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
@@ -78,7 +81,7 @@ class ZynqMP_AMD_ATF_Builder(Builder):
         """
 
         # Check whether the ATF needs to be built
-        if not ZynqMP_AMD_ATF_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._source_repo_dir],
             src_ignore_list=[self._source_repo_dir / "build"],
             out_timestamp=self._build_log.get_logged_timestamp(

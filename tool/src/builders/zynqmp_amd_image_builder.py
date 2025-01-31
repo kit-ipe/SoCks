@@ -4,6 +4,7 @@ import shutil
 import inspect
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from builders.amd_builder import AMD_Builder
 from builders.builder import Builder
 from builders.zynqmp_amd_image_model import ZynqMP_AMD_Image_Model
@@ -81,10 +82,14 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         )
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
-                [self.container_executor.build_container_image, self.import_dependencies, self.save_project_cfg_prepare]
+                [
+                    self.container_executor.build_container_image,
+                    self.import_dependencies,
+                    self._build_validator.save_project_cfg_prepare,
+                ]
             )
             self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
             )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
                 [
@@ -92,13 +97,13 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                     self.bootscr_img,
                     self.boot_img,
                     self.export_block_package,
-                    self.save_project_cfg_build,
+                    self._build_validator.save_project_cfg_build,
                 ]
             )
             self.block_cmds["build-sd-card"].extend(
-                [func for func in self.block_cmds["build"] if func != self.save_project_cfg_build]
+                [func for func in self.block_cmds["build"] if func != self._build_validator.save_project_cfg_build]
             )  # Append list without save_project_cfg_build
-            self.block_cmds["build-sd-card"].extend([self.sd_card_img, self.save_project_cfg_build])
+            self.block_cmds["build-sd-card"].extend([self.sd_card_img, self._build_validator.save_project_cfg_build])
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
             )
@@ -181,7 +186,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                     sys.exit(1)
 
         # Check whether the Linux image needs to be built
-        if not ZynqMP_AMD_Image_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[
                 self._resources_dir / "image.its.tpl",
                 self._dependencies_dir / "kernel",
@@ -240,7 +245,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         """
 
         # Check whether the boot script image needs to be built
-        if not ZynqMP_AMD_Image_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._resources_dir / "boot.cmd"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -289,7 +294,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         self._vivado_bitfile_path = bitfiles[0]
 
         # Check whether the boot script image needs to be built
-        if not ZynqMP_AMD_Image_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[
                 self._resources_dir / "bootgen.bif.tpl",
                 self._fsbl_img_path,
@@ -304,7 +309,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ) and not self._check_rebuild_bc_config(keys=[["external_tools", "xilinx"]]):
+        ) and not self._build_validator.check_rebuild_bc_config(keys=[["external_tools", "xilinx"]]):
             pretty_print.print_build("No need to rebuild BOOT.BIN. No altered source files detected...")
             return
 
@@ -369,7 +374,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             sys.exit(1)
 
         # Check whether the sd card image needs to be built
-        if not ZynqMP_AMD_Image_Builder._check_rebuild_bc_timestamp(
+        if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[
                 self._output_dir / "BOOT.BIN",
                 self._output_dir / "boot.scr",

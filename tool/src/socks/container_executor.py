@@ -121,7 +121,9 @@ class Container_Executor:
             pretty_print.print_build(f"No need to build {self._container_tool} image {self._container_image_tagged}...")
             return
 
-        with self._container_log.timestamp(identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"):
+        with self._container_log.timestamp(
+            identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
+        ):
             if self._container_tool == "docker":
                 # Get host user and id (a bit complicated but should work in most Unix environments)
                 host_user_id = os.getuid()
