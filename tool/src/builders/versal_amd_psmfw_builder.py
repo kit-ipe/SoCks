@@ -70,7 +70,9 @@ class Versal_AMD_PSMFW_Builder(AMD_Builder):
                     self.save_project_cfg_prepare,
                 ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend(
+                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+            )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend([self.build_psmfw, self.export_block_package, self.save_project_cfg_build])
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]

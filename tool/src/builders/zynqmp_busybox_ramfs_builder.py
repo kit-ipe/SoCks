@@ -65,6 +65,9 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             "menucfg": [],
             "prep-clean-srcs": [],
         }
+        self.block_cmds["prepare"].extend(
+            [self.container_executor.build_container_image, self.import_dependencies, self.save_project_cfg_prepare]
+        )
         self.block_cmds["clean"].extend(
             [
                 self.container_executor.build_container_image,
@@ -77,17 +80,12 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend(
-                [
-                    self.container_executor.build_container_image,
-                    self.import_dependencies,
-                    self.init_repo,
-                    self.apply_patches,
-                    self.import_clean_srcs,
-                    self.save_project_cfg_prepare,
-                ]
-            )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["prepare"] = [  # Move save_project_cfg_prepare to the end of the new list
+                func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare
+            ] + [self.init_repo, self.apply_patches, self.import_clean_srcs, self.save_project_cfg_prepare]
+            self.block_cmds["build"].extend(
+                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+            )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
                 [
                     self.build_base_ramfs,
@@ -98,7 +96,9 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
                     self.save_project_cfg_build,
                 ]
             )
-            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["prebuild"].extend(
+                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+            )  # Append list without save_project_cfg_prepare
             self.block_cmds["prebuild"].extend(
                 [
                     self.build_base_ramfs,
@@ -117,6 +117,9 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
                 [self.container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
             )
         elif self.block_cfg.source == "import":
+            self.block_cmds["build"].extend(
+                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+            )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
                 [
                     self.import_prebuilt,

@@ -77,7 +77,9 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
                     self.save_project_cfg_prepare,
                 ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend(
+                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+            )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
                 [
                     self.build_base_devicetree,

@@ -79,7 +79,9 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
                     self.save_project_cfg_prepare,
                 ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend(
+                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+            )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend([self.build_uboot, self.export_block_package, self.save_project_cfg_build])
             self.block_cmds["create-patches"].extend([self.create_patches])
             self.block_cmds["start-container"].extend(

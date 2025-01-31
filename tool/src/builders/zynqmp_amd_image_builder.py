@@ -83,7 +83,9 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             self.block_cmds["prepare"].extend(
                 [self.container_executor.build_container_image, self.import_dependencies, self.save_project_cfg_prepare]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"][:-1])  # Remove save_project_cfg when adding
+            self.block_cmds["build"].extend(
+                [func for func in self.block_cmds["prepare"] if func != self.save_project_cfg_prepare]
+            )  # Append list without save_project_cfg_prepare
             self.block_cmds["build"].extend(
                 [
                     self.linux_img,
@@ -94,8 +96,8 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                 ]
             )
             self.block_cmds["build-sd-card"].extend(
-                self.block_cmds["build"][:-1]  # Remove save_project_cfg when adding
-            )
+                [func for func in self.block_cmds["build"] if func != self.save_project_cfg_build]
+            )  # Append list without save_project_cfg_build
             self.block_cmds["build-sd-card"].extend([self.sd_card_img, self.save_project_cfg_build])
             self.block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
