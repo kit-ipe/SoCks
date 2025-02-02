@@ -1,7 +1,11 @@
+import os
 import typing
 import pathlib
+import shutil
 import pydantic
 import yaml
+
+from socks.shell_executor import Shell_Executor
 
 
 class Build_Validator:
@@ -235,6 +239,8 @@ class Build_Validator:
             None
         """
 
+        shell_executor = Shell_Executor()
+
         # Find last modified source file
         src_search_str = " ".join(list(map(str, src_search_list)))
         if src_ignore_list:
@@ -242,7 +248,7 @@ class Build_Validator:
         else:
             src_ignore_str = ""
 
-        results = self.shell_executor.get_sh_results(
+        results = shell_executor.get_sh_results(
             [
                 "find",
                 src_search_str,
@@ -273,7 +279,7 @@ class Build_Validator:
         else:
             out_ignore_str = ""
 
-        results = self.shell_executor.get_sh_results(
+        results = shell_executor.get_sh_results(
             [
                 "find",
                 out_search_str,
