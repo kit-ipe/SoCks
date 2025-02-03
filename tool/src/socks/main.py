@@ -171,7 +171,8 @@ for block in project_cfg_model.blocks.model_fields:
         module = importlib.import_module(f"builders.{block_cfg.builder.lower()}")
         # Get access to the builder class
         builder_class = getattr(module, block_cfg.builder)
-        # Create a project configuration object for the builder that only contains information that is intended for this builder, i.e. remove all information for other builders
+        # Create a project configuration object for the builder that only contains information that is intended
+        # for this builder, i.e. remove all information for other builders
         builder_project_cfg = copy.deepcopy(project_cfg)
         for block_i, block_dict_i in project_cfg["blocks"].items():
             if block_i != block:
@@ -208,7 +209,7 @@ cli_blocks = cli.add_subparsers(title="blocks", dest="block")
 
 # Add argument to print project configuration to the standard output
 cli.add_argument(
-    "-c",
+    "-s",
     "--show-configuration",
     action="store_true",
     help="Print the complete project configuration to the standard output and exit",
@@ -218,6 +219,12 @@ cli.add_argument(
     "--raw-output",
     action="store_true",
     help="Disable processing of shell output from build tools before it is shown (Recommended for GitLab CI/CD)",
+)
+cli.add_argument(
+    "-p",
+    "--print-csc",
+    action="store_true",
+    help="Enforce printing of shell commands before they are executed in a container",
 )
 
 # Add parsers for all blocks
@@ -279,6 +286,9 @@ def main():
         for builder in builders.values():
             builder.shell_executor.prohibit_output_processing(state=True)
             builder.container_executor.prohibit_output_processing(state=True)
+    if "print_csc" in args and args["print_csc"] == True:
+        for builder in builders.values():
+            builder.container_executor.enforce_command_printing(state=True)
 
     target_block = args["block"]
     block_cmd = args["command"]

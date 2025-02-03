@@ -24,6 +24,7 @@ class Container_Executor:
         container_image_tag: str,
         container_log_file: pathlib.Path,
         prohibit_output_processing: bool = False,
+        enforce_command_printing: bool = False,
     ):
 
         if container_tool not in ["docker", "podman", "none"]:
@@ -59,6 +60,10 @@ class Container_Executor:
         self._container_file = container_file
         # Identifier of the container image in format <image name>:<image tag>.
         self._container_image_tagged = f"{container_image}:{container_image_tag}"
+
+        # Enforce printing shell commands before they are executed in the container.
+        # This setting overwrites all other shell command printing settings.
+        self._enforce_command_printing = enforce_command_printing
 
         # Timestamp logger
         self._container_log = Timestamp_Logger(container_log_file)
@@ -254,8 +259,8 @@ class Container_Executor:
 
         # Assemble command string for container
         comp_commands = "'"
-        if print_commands:
-            comp_commands = comp_commands + 'trap "echo \\"container> \$BASH_COMMAND\\"" DEBUG && '
+        if self._enforce_command_printing or print_commands:
+            comp_commands = comp_commands + 'trap "echo \\"csc> \$BASH_COMMAND\\"" DEBUG && '
         for i, command in enumerate(commands):
             if i == len(commands) - 1:
                 # The last element of the list is treated differently
@@ -500,3 +505,21 @@ class Container_Executor:
 
         else:
             raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
+    def enforce_command_printing(self, state: bool):
+        """
+        Enable or disable shell output processing
+
+        Args:
+            state:
+                True to enforce the printing of shell command before they are executed in the container,
+                False to optionally allow the printing of commands.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._enforce_command_printing = state
