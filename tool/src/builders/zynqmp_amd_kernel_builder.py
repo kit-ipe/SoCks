@@ -218,6 +218,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             self.container_executor.exec_sh_commands(
                 commands=kernel_build_commands,
                 dirs_to_mount=[(self._repo_dir, "Z")],
+                print_commands=True,
                 logfile=self._block_temp_dir / "build.log",
                 output_scrolling=True,
             )
@@ -283,5 +284,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             ]
 
             self.container_executor.exec_sh_commands(
-                commands=export_modules_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")]
+                commands=export_modules_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
             )

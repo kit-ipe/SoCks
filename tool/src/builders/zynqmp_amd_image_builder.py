@@ -228,6 +228,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                     (self._work_dir, "Z"),
                     (self._output_dir, "Z"),
                 ],
+                print_commands=True,
             )
 
     def bootscr_img(self):
@@ -267,7 +268,9 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             ]
 
             self.container_executor.exec_sh_commands(
-                commands=bootscr_img_build_commands, dirs_to_mount=[(self._resources_dir, "Z"), (self._output_dir, "Z")]
+                commands=bootscr_img_build_commands,
+                dirs_to_mount=[(self._resources_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
             )
 
     def boot_img(self):
@@ -347,6 +350,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                     (self._work_dir, "Z"),
                     (self._output_dir, "Z"),
                 ],
+                print_commands=True,
             )
 
     def sd_card_img(self):
@@ -409,5 +413,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             sdc_img_build_commands[-1] = sdc_img_build_commands[-1] + f"    umount-all"
 
             self.container_executor.exec_sh_commands(
-                commands=sdc_img_build_commands, dirs_to_mount=[(self._dependencies_dir, "Z"), (self._output_dir, "Z")]
+                commands=sdc_img_build_commands,
+                dirs_to_mount=[(self._dependencies_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
             )

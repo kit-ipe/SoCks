@@ -113,6 +113,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
             self.container_executor.exec_sh_commands(
                 commands=archive_build_commands,
                 dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
                 run_as_root=True,
             )
 

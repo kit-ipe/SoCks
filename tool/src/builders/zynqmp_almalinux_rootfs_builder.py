@@ -236,6 +236,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self.container_executor.exec_sh_commands(
                 commands=base_rootfs_build_commands,
                 dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "build_base.log",
                 output_scrolling=True,
@@ -293,6 +294,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self.container_executor.exec_sh_commands(
                 commands=add_pd_layers_commands,
                 dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                print_commands=True,
                 run_as_root=True,
             )
 
@@ -374,6 +376,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self.container_executor.exec_sh_commands(
                 commands=add_bt_layer_commands,
                 dirs_to_mount=[(self._repo_dir, "Z"), (self._dependencies_dir, "Z"), (self._work_dir, "Z")],
+                print_commands=True,
                 run_as_root=True,
             )
 
@@ -438,6 +441,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self.container_executor.exec_sh_commands(
                 commands=add_users_commands,
                 dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                print_commands=True,
                 run_as_root=True,
             )
 
@@ -506,6 +510,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         self.container_executor.exec_sh_commands(
             commands=add_kmodules_commands,
             dirs_to_mount=[(self._dependencies_dir, "Z"), (self._work_dir, "Z")],
+            print_commands=True,
             run_as_root=True,
         )
 
@@ -597,6 +602,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self.container_executor.exec_sh_commands(
                 commands=archive_build_commands,
                 dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
                 run_as_root=True,
             )
 

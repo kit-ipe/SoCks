@@ -923,7 +923,11 @@ class Builder:
 
         pretty_print.print_build(f"Preparing clean sources...")
 
-        self.container_executor.exec_sh_commands(commands=prep_srcs_commands, dirs_to_mount=[(self._repo_dir, "Z")])
+        self.container_executor.exec_sh_commands(
+            commands=prep_srcs_commands,
+            dirs_to_mount=[(self._repo_dir, "Z")],
+            print_commands=True,
+        )
 
     def import_clean_srcs(self):
         """

@@ -72,6 +72,7 @@ class Versal_AMD_ATF_Builder(ZynqMP_AMD_ATF_Builder):
             self.container_executor.exec_sh_commands(
                 commands=atf_build_commands,
                 dirs_to_mount=[(self._repo_dir, "Z")],
+                print_commands=True,
                 logfile=self._block_temp_dir / "build.log",
                 output_scrolling=True,
             )

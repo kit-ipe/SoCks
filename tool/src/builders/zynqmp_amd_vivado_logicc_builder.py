@@ -141,6 +141,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
                     (self._repo_dir, "Z"),
                     (self._work_dir, "Z"),
                 ],
+                print_commands=True,
             )
 
     def build_vivado_project(self):
@@ -199,6 +200,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
                     (self._repo_dir, "Z"),
                     (self._work_dir, "Z"),
                 ],
+                print_commands=True,
+                logfile=self._block_temp_dir / "build.log",
                 output_scrolling=True,
             )
 

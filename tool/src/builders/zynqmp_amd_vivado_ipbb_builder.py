@@ -131,6 +131,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             commands=init_ipbb_env_commands,
             dirs_to_mount=[(self._repo_dir, "Z")] + local_source_mounts,
             custom_params=["-v", "$SSH_AUTH_SOCK:/ssh-auth-sock", "--env", "SSH_AUTH_SOCK=/ssh-auth-sock"],
+            print_commands=True,
         )
 
     def create_vivado_project(self):
@@ -176,6 +177,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         self.container_executor.exec_sh_commands(
             commands=create_vivado_project_commands,
             dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")] + local_source_mounts,
+            print_commands=True,
             logfile=self._block_temp_dir / "build_project.log",
             output_scrolling=True,
         )
@@ -249,6 +251,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             self.container_executor.exec_sh_commands(
                 commands=vivado_build_commands,
                 dirs_to_mount=[(pathlib.Path(self._amd_tools_path), "ro"), (self._repo_dir, "Z")] + local_source_mounts,
+                print_commands=True,
                 logfile=self._block_temp_dir / "build.log",
                 output_scrolling=True,
             )

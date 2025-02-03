@@ -102,6 +102,7 @@ class Versal_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
                 (self._repo_dir, "Z"),
                 (self._base_work_dir, "Z"),
             ],
+            print_commands=True,
         )
 
         # Save checksum in file

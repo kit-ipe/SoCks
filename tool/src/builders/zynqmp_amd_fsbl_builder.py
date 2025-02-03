@@ -165,6 +165,7 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
                 (self._repo_dir, "Z"),
                 (self._work_dir, "Z"),
             ],
+            print_commands=True,
         )
 
         # Create new branch self._git_local_ref_branch. This branch is used as a reference where all existing patches are applied to the git sources
@@ -227,6 +228,7 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
                     (pathlib.Path(self._amd_tools_path), "ro"),
                     (self._repo_dir, "Z"),
                 ],
+                print_commands=True,
                 logfile=self._block_temp_dir / "build.log",
                 output_scrolling=True,
             )

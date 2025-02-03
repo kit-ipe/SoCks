@@ -260,6 +260,7 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
             self.container_executor.exec_sh_commands(
                 commands=uboot_build_commands,
                 dirs_to_mount=[(self._repo_dir, "Z")],
+                print_commands=True,
                 logfile=self._block_temp_dir / "build.log",
                 output_scrolling=True,
             )

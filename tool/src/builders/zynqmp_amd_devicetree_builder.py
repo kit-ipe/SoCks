@@ -176,6 +176,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
                 (self._repo_dir, "Z"),
                 (self._base_work_dir, "Z"),
             ],
+            print_commands=True,
         )
 
         # Save checksum in file
@@ -243,6 +244,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             self.container_executor.exec_sh_commands(
                 commands=dt_build_commands,
                 dirs_to_mount=[(self._base_work_dir, "Z")],
+                print_commands=True,
                 logfile=self._block_temp_dir / "build_devicetree.log",
                 output_scrolling=True,
             )
@@ -337,6 +339,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             self.container_executor.exec_sh_commands(
                 commands=dt_overlays_build_commands,
                 dirs_to_mount=[(self._overlay_work_dir, "Z")],
+                print_commands=True,
                 logfile=self._block_temp_dir / "build_dt_overlays.log",
                 output_scrolling=True,
             )

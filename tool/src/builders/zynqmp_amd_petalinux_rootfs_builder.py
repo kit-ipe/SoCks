@@ -491,7 +491,9 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             ]
 
             self.container_executor.exec_sh_commands(
-                commands=base_rootfs_build_commands, dirs_to_mount=[(self._repo_dir, "Z")]
+                commands=base_rootfs_build_commands,
+                dirs_to_mount=[(self._repo_dir, "Z")],
+                print_commands=True,
             )
 
             extract_rootfs_commands = [
@@ -570,6 +572,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         self.container_executor.exec_sh_commands(
             commands=add_kmodules_commands,
             dirs_to_mount=[(self._dependencies_dir, "Z"), (self._work_dir, "Z")],
+            print_commands=True,
             run_as_root=True,
         )
 
@@ -657,6 +660,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             self.container_executor.exec_sh_commands(
                 commands=archive_build_commands,
                 dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
                 run_as_root=True,
             )
 

@@ -185,7 +185,9 @@ class Versal_AMD_Image_Builder(AMD_Builder):
             ]
 
             self.container_executor.exec_sh_commands(
-                commands=bootscr_img_build_commands, dirs_to_mount=[(self._resources_dir, "Z"), (self._output_dir, "Z")]
+                commands=bootscr_img_build_commands,
+                dirs_to_mount=[(self._resources_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
             )
 
     def boot_img(self):
@@ -280,4 +282,5 @@ class Versal_AMD_Image_Builder(AMD_Builder):
                     (self._work_dir, "Z"),
                     (self._output_dir, "Z"),
                 ],
+                print_commands=True,
             )
