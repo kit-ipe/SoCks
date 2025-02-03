@@ -1,7 +1,6 @@
 import os
 import typing
 import pathlib
-import shutil
 import pydantic
 import yaml
 
@@ -16,12 +15,12 @@ class Build_Validator:
     def __init__(self, project_cfg: pydantic.BaseModel, model_class: type[object], block_temp_dir: pathlib.Path):
         self._project_cfg = project_cfg
 
-        # File with the project configuration that was used for this block in the last build sequence
+        # File with the project configuration that was used in the last build sequence
         self._prev_build_cfg_file = block_temp_dir / ".previous_build_config.yml"
-        # File with the project configuration that was used for this block in the last prepare sequence
+        # File with the project configuration that was used in the last prepare sequence
         self._prev_prep_cfg_file = block_temp_dir / ".previous_prepare_config.yml"
 
-        # Read the project configuration that was used for this block in the last build or prepare sequence, if any
+        # Read the project configuration that was used in the last build or prepare sequence, if any
         try:
             with self._prev_build_cfg_file.open("r") as f:
                 prev_cfg = yaml.safe_load(f)
@@ -340,8 +339,8 @@ class Build_Validator:
             else:
                 previous_cfg_dict = self._prev_build_cfg.model_dump()
         except:
-            # A rebuild is required if the project configuration that was used for the last build or
-            # prepare sequence cannot be loaded
+            # A rebuild is required if no project configuration that was used for a last build or
+            # prepare sequence can be loaded
             return True
 
         for key_list in keys:
@@ -360,9 +359,7 @@ class Build_Validator:
 
     def _save_project_cfg(self, file: pathlib.Path):
         """
-        Writes the project configuration that is currently used for this block to a file. The file is only written
-        if the current config is different to the one already saved in the file. This makes it possible to use
-        the checksum of this file to check when the project configuration of this block was last changed.
+        Writes the project configuration that is currently used to a file.
 
         Args:
             file:
@@ -375,15 +372,6 @@ class Build_Validator:
             None
         """
 
-        # Create a list of lists with all top level keys of the block specific project config
-        cfg_keys = list(self._project_cfg.model_dump().keys())
-        cfg_key_lists = [[key] for key in cfg_keys]
-
-        # Compare the entire block specific project config
-        if not self.check_rebuild_bc_config(keys=cfg_key_lists, accept_prep=True):
-            # The file does not need to be written if the current config is the same as the old one
-            return
-
         # Write to file
         with file.open("w") as f:
             f.write("# This file was created automatically, please do not modify!\n")
@@ -391,7 +379,7 @@ class Build_Validator:
 
     def save_project_cfg_prepare(self):
         """
-        Writes the project configuration that is currently used for preparing this block to a file.
+        Writes the project configuration that is currently being used for preparation to a file.
 
         Args:
             None
@@ -402,16 +390,12 @@ class Build_Validator:
         Raises:
             None
         """
-
-        # Rename config file so that it can still be used
-        if self._prev_build_cfg_file.exists():
-            shutil.move(self._prev_build_cfg_file, self._prev_prep_cfg_file)
 
         self._save_project_cfg(self._prev_prep_cfg_file)
 
     def save_project_cfg_build(self):
         """
-        Writes the project configuration that is currently used for building this block to a file.
+        Writes the project configuration that is currently being used for building to a file.
 
         Args:
             None
@@ -423,8 +407,21 @@ class Build_Validator:
             None
         """
 
-        # Rename config file so that it can still be used
-        if self._prev_prep_cfg_file.exists():
-            shutil.move(self._prev_prep_cfg_file, self._prev_build_cfg_file)
-
         self._save_project_cfg(self._prev_build_cfg_file)
+
+    def del_project_cfg(self):
+        """
+        Deletes all files that contain previously used project configuration files.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._prev_prep_cfg_file.unlink(missing_ok=True)
+        self._prev_build_cfg_file.unlink(missing_ok=True)

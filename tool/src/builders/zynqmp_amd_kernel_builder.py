@@ -65,6 +65,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
         if self.block_cfg.source == "build":
             self.block_cmds["prepare"].extend(
                 [
+                    self._build_validator.del_project_cfg,
                     self.container_executor.build_container_image,
                     self.init_repo,
                     self.apply_patches,
@@ -72,9 +73,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
                     self._build_validator.save_project_cfg_prepare,
                 ]
             )
-            self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
-            )  # Append list without save_project_cfg_prepare
+            self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend(
                 [
                     self.build_kernel,

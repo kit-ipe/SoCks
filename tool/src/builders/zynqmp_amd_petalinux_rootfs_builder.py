@@ -77,6 +77,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
         }
         self.block_cmds["prepare"].extend(
             [
+                self._build_validator.del_project_cfg,
                 self.container_executor.build_container_image,
                 self.import_dependencies,
                 self._build_validator.save_project_cfg_prepare,
@@ -97,9 +98,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
             self.block_cmds["prepare"] = [  # Move save_project_cfg_prepare to the end of the new list
                 func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare
             ] + [self.init_repo, self.apply_patches, self.yocto_init, self._build_validator.save_project_cfg_prepare]
-            self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
-            )  # Append list without save_project_cfg_prepare
+            self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend(
                 [
                     self.build_base_rootfs,
@@ -109,9 +108,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            self.block_cmds["prebuild"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
-            )  # Append list without save_project_cfg_prepare
+            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"])
             self.block_cmds["prebuild"].extend(
                 [
                     self.build_base_rootfs,
@@ -125,9 +122,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(Builder):
                 [self.container_executor.build_container_image, self.start_container]
             )
         elif self.block_cfg.source == "import":
-            self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
-            )  # Append list without save_project_cfg_prepare
+            self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend(
                 [
                     self.import_prebuilt,

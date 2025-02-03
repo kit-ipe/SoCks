@@ -68,6 +68,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         self.block_cmds = {"prepare": [], "build": [], "prebuild": [], "clean": [], "start-container": []}
         self.block_cmds["prepare"].extend(
             [
+                self._build_validator.del_project_cfg,
                 self.container_executor.build_container_image,
                 self.import_dependencies,
                 self.container_executor.enable_multiarch,
@@ -85,9 +86,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
-            )  # Append list without save_project_cfg_prepare
+            self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend(
                 [
                     self.build_base_rootfs,
@@ -100,9 +99,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            self.block_cmds["prebuild"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
-            )  # Append list without save_project_cfg_prepare
+            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"])
             self.block_cmds["prebuild"].extend(
                 [
                     self.build_base_rootfs,
@@ -115,9 +112,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 [self.container_executor.build_container_image, self.start_container]
             )
         elif self.block_cfg.source == "import":
-            self.block_cmds["build"].extend(
-                [func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare]
-            )  # Append list without save_project_cfg_prepare
+            self.block_cmds["build"].extend(self.block_cmds["prepare"])
             self.block_cmds["build"].extend(
                 [
                     self.import_prebuilt,
