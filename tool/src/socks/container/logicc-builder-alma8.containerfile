@@ -37,7 +37,7 @@ WORKDIR /home/$user_name
 # Install logicc
 RUN mkdir -p ~/tools
 RUN mkdir -p -m 0700 ~/.ssh && ssh-keyscan gitlab.kit.edu >> ~/.ssh/known_hosts
-RUN --mount=type=ssh,uid=$user_id cd ~/tools; git clone git@gitlab.kit.edu:kit/ipe-sdr/ipe-sdr-dev/hardware/logicc.git
+RUN --mount=type=ssh,uid=$user_id cd ~/tools; git clone git@gitlab.kit.edu:kit/ipe-sdr/ipe-sdr-dev/hardware/logicc.git --branch vivado-2022-2-migration
 RUN mkdir -p ~/py_envs
 RUN python3 -m venv ~/py_envs/logicc
 RUN source ~/py_envs/logicc/bin/activate; cd ~/tools/logicc; pip install -U .

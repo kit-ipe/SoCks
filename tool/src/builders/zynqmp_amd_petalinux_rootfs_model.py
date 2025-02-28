@@ -22,7 +22,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Block_Project_Model(Block_Project_Model):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     build_srcs: Build_Srcs_Model = Block_Project_Model_Default_Fields.build_srcs
-    patches: Optional[list[str]] = Block_Project_Model_Default_Fields.patches
+    patches: Optional[list[ZynqMP_AMD_PetaLinux_RootFS_Patch_Model]] = Block_Project_Model_Default_Fields.patches
     add_build_info: bool = Block_Project_Model_Default_Fields.add_build_info
     dependencies: ZynqMP_AMD_PetaLinux_RootFS_Dependencies_Model = Block_Project_Model_Default_Fields.dependencies
 

@@ -1,21 +1,14 @@
 import sys
 import pathlib
-import hashlib
-import tarfile
-from dateutil import parser
-import urllib
-import requests
-import validators
-import tqdm
 import inspect
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
-from builders.builder import Builder
+from builders.aarch64_rootfs_builder import AArch64_RootFS_Builder
 from builders.zynqmp_almalinux_rootfs_model import ZynqMP_AlmaLinux_RootFS_Model
 
 
-class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
+class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
     """
     AlmaLinux root file system builder class
     """
@@ -25,7 +18,6 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
         project_cfg: dict,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
-        block_id: str = "rootfs",
         block_description: str = "Build an AlmaLinux root file system",
         model_class: type[object] = ZynqMP_AlmaLinux_RootFS_Model,
     ):
@@ -34,39 +26,37 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             project_cfg=project_cfg,
             socks_dir=socks_dir,
             project_dir=project_dir,
-            block_id=block_id,
             block_description=block_description,
             model_class=model_class,
         )
 
-        self._rootfs_name = f"almalinux{self.block_cfg.project.release}_zynqmp_{self.project_cfg.project.name}"
-        self._target_arch = "aarch64"
-
         # Project directories
         self._repo_dir = self._block_src_dir / "resources"
-        self._build_dir = self._work_dir / self._rootfs_name
 
-        # Project files
-        # File for version & build info tracking
-        self._build_info_file = self._work_dir / "fs_build_info"
-        # File for saving the checksum of the Kernel module archive used
-        self._source_kmods_md5_file = self._work_dir / "source_kmodules.md5"
+    @property
+    def _rootfs_name(self):
+        return f"almalinux{self.block_cfg.project.release}_zynqmp_{self.project_cfg.project.name}"
 
+    @property
+    def _block_deps(self):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.
         # Optional dependencies can also be listed here. They will be ignored if
         # they are not listed in the project configuration.
-        self._block_deps = {
+        block_deps = {
             "kernel": [".*"],
             "devicetree": ["system.dtb", "system.dts"],
             "vivado": [".*.bit"],
         }
+        return block_deps
 
+    @property
+    def block_cmds(self):
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
-        self.block_cmds = {"prepare": [], "build": [], "prebuild": [], "clean": [], "start-container": []}
-        self.block_cmds["prepare"].extend(
+        block_cmds = {"prepare": [], "build": [], "prebuild": [], "clean": [], "start-container": []}
+        block_cmds["prepare"].extend(
             [
                 self._build_validator.del_project_cfg,
                 self.container_executor.build_container_image,
@@ -75,7 +65,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 self._build_validator.save_project_cfg_prepare,
             ]
         )
-        self.block_cmds["clean"].extend(
+        block_cmds["clean"].extend(
             [
                 self.container_executor.build_container_image,
                 self.clean_download,
@@ -86,8 +76,8 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend(
+            block_cmds["build"].extend(block_cmds["prepare"])
+            block_cmds["build"].extend(
                 [
                     self.build_base_rootfs,
                     self.add_pd_layers,
@@ -99,8 +89,8 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"])
-            self.block_cmds["prebuild"].extend(
+            block_cmds["prebuild"].extend(block_cmds["prepare"])
+            block_cmds["prebuild"].extend(
                 [
                     self.build_base_rootfs,
                     self.build_archive_prebuilt,
@@ -108,12 +98,12 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            self.block_cmds["start-container"].extend(
+            block_cmds["start-container"].extend(
                 [self.container_executor.build_container_image, self.start_container]
             )
         elif self.block_cfg.source == "import":
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend(
+            block_cmds["build"].extend(block_cmds["prepare"])
+            block_cmds["build"].extend(
                 [
                     self.import_prebuilt,
                     self.add_pd_layers,
@@ -125,23 +115,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-
-    def validate_srcs(self):
-        """
-        Check whether all sources required to build this block are present.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        super().validate_srcs()
-        self.import_src_tpl()
+        return block_cmds
 
     def build_base_rootfs(self):
         """
@@ -242,139 +216,6 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             self._build_log.del_logged_timestamp(identifier=f"function-add_bt_layer-success")
             self._build_log.del_logged_timestamp(identifier=f"function-add_users-success")
 
-    def add_pd_layers(self):
-        """
-        Adds predefined file system layers to the root file system.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        # Check whether a RootFS is present
-        if not self._build_dir.is_dir():
-            pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
-            sys.exit(1)
-
-        # Check whether the predefined file system layers need to be added
-        layers_already_added = (
-            self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
-            != 0.0
-        )
-        if layers_already_added and not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._repo_dir / "predefined_fs_layers"],
-            out_timestamp=self._build_log.get_logged_timestamp(
-                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
-            ),
-        ):
-            pretty_print.print_build(
-                "No need to add predefined file system layers. No altered source files detected..."
-            )
-            return
-
-        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
-            pretty_print.print_build("Adding predefined file system layers...")
-
-            add_pd_layers_commands = [
-                f"cd {self._repo_dir / 'predefined_fs_layers'}",
-                f'for dir in ./*; do "$dir"/install_layer.sh {self._build_dir}/; done',
-            ]
-
-            # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.container_executor.exec_sh_commands(
-                commands=add_pd_layers_commands,
-                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
-                print_commands=True,
-                run_as_root=True,
-            )
-
-    def add_bt_layer(self):
-        """
-        Adds external files and directories created at build time.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        # Check whether a RootFS is present
-        if not self._build_dir.is_dir():
-            pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
-            sys.exit(1)
-
-        # Check whether the layer needs to be added
-        if not self.block_cfg.project.build_time_fs_layer:
-            pretty_print.print_info(
-                f"'rootfs -> project -> build_time_fs_layer' not specified. No files and directories created at build time will be added."
-            )
-            return
-        layer_already_added = (
-            self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
-            != 0.0
-        )
-        if (
-            layer_already_added
-            and not Build_Validator.check_rebuild_bc_timestamp(
-                src_search_list=[self._dependencies_dir],
-                out_timestamp=self._build_log.get_logged_timestamp(
-                    identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
-                ),
-            )
-            and not self._build_validator.check_rebuild_bc_config(
-                keys=[["blocks", self.block_id, "project", "build_time_fs_layer"]]
-            )
-        ):
-            pretty_print.print_build(
-                "No need to add external files and directories created at build time. No altered source files detected..."
-            )
-            return
-
-        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
-            pretty_print.print_build("Adding external files and directories created at build time...")
-
-            add_bt_layer_commands = []
-            for item in self.block_cfg.project.build_time_fs_layer:
-                if item.src_block not in self._block_deps.keys():
-                    pretty_print.print_error(
-                        f"Source block '{item.src_block}' specified in 'rootfs -> project -> build_time_fs_layer' is invalid."
-                    )
-                    sys.exit(1)
-                srcs = (self._dependencies_dir / item.src_block).glob(item.src_name)
-                if not srcs:
-                    pretty_print.print_error(
-                        f"Source item '{item.src_name}' specified in 'rootfs -> project -> build_time_fs_layer' could not be found in the block package of source block '{item.src_block}'."
-                    )
-                    sys.exit(1)
-                add_bt_layer_commands.append(f"mkdir -p {self._build_dir}/{item.dest_path}")
-                for src in srcs:
-                    add_bt_layer_commands.append(f"cp -r {src} {self._build_dir}/{item.dest_path}/{item.dest_name}")
-                    if item.dest_owner_group:
-                        add_bt_layer_commands.append(
-                            f"chown -R {item.dest_owner_group} {self._build_dir}/{item.dest_path}/{item.dest_name}"
-                        )
-                    if item.dest_permissions:
-                        add_bt_layer_commands.append(
-                            f"chmod -R {item.dest_permissions} {self._build_dir}/{item.dest_path}/{item.dest_name}"
-                        )
-
-            # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.container_executor.exec_sh_commands(
-                commands=add_bt_layer_commands,
-                dirs_to_mount=[(self._repo_dir, "Z"), (self._dependencies_dir, "Z"), (self._work_dir, "Z")],
-                print_commands=True,
-                run_as_root=True,
-            )
-
     def add_users(self):
         """
         Adds users to the root file system.
@@ -440,79 +281,6 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
                 run_as_root=True,
             )
 
-    def add_kmodules(self):
-        """
-        Adds kernel modules to the root file system.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        kmods_archive = self._dependencies_dir / "kernel" / "kernel_modules.tar.gz"
-
-        # Skip this function if no kernel modules are available
-        if not kmods_archive.is_file():
-            pretty_print.print_info(f"File {kmods_archive} not found. No kernel modules are added.")
-            if any((self._build_dir / "lib" / "modules").iterdir()):
-                delete_old_kmodules_commands = [f"rm -rf {self._build_dir}/lib/modules/*"]
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                self.container_executor.exec_sh_commands(
-                    commands=delete_old_kmodules_commands,
-                    dirs_to_mount=[(self._work_dir, "Z")],
-                    run_as_root=True,
-                )
-            return
-
-        # Check whether a RootFS is present
-        if not self._build_dir.is_dir():
-            pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
-            sys.exit(1)
-
-        # Calculate md5 of the provided file
-        md5_new_file = hashlib.md5(kmods_archive.read_bytes()).hexdigest()
-        # Read md5 of previously used Kernel module archive, if any
-        md5_existsing_file = 0
-        if self._source_kmods_md5_file.is_file():
-            with self._source_kmods_md5_file.open("r") as f:
-                md5_existsing_file = f.read()
-
-        # Check whether the Kernel modules need to be added
-        if md5_existsing_file == md5_new_file:
-            pretty_print.print_build("No need to add Kernel Modules. No altered source files detected...")
-            return
-
-        pretty_print.print_build("Adding Kernel Modules...")
-
-        add_kmodules_commands = [
-            f"cd {self._work_dir}",
-            f"tar -xzf {kmods_archive}",
-            f"chown -R root:root lib",
-            f"chmod -R 000 lib",
-            f"chmod -R u=rwX,go=rX lib",
-            f"rm -rf {self._build_dir}/lib/modules",
-            f"mkdir -p {self._build_dir}/lib/modules",
-            f"mv lib/modules/* {self._build_dir}/lib/modules/",
-            f"rm -rf lib",
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.container_executor.exec_sh_commands(
-            commands=add_kmodules_commands,
-            dirs_to_mount=[(self._dependencies_dir, "Z"), (self._work_dir, "Z")],
-            print_commands=True,
-            run_as_root=True,
-        )
-
-        # Save checksum in file
-        with self._source_kmods_md5_file.open("w") as f:
-            print(md5_new_file, file=f, end="")
-
     def build_archive(self, prebuilt: bool = False):
         """
         Packs the entire rootfs in a archive.
@@ -529,201 +297,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(Builder):
             None
         """
 
-        # Check if the archive needs to be built
-        if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._work_dir],
-            out_timestamp=self._build_log.get_logged_timestamp(
-                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
-            ),
-        ) and not self._build_validator.check_rebuild_bc_config(
-            keys=[["blocks", self.block_id, "project"], ["project", "name"]]
-        ):
-            pretty_print.print_build("No need to rebuild archive. No altered source files detected...")
-            return
-
-        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
-            self.clean_output()
-            self._output_dir.mkdir(parents=True)
-
-            pretty_print.print_build("Building archive...")
-
-            if self.block_cfg.project.add_build_info == True:
-                # Add build information file
-                with self._build_info_file.open("w") as f:
-                    print("# Filesystem build info (autogenerated)\n\n", file=f, end="")
-                    print(self._compose_build_info(), file=f, end="")
-
-                add_build_info_commands = [
-                    f"mv {self._build_info_file} {self._build_dir}/etc/fs_build_info",
-                    f"chmod 0444 {self._build_dir}/etc/fs_build_info",
-                ]
-
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                self.container_executor.exec_sh_commands(
-                    commands=add_build_info_commands,
-                    dirs_to_mount=[(self._work_dir, "Z")],
-                    run_as_root=True,
-                )
-            else:
-                # Remove existing build information file
-                clean_build_info_commands = [f"rm -f {self._build_dir}/etc/fs_build_info"]
-
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
-                self.container_executor.exec_sh_commands(
-                    commands=clean_build_info_commands,
-                    dirs_to_mount=[(self._work_dir, "Z")],
-                    run_as_root=True,
-                )
-
-            if prebuilt:
-                archive_name = f"almalinux{self.block_cfg.project.release}_zynqmp_pre-built"
-            else:
-                archive_name = self._rootfs_name
-
-            # Tar was tested with three compression options:
-            # Option	Size	Duration
-            # --xz	872M	real	17m59.080s
-            # -I pxz	887M	real	3m43.987s
-            # -I pigz	1.3G	real	0m20.747s
-            archive_build_commands = [
-                f"cd {self._build_dir}",
-                f"tar -I pxz --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.tar.xz'} ./",
-                f"if id {self._host_user} >/dev/null 2>&1; then "
-                f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.tar.xz'}; "
-                f"fi",
-            ]
-
-            # The root user is used in this container. This is necessary in order to build a RootFS image.
-            self.container_executor.exec_sh_commands(
-                commands=archive_build_commands,
-                dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
-                print_commands=True,
-                run_as_root=True,
-            )
-
-    def build_archive_prebuilt(self):
-        """
-        Packs the entire pre-built rootfs in a archive.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        self.build_archive(prebuilt=True)
-
-    def import_prebuilt(self):
-        """
-        Imports a pre-built root file system and overwrites the existing one.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        # Get path of the pre-built root file system
-        if self.block_cfg.project.import_src is None:
-            pretty_print.print_error(
-                f"The property blocks/{self.block_id}/project/import_src is required to import the block, but it is not set."
-            )
-            sys.exit(1)
-        elif urllib.parse.urlparse(self.block_cfg.project.import_src).scheme == "file":
-            prebuilt_block_package = pathlib.Path(urllib.parse.urlparse(self.block_cfg.project.import_src).path)
-        elif validators.url(self.block_cfg.project.import_src):
-            self._download_prebuilt()
-            downloads = list(self._download_dir.glob("*"))
-            # Check if there is more than one file in the download directory
-            if len(downloads) != 1:
-                pretty_print.print_error(f"Not exactly one file in {self._download_dir}")
-                sys.exit(1)
-            prebuilt_block_package = downloads[0]
+        if prebuilt:
+            archive_name = f"almalinux{self.block_cfg.project.release}_zynqmp_pre-built"
         else:
-            raise ValueError(
-                "The following string is not a valid reference to a block package: "
-                f"{self.block_cfg.project.import_src}. Only URI schemes 'https', 'http', and 'file' "
-                "are supported."
-            )
+            archive_name = self._rootfs_name
 
-        # Check whether the file is a supported archive
-        if prebuilt_block_package.name.partition(".")[2] not in ["tar.gz", "tgz", "tar.xz", "txz"]:
-            pretty_print.print_error(
-                f'Unable to import block package. The following archive type is not supported: {prebuilt_block_package.name.partition(".")[2]}'
-            )
-            sys.exit(1)
-
-        # Calculate md5 of the provided file
-        md5_new_file = hashlib.md5(prebuilt_block_package.read_bytes()).hexdigest()
-        # Read md5 of previously used file, if any
-        md5_existsing_file = 0
-        if self._source_pb_md5_file.is_file():
-            with self._source_pb_md5_file.open("r") as f:
-                md5_existsing_file = f.read()
-
-        # Check if the pre-built root file system needs to be imported
-        if md5_existsing_file == md5_new_file:
-            pretty_print.print_build(
-                "No need to import the pre-built root file system. No altered source files detected..."
-            )
-            return
-
-        self.clean_work()
-        self._work_dir.mkdir(parents=True)
-
-        pretty_print.print_build("Importing pre-built root file system...")
-
-        # Extract pre-built files
-        with tarfile.open(prebuilt_block_package, "r:*") as archive:
-            content = archive.getnames()
-            # Filter the list to get only .tar.xz and .tar.gz files
-            tar_files = [f for f in content if f.endswith((".tar.xz", ".tar.gz"))]
-            if len(tar_files) != 1:
-                pretty_print.print_error(
-                    f"There are {len(tar_files)} *.tar.xz and *.tar.gz files in archive {prebuilt_block_package}. Expected was 1."
-                )
-                sys.exit(1)
-            prebuilt_rootfs_archive = tar_files[0]
-            # Extract rootfs archive to the work directory
-            archive.extract(member=prebuilt_rootfs_archive, path=self._work_dir)
-
-        extract_pb_rootfs_commands = [
-            f"mkdir -p {self._build_dir}",
-            f"tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._build_dir}",
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
-        self.container_executor.exec_sh_commands(
-            commands=extract_pb_rootfs_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
-        )
-
-        # Save checksum in file
-        with self._source_pb_md5_file.open("w") as f:
-            print(md5_new_file, file=f, end="")
-
-        # Delete imported, pre-built rootfs archive
-        (self._work_dir / prebuilt_rootfs_archive).unlink()
-
-    def clean_work(self):
-        """
-        This function cleans the work directory as root user.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        super().clean_work(as_root=True)
+        self._build_archive(archive_name=archive_name)
