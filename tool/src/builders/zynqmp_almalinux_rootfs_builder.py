@@ -98,9 +98,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.start_container]
-            )
+            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
         elif self.block_cfg.source == "import":
             block_cmds["build"].extend(block_cmds["prepare"])
             block_cmds["build"].extend(

@@ -114,9 +114,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(AArch64_RootFS_Builder):
                 ]
             )
             block_cmds["create-patches"].extend([self.create_patches])
-            block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.start_container]
-            )
+            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
         elif self.block_cfg.source == "import":
             block_cmds["build"].extend(block_cmds["prepare"])
             block_cmds["build"].extend(
