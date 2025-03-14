@@ -46,6 +46,32 @@ SoCks supports tab completion, but you have to enable it manually in every new s
 $ eval "$(register-python-argcomplete socks)"
 ```
 
+## Development flow
+
+### Creating patch files
+
+1. Fetch the source repo of the block, if it does not already exist:
+    ```
+    $ socks fsbl prepare
+    ```
+
+2. Enter the local repo and do the modifications you would like to do:
+    ```
+    $ cd temp/fsbl/repo/runtime-generated
+    $ nano xfsbl_hooks.c
+    ```
+
+3. Create one or multiple commits:
+    ```
+    $ git add xfsbl_hooks.c
+    $ git commit -m "Add a meaningful description here"
+    ```
+
+4. Move back to the root directory of the SoCks project and create the patches:
+    ```
+    $ socks fsbl create-patches
+    ```
+
 ## Available Builders (ZynqMP)
 
 ### ZynqMP_AMD_ATF_Builder
