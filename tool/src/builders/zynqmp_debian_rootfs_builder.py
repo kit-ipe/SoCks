@@ -5,12 +5,12 @@ import inspect
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
 from builders.aarch64_rootfs_builder import AArch64_RootFS_Builder
-from builders.zynqmp_almalinux_rootfs_model import ZynqMP_AlmaLinux_RootFS_Model
+from builders.zynqmp_debian_rootfs_model import ZynqMP_Debian_RootFS_Model
 
 
-class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
+class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
     """
-    AlmaLinux root file system builder class
+    Debian root file system builder class
     """
 
     def __init__(
@@ -18,8 +18,8 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
         project_cfg: dict,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
-        block_description: str = "Build an AlmaLinux root file system",
-        model_class: type[object] = ZynqMP_AlmaLinux_RootFS_Model,
+        block_description: str = "Build an Debian root file system",
+        model_class: type[object] = ZynqMP_Debian_RootFS_Model,
     ):
 
         super().__init__(
@@ -30,18 +30,14 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
             model_class=model_class,
         )
 
-        self._target_arch = "aarch64"
+        self._target_arch = "arm64"
 
         # Project directories
         self._repo_dir = self._block_src_dir / "resources"
 
-        # Project files
-        # dnf configuration file to be used to build the file system for the target architecture
-        self._dnf_conf_file = self._repo_dir / "dnf_build_time.conf"
-
     @property
     def _rootfs_name(self):
-        return f"almalinux{self.block_cfg.project.release}_zynqmp_{self.project_cfg.project.name}"
+        return f"debian_{self.block_cfg.project.release}_zynqmp_{self.project_cfg.project.name}"
 
     @property
     def _block_deps(self):
@@ -141,12 +137,16 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
 
         # Check whether the base root file system needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._dnf_conf_file, mod_base_install_script],
+            src_search_list=[mod_base_install_script],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ) and not self._build_validator.check_rebuild_bc_config(
-            keys=[["blocks", self.block_id, "project"], ["project", "name"]]
+            keys=[
+                ["blocks", self.block_id, "project", "release"],
+                ["blocks", self.block_id, "project", "mirror"],
+                ["project", "name"],
+            ]
         ):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
@@ -154,28 +154,20 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.clean_work()
             self._work_dir.mkdir(parents=True, exist_ok=True)
-
-            if not self._dnf_conf_file.is_file():
-                pretty_print.print_error(f"The following dnf configuration file is required: {self._dnf_conf_file}")
-                sys.exit(1)
 
             pretty_print.print_build("Building the base root file system...")
 
-            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
             base_rootfs_build_commands = [
                 # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
-                # Clean all cache files generated from repository metadata
-                dnf_base_command + "clean all",
-                # Update all the installed packages
-                dnf_base_command + "update",
-                'printf "\nInstall the base os via dnf group install...\n\n"',
+                'printf "\nInstall the base os via debootstrap...\n\n"',
                 # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
-                dnf_base_command + 'groupinstall --with-optional "Minimal Install"',
+                f"debootstrap --arch={self._target_arch} {self.block_cfg.project.release} {self._build_dir} {self.block_cfg.project.mirror}",
             ]
 
             if mod_base_install_script.is_file():
@@ -183,7 +175,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
                     [
                         'printf "\nCall user-defined script to make changes to the base os...\n\n"',
                         f"chmod a+x {mod_base_install_script}",
-                        f"{mod_base_install_script} {self._target_arch} {self.block_cfg.project.release} {self._dnf_conf_file} {self._build_dir}",
+                        f"{mod_base_install_script} {self._target_arch} {self.block_cfg.project.release} {self._build_dir}",
                     ]
                 )
             else:
@@ -211,7 +203,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
 
     def add_extra_packages(self):
         """
-        Installs user defined rpm packages.
+        Installs user defined deb packages.
 
         Args:
             None
@@ -229,9 +221,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
             sys.exit(1)
 
         # Check whether extra packages are provided
-        if not self.block_cfg.project.extra_rpms:
+        if not self.block_cfg.project.extra_debs:
             pretty_print.print_info(
-                f"'rootfs -> project -> extra_rpms' not specified. No additional rpm packages will be installed."
+                f"'rootfs -> project -> extra_debs' not specified. No additional deb packages will be installed."
             )
             return
 
@@ -241,29 +233,23 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
             != 0.0
         )
         if packages_already_added and not self._build_validator.check_rebuild_bc_config(
-            keys=[["blocks", self.block_id, "project", "extra_rpms"]]
+            keys=[["blocks", self.block_id, "project", "extra_debs"]]
         ):
             pretty_print.print_build("No need to install extra packages. No altered source files detected...")
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
-            if not self._dnf_conf_file.is_file():
-                pretty_print.print_error(f"The following dnf configuration file is required: {self._dnf_conf_file}")
-                sys.exit(1)
-
             pretty_print.print_build("Installing extra packages...")
 
-            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
+            add_pkgs_str = f"apt update && apt install -y " + " ".join(self.block_cfg.project.extra_debs)
             add_packages_commands = [
                 # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
-                # Update all the installed packages
-                dnf_base_command + "update",
                 # Installing user defined packages
-                dnf_base_command + "install " + " ".join(self.block_cfg.project.extra_rpms),
+                f'chroot {self._build_dir} /bin/bash -c "{add_pkgs_str}"',
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
@@ -271,7 +257,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
-                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                dirs_to_mount=[(self._work_dir, "Z")],
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_extra_packages.log",
@@ -322,7 +308,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
             for user in self.block_cfg.project.users:
                 add_user_str = ""
                 if user.name != "root":
-                    add_user_str = add_user_str + f"useradd -m {user.name}; "
+                    add_user_str = add_user_str + f"useradd -s /bin/bash -m {user.name}; "
                 for group in user.groups:
                     add_user_str = add_user_str + f"usermod -a -G {group} {user.name} && "
                 # Escape all $ symbols in the hash. I know this is ugly, but this is the only way I have found
@@ -360,8 +346,8 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AArch64_RootFS_Builder):
         """
 
         if prebuilt:
-            archive_name = f"almalinux{self.block_cfg.project.release}_zynqmp_pre-built"
+            archive_name = f"debian_{self.block_cfg.project.release}_zynqmp_pre-built"
         else:
             archive_name = self._rootfs_name
 
-        self._build_archive(tar_compress_param="-I pxz", archive_name=archive_name, file_extension="tar.xz")
+        self._build_archive(tar_compress_param="-I pixz", archive_name=archive_name, file_extension="tar.xz")

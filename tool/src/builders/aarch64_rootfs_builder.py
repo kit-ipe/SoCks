@@ -36,8 +36,6 @@ class AArch64_RootFS_Builder(Builder, ABC):
             block_id=block_id,
         )
 
-        self._target_arch = "aarch64"
-
         # Project directories
         self._build_dir = self._work_dir / self._rootfs_name
 
@@ -302,13 +300,22 @@ class AArch64_RootFS_Builder(Builder, ABC):
         with self._source_kmods_md5_file.open("w") as f:
             print(md5_new_file, file=f, end="")
 
-    def _build_archive(self, archive_name: str):
+    def _build_archive(self, tar_compress_param: str, archive_name: str, file_extension: str):
         """
-        Packs the entire rootfs in a archive.
+        Packs the entire rootfs in an archive.
 
         Args:
+            tar_compress_param:
+                The compression option to be used by tar.
+                Tar was tested with three compression options:
+                    Option      Size    Duration
+                    "--xz"      872M    real	17m59.080s
+                    "-I pxz"    887M    real	3m43.987s
+                    "-I pigz"   1.3G    real	0m20.747s
             archive_name:
                 Name of the archive.
+            file_extension:
+                The extension to be added to the archive name. E.g. "tar.gz" or "tar.xz"
 
         Returns:
             None
@@ -363,16 +370,11 @@ class AArch64_RootFS_Builder(Builder, ABC):
                     run_as_root=True,
                 )
 
-            # Tar was tested with three compression options:
-            # Option	Size	Duration
-            # --xz	872M	real	17m59.080s
-            # -I pxz	887M	real	3m43.987s
-            # -I pigz	1.3G	real	0m20.747s
             archive_build_commands = [
                 f"cd {self._build_dir}",
-                f"tar -I pxz --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.tar.xz'} ./",
+                f"tar {tar_compress_param} --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.{file_extension}'} ./",
                 f"if id {self._host_user} >/dev/null 2>&1; then "
-                f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.tar.xz'}; "
+                f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.{file_extension}'}; "
                 f"fi",
             ]
 
@@ -387,7 +389,7 @@ class AArch64_RootFS_Builder(Builder, ABC):
     @abstractmethod
     def build_archive(self, prebuilt: bool):
         """
-        Packs the entire rootfs in a archive.
+        Packs the entire rootfs in an archive.
 
         Args:
             prebuilt:

@@ -56,8 +56,8 @@ blocks:
     builder: "ZynqMP_AlmaLinux_RootFS_Builder"
     project:
       release: "9"
-      extra_rpms: ["gcc", "gcc-c++", "make", "dhclient", "python3-devel", "python3-click", "python3-numpy", "python3-pyserial", "glibc-headers", "glibc-devel", "zlib-devel", "libuuid ", "libuuid-devel", "pam-devel", "openldap-devel ", "pugixml-devel", "which", "gdb", "expect", "net-tools", "boost-chrono", "boost-regex", "boost-thread", "boost-filesystem", "boost-system", "boost-devel", "boost-program-options", "readline-devel", "emacs", "nano", "rsync", "git", "lighttpd", "strace", "minicom", "i2c-tools", "screen", "chrony", "rpm-build-libs", "rpm-build", "python3-pip", "nss", "nss-devel", "freeipmi", "cmake3", "log4cplus-devel", "yaml-cpp-devel", "msgpack-devel", "cppzmq-devel", "dosfstools", "libxml2-devel", "python3-libxml2", "python3-lxml", "libxml2 ", "libxslt ", "libxslt-devel", "python3-psutil", "python3-setuptools-wheel", "llvm-toolset", "dnf", "smash*"]
-      # alma8 # extra_rpms: ["gcc", "gcc-c++", "make", "dhclient", "python3-devel", "python3-click", "python3-numpy", "python3-pyserial", "glibc-headers", "glibc-devel", "zlib-devel", "libuuid ", "libuuid-devel", "pam-devel", "openldap-devel ", "pugixml-devel", "gdb", "expect", "net-tools", "boost-chrono", "boost-regex", "boost-thread", "boost-filesystem", "boost-system", "boost-devel", "boost-program-options", "readline-devel", "emacs", "nano", "rsync", "git", "lighttpd", "strace", "minicom", "i2c-tools", "screen", "rpm-build-libs", "rpm-build", "python3-pip", "nss", "nss-devel", "freeipmi", "cmake3", "log4cplus-devel", "yaml-cpp-devel", "msgpack-devel", "cppzmq-devel", "dosfstools", "libxml2", "libxml2-devel", "python3-libxml2", "python3-lxml", "libxslt ", "libxslt-devel", "python3-psutil", "python3-setuptools-wheel", "llvm-toolset", "podman", "locmap-release", "locmap", "smash*"]
+      extra_rpms: ["gcc", "gcc-c++", "make", "dhclient", "python3-devel", "python3-click", "python3-numpy", "python3-pyserial", "glibc-headers", "glibc-devel", "zlib-devel", "libuuid ", "libuuid-devel", "pam-devel", "openldap-devel ", "pugixml-devel", "which", "gdb", "expect", "net-tools", "boost-chrono", "boost-regex", "boost-thread", "boost-filesystem", "boost-system", "boost-devel", "boost-program-options", "readline-devel", "emacs", "nano", "rsync", "git", "lighttpd", "strace", "minicom", "i2c-tools", "screen", "chrony", "rpm-build-libs", "rpm-build", "python3-pip", "nss", "nss-devel", "freeipmi", "cmake3", "log4cplus-devel", "yaml-cpp-devel", "msgpack-devel", "cppzmq-devel", "dosfstools", "libxml2-devel", "python3-libxml2", "python3-lxml", "libxml2 ", "libxslt ", "libxslt-devel", "python3-psutil", "python3-setuptools-wheel", "llvm-toolset", "dnf"]
+      # alma8 # extra_rpms: ["gcc", "gcc-c++", "make", "dhclient", "python3-devel", "python3-click", "python3-numpy", "python3-pyserial", "glibc-headers", "glibc-devel", "zlib-devel", "libuuid ", "libuuid-devel", "pam-devel", "openldap-devel ", "pugixml-devel", "gdb", "expect", "net-tools", "boost-chrono", "boost-regex", "boost-thread", "boost-filesystem", "boost-system", "boost-devel", "boost-program-options", "readline-devel", "emacs", "nano", "rsync", "git", "lighttpd", "strace", "minicom", "i2c-tools", "screen", "rpm-build-libs", "rpm-build", "python3-pip", "nss", "nss-devel", "freeipmi", "cmake3", "log4cplus-devel", "yaml-cpp-devel", "msgpack-devel", "cppzmq-devel", "dosfstools", "libxml2", "libxml2-devel", "python3-libxml2", "python3-lxml", "libxslt ", "libxslt-devel", "python3-psutil", "python3-setuptools-wheel", "llvm-toolset", "podman", "locmap-release", "locmap"]
       build_time_fs_layer:
         - src_block: "vivado"
           src_name: "*.bit"
@@ -89,6 +89,44 @@ blocks:
     container:
       image: "alma9-rootfs-builder-alma9"
       tag: "socks"
+  # rootfs:
+  #   source: "build"
+  #   builder: "ZynqMP_Debian_RootFS_Builder"
+  #   project:
+  #     release: "bookworm"
+  #     mirror: "http://ftp.de.debian.org/debian/"
+  #     extra_debs: ["sudo", "python3", "openssh-server", "nano", "vim"]
+  #     build_time_fs_layer:
+  #       - src_block: "vivado"
+  #         src_name: "*.bit"
+  #         dest_path: "/lib/firmware"
+  #         dest_name: "serenity_s1_k26_pl.bit"
+  #         dest_owner_group: "root:root"
+  #         dest_permissions: "u=rw,go=r"
+  #       - src_block: "devicetree"
+  #         src_name: "*.dtbo"
+  #         dest_path: "/etc/dt-overlays"
+  #         dest_owner_group: "root:root"
+  #         dest_permissions: "u=rwX,go=rX"
+  #       - src_block: "vivado"
+  #         src_name: "addrtab"
+  #         dest_path: "/etc/serenity"
+  #         dest_name: "zynq-addrtab"
+  #     users:
+  #       - name: "root"
+  #         pw_hash: "$6$vZIHKtcF/ibXBtIg$8hD7jbElXZVHNBhUIL4G97lqgsZ.7hq1YtjwdZpG.YRwqFy9kWwACLgf4hEFbXQYr81X08B2EJIDSKO3ZeBF4/" # debian
+  #       - name: "kria"
+  #         pw_hash: "$6$hsGDO7khEOc1MuTQ$r0tFUGLcNY88hbCXd/GwFOxH1W96n4sZ29T2i5QEcRkaEuysUuQ25lsF9yPQj2D9hWgDvGp6wmTwG4OofV.kM." # cms.higgs
+  #         groups: ["sudo", "dialout"]
+  #     add_build_info: false
+  #     # If no 'import_src' property is specified, the block must be built locally
+  #     dependencies:
+  #       kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
+  #       devicetree: "temp/devicetree/output/bp_devicetree*.tar.gz"
+  #       vivado: "temp/vivado/output/bp_vivado*.tar.gz"
+  #   container:
+  #     image: "debian-rootfs-builder-debian12"
+  #     tag: "socks"
   ramfs:
     source: "build"
     builder: "ZynqMP_BusyBox_RAMFS_Builder"
