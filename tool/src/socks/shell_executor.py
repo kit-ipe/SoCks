@@ -25,7 +25,7 @@ class Shell_Executor:
     def get_sh_results(command: list[str], cwd: pathlib.Path = None, check: bool = True) -> subprocess.CompletedProcess:
         """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
-        Runs a sh command and get all output.
+        Runs a shell command and returns all output.
 
         Args:
             command:
@@ -69,8 +69,9 @@ class Shell_Executor:
     ):
         """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
-        Executes a sh command. If the srolling view is enabled or the output is to be logged, this function loses some
-        output of commands that display a progress bar or someting similar. The 'tee' shell command has the same issue.
+        Executes a shell command. If the srolling view is enabled or the output is to be logged, this function loses
+        some output of commands that display a progress bar or someting similar. The 'tee' shell command has the
+        same issue.
 
         Args:
             command:
@@ -82,10 +83,10 @@ class Shell_Executor:
             logfile:
                 Logfile as pathlib.Path object. None if no log file is to be used.
             output_scrolling:
-                If True, the output of the sh command is printed in a scrolling view. The printed output is updated
+                If True, the output of the shell command is printed in a scrolling view. The printed output is updated
                 at runtime and the latest lines are always displayed.
             visible_lines:
-                Maximum number of sh output lines to be printed if scolling_output is True. If set to 0, no output
+                Maximum number of shell output lines to be printed if scolling_output is True. If set to 0, no output
                 is visible.
 
         Returns:

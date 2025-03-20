@@ -226,7 +226,9 @@ class Container_Executor:
     ):
         """(Google documentation style:
             https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings)
-        Executes sh commands in a container or directly on the host system.
+        Executes shell commands in a container or directly on the host system. Bash is used to execute the shell
+        commands, but it is recommended to use only POSIX shell compatible commands to maintain portability for
+        the future.
 
         Args:
             commands:
@@ -243,10 +245,10 @@ class Container_Executor:
             logfile:
                 Logfile as pathlib.Path object. None if no log file is to be used.
             output_scrolling:
-                If True, the output of the sh command is printed in a scrolling view. The printed output is updated
+                If True, the output of the shell command is printed in a scrolling view. The printed output is updated
                 at runtime and the latest lines are always displayed.
             visible_lines:
-                Maximum number of sh output lines to be printed if scolling_output is True. If set to 0, no output
+                Maximum number of shell output lines to be printed if scolling_output is True. If set to 0, no output
                 is visible.
 
         Returns:
@@ -277,7 +279,7 @@ class Container_Executor:
             self._shell_executor.exec_sh_command(
                 command=[self._container_tool, "run", "--rm", "-it", user_opt, mounts]
                 + custom_params
-                + [self._container_image_tagged, "sh", "-c", comp_commands],
+                + [self._container_image_tagged, "bash", "-c", comp_commands],
                 logfile=logfile,
                 output_scrolling=output_scrolling,
                 visible_lines=visible_lines,
@@ -287,7 +289,7 @@ class Container_Executor:
             # Run commands without using a container
             sudo_opt = "sudo" if run_as_root else ""
             self._shell_executor.exec_sh_command(
-                command=[sudo_opt, "sh", "-c", comp_commands],
+                command=[sudo_opt, "bash", "-c", comp_commands],
                 logfile=logfile,
                 output_scrolling=output_scrolling,
                 visible_lines=visible_lines,
@@ -404,7 +406,7 @@ class Container_Executor:
                         "-it",
                         mounts,
                         self._container_image_tagged,
-                        "sh",
+                        "bash",
                         "-c",
                         comp_commands,
                     ],
