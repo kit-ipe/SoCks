@@ -163,29 +163,40 @@ except pydantic.ValidationError as e:
 
 # Create builder objects
 builders = {}
+builder_packages = ["amd_zynqmp_builders", "amd_versal_builders"]
 for block in project_cfg_model.blocks.model_fields:
     block_cfg = getattr(project_cfg_model.blocks, block)
     if block_cfg is None:
         continue
-    try:
-        module = importlib.import_module(f"builders.{block_cfg.builder.lower()}")
-        # Get access to the builder class
-        builder_class = getattr(module, block_cfg.builder)
-        # Create a project configuration object for the builder that only contains information that is intended
-        # for this builder, i.e. remove all information for other builders
-        builder_project_cfg = copy.deepcopy(project_cfg)
-        for block_i, block_dict_i in project_cfg["blocks"].items():
-            if block_i != block:
-                builder_project_cfg["blocks"].pop(block_i)
-        # Add builder object to dict
-        builders[block_cfg.builder] = builder_class(
-            project_cfg=builder_project_cfg,
-            socks_dir=socks_dir,
-            project_dir=project_dir,
+
+    # Search builder module in all builder packages
+    module = None
+    for package in builder_packages:
+        try:
+            module = importlib.import_module(f"{package}.{block_cfg.builder.lower()}")
+            break  # Exit the loop if the module is successfully imported
+        except ImportError:
+            continue  # Try the next package if import fails
+    if module is None:
+        pretty_print.print_error(
+            f"Builder '{block_cfg.builder}' not found in any of the packages: {', '.join(builder_packages)}"
         )
-    except ImportError:
-        pretty_print.print_error(f"No builder class {block_cfg.builder} available")
         sys.exit(1)
+
+    # Get access to the builder class
+    builder_class = getattr(module, block_cfg.builder)
+    # Create a project configuration object for the builder that only contains information that is intended
+    # for this builder, i.e. remove all information for other builders
+    builder_project_cfg = copy.deepcopy(project_cfg)
+    for block_i, block_dict_i in project_cfg["blocks"].items():
+        if block_i != block:
+            builder_project_cfg["blocks"].pop(block_i)
+    # Add builder object to dict
+    builders[block_cfg.builder] = builder_class(
+        project_cfg=builder_project_cfg,
+        socks_dir=socks_dir,
+        project_dir=project_dir,
+    )
 
 # A complete list of all commands that SoCks supports as an interaction option with blocks, including a description
 supported_block_commands = {
