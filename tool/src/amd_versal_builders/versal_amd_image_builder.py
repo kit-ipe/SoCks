@@ -48,12 +48,14 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         self._resources_dir = self._block_src_dir / "resources"
         self._xsa_extracted_dir = self._xsa_dir / "extracted"
 
+    @property
+    def _block_deps(self):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.
         # Optional dependencies can also be listed here. They will be ignored if
         # they are not listed in the project configuration.
-        self._block_deps = {
+        block_deps = {
             "atf": ["bl31.elf"],
             "devicetree": ["system.dtb"],
             "kernel": ["Image.gz"],
@@ -64,11 +66,14 @@ class Versal_AMD_Image_Builder(AMD_Builder):
             "uboot": ["u-boot.elf"],
             "vivado": [".*.xsa"],
         }
+        return block_deps
 
+    @property
+    def block_cmds(self):
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
-        self.block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": []}
-        self.block_cmds["clean"].extend(
+        block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": []}
+        block_cmds["clean"].extend(
             [
                 self.container_executor.build_container_image,
                 self.clean_download,
@@ -79,7 +84,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend(
+            block_cmds["prepare"].extend(
                 [
                     self._build_validator.del_project_cfg,
                     self.container_executor.build_container_image,
@@ -88,8 +93,8 @@ class Versal_AMD_Image_Builder(AMD_Builder):
                     self._build_validator.save_project_cfg_prepare,
                 ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend(
+            block_cmds["build"].extend(block_cmds["prepare"])
+            block_cmds["build"].extend(
                 [
                     self.bootscr_img,
                     self.boot_img,
@@ -97,11 +102,10 @@ class Versal_AMD_Image_Builder(AMD_Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            self.block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.start_container]
-            )
+            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
         elif self.block_cfg.source == "import":
-            self.block_cmds["build"].extend([self.import_prebuilt])
+            block_cmds["build"].extend([self.import_prebuilt])
+        return block_cmds
 
     def validate_srcs(self):
         """

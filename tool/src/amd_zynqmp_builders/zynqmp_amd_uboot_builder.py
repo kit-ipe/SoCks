@@ -39,16 +39,21 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
         # File for version & build info tracking
         self._build_info_file = self._source_repo_dir / "include" / "build_info.h"
 
+    @property
+    def _block_deps(self):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.
         # Optional dependencies can also be listed here. They will be ignored if
         # they are not listed in the project configuration.
-        self._block_deps = {"atf": ["bl31.bin"]}
+        block_deps = {"atf": ["bl31.bin"]}
+        return block_deps
 
+    @property
+    def block_cmds(self):
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
-        self.block_cmds = {
+        block_cmds = {
             "prepare": [],
             "build": [],
             "clean": [],
@@ -57,7 +62,7 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
             "menucfg": [],
             "prep-clean-srcs": [],
         }
-        self.block_cmds["clean"].extend(
+        block_cmds["clean"].extend(
             [
                 self.container_executor.build_container_image,
                 self.clean_download,
@@ -69,7 +74,7 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"].extend(
+            block_cmds["prepare"].extend(
                 [
                     self._build_validator.del_project_cfg,
                     self.container_executor.build_container_image,
@@ -81,21 +86,20 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
                     self._build_validator.save_project_cfg_prepare,
                 ]
             )
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend(
+            block_cmds["build"].extend(block_cmds["prepare"])
+            block_cmds["build"].extend(
                 [self.build_uboot, self.export_block_package, self._build_validator.save_project_cfg_build]
             )
-            self.block_cmds["create-patches"].extend([self.create_patches])
-            self.block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.start_container]
-            )
-            self.block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
-            self.block_cmds["prep-clean-srcs"].extend(self.block_cmds["clean"])
-            self.block_cmds["prep-clean-srcs"].extend(
+            block_cmds["create-patches"].extend([self.create_patches])
+            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
+            block_cmds["prep-clean-srcs"].extend(block_cmds["clean"])
+            block_cmds["prep-clean-srcs"].extend(
                 [self.container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
             )
         elif self.block_cfg.source == "import":
-            self.block_cmds["build"].extend([self.import_prebuilt])
+            block_cmds["build"].extend([self.import_prebuilt])
+        return block_cmds
 
     def validate_srcs(self):
         """

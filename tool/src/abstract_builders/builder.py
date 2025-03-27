@@ -17,6 +17,7 @@ import time
 import pydantic
 import inspect
 import csv
+from abc import ABC, abstractmethod
 
 import socks.pretty_print as pretty_print
 from socks.shell_executor import Shell_Executor
@@ -27,7 +28,7 @@ from socks.yaml_editor import YAML_Editor
 import abstract_builders
 
 
-class Builder:
+class Builder(ABC):
     """
     Base class for all builder classes
     """
@@ -145,6 +146,16 @@ class Builder:
             container_file=self._container_dir / f"{self.block_cfg.container.image}.containerfile",
             container_log_file=self._project_temp_dir / ".container_log.csv",
         )
+
+    @property
+    @abstractmethod
+    def _block_deps(self):
+        pass
+
+    @property
+    @abstractmethod
+    def block_cmds(self):
+        pass
 
     def _eval_single_prj_src(self) -> tuple[pathlib.Path, dict]:
         """

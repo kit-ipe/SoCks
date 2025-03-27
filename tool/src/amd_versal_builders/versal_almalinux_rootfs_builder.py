@@ -43,13 +43,16 @@ class Versal_AlmaLinux_RootFS_Builder(ZynqMP_AlmaLinux_RootFS_Builder):
             "Versal blocks should use the Vitis SDT flow instead of the XSCT flow, as soon as it is stable."
         )
 
-        self._rootfs_name = f"almalinux{self.block_cfg.project.release}_versal_{self.project_cfg.project.name}"
-
+    @property
+    def _block_deps(self):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.
         # Optional dependencies can also be listed here. They will be ignored if
         # they are not listed in the project configuration.
-        self._block_deps = {
-            "kernel": [".*"],
-        }
+        block_deps = {"kernel": [".*"]}
+        return block_deps
+
+    @property
+    def _rootfs_name(self):
+        return f"almalinux{self.block_cfg.project.release}_versal_{self.project_cfg.project.name}"

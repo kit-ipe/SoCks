@@ -36,10 +36,6 @@ class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
         self._repo_dir = self._block_src_dir / "resources"
 
     @property
-    def _rootfs_name(self):
-        return f"debian_{self.block_cfg.project.release}_zynqmp_{self.project_cfg.project.name}"
-
-    @property
     def _block_deps(self):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
@@ -118,6 +114,10 @@ class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
                 ]
             )
         return block_cmds
+
+    @property
+    def _rootfs_name(self):
+        return f"debian_{self.block_cfg.project.release}_zynqmp_{self.project_cfg.project.name}"
 
     def build_base_rootfs(self):
         """

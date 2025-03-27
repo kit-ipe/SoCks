@@ -5,14 +5,14 @@ import tarfile
 import urllib
 import validators
 import inspect
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
 from abstract_builders.builder import Builder
 
 
-class AArch64_RootFS_Builder(Builder, ABC):
+class AArch64_RootFS_Builder(Builder):
     """
     Abstract aarch64 root file system builder class
     """
@@ -48,16 +48,6 @@ class AArch64_RootFS_Builder(Builder, ABC):
     @property
     @abstractmethod
     def _rootfs_name(self):
-        pass
-
-    @property
-    @abstractmethod
-    def _block_deps(self):
-        pass
-
-    @property
-    @abstractmethod
-    def block_cmds(self):
         pass
 
     def validate_srcs(self):

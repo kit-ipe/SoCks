@@ -47,16 +47,21 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
         # File for saving the checksum of the Kernel module archive used
         self._source_kmods_md5_file = self._work_dir / "source_kmodules.md5"
 
+    @property
+    def _block_deps(self):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
         # all the required files. Regex can be used to describe the expected files.
         # Optional dependencies can also be listed here. They will be ignored if
         # they are not listed in the project configuration.
-        self._block_deps = {"kernel": [".*"]}
+        block_deps = {"kernel": [".*"]}
+        return block_deps
 
+    @property
+    def block_cmds(self):
         # The user can use block commands to interact with the block.
         # Each command represents a list of member functions of the builder class.
-        self.block_cmds = {
+        block_cmds = {
             "prepare": [],
             "build": [],
             "prebuild": [],
@@ -66,7 +71,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             "menucfg": [],
             "prep-clean-srcs": [],
         }
-        self.block_cmds["prepare"].extend(
+        block_cmds["prepare"].extend(
             [
                 self._build_validator.del_project_cfg,
                 self.container_executor.build_container_image,
@@ -74,7 +79,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
                 self._build_validator.save_project_cfg_prepare,
             ]
         )
-        self.block_cmds["clean"].extend(
+        block_cmds["clean"].extend(
             [
                 self.container_executor.build_container_image,
                 self.clean_download,
@@ -86,16 +91,16 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
             ]
         )
         if self.block_cfg.source == "build":
-            self.block_cmds["prepare"] = [  # Move save_project_cfg_prepare to the end of the new list
-                func for func in self.block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare
+            block_cmds["prepare"] = [  # Move save_project_cfg_prepare to the end of the new list
+                func for func in block_cmds["prepare"] if func != self._build_validator.save_project_cfg_prepare
             ] + [
                 self.init_repo,
                 self.apply_patches,
                 self.import_clean_srcs,
                 self._build_validator.save_project_cfg_prepare,
             ]
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend(
+            block_cmds["build"].extend(block_cmds["prepare"])
+            block_cmds["build"].extend(
                 [
                     self.build_base_ramfs,
                     self.populate_ramfs,
@@ -105,8 +110,8 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            self.block_cmds["prebuild"].extend(self.block_cmds["prepare"])
-            self.block_cmds["prebuild"].extend(
+            block_cmds["prebuild"].extend(block_cmds["prepare"])
+            block_cmds["prebuild"].extend(
                 [
                     self.build_base_ramfs,
                     self.build_archive_prebuilt,
@@ -114,18 +119,16 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            self.block_cmds["create-patches"].extend([self.create_patches])
-            self.block_cmds["start-container"].extend(
-                [self.container_executor.build_container_image, self.start_container]
-            )
-            self.block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
-            self.block_cmds["prep-clean-srcs"].extend(self.block_cmds["clean"])
-            self.block_cmds["prep-clean-srcs"].extend(
+            block_cmds["create-patches"].extend([self.create_patches])
+            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
+            block_cmds["prep-clean-srcs"].extend(block_cmds["clean"])
+            block_cmds["prep-clean-srcs"].extend(
                 [self.container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
             )
         elif self.block_cfg.source == "import":
-            self.block_cmds["build"].extend(self.block_cmds["prepare"])
-            self.block_cmds["build"].extend(
+            block_cmds["build"].extend(block_cmds["prepare"])
+            block_cmds["build"].extend(
                 [
                     self.import_prebuilt,
                     self.add_kmodules,
@@ -134,6 +137,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
+        return block_cmds
 
     def validate_srcs(self):
         """

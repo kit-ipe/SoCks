@@ -46,10 +46,6 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(AArch64_RootFS_Builder):
         self._repo_script = self._repo_dir / "repo"
 
     @property
-    def _rootfs_name(self):
-        return f"petalinux_zynqmp_{self.project_cfg.project.name}"
-
-    @property
     def _block_deps(self):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain
@@ -127,6 +123,10 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(AArch64_RootFS_Builder):
                 ]
             )
         return block_cmds
+
+    @property
+    def _rootfs_name(self):
+        return f"petalinux_zynqmp_{self.project_cfg.project.name}"
 
     def validate_srcs(self):
         """
