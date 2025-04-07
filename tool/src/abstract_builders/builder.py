@@ -505,13 +505,9 @@ class Builder(ABC):
             ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
         )
 
-        # Update the timestamp of the patches applied tag, if it exists. Otherwise, SoCks assumes
-        # that the user has modified the patches since they were applied.
-        patches_already_added = (
-            self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
-        )
-        if patches_already_added:
-            self._build_log.log_timestamp(identifier=f"function-apply_patches-success")
+        # Add patches applied tag or update the timestamp, because the newly created patches have already been
+        # applied and SoCks should not try to apply them again the next time it is called.
+        self._build_log.log_timestamp(identifier=f"function-apply_patches-success")
 
     def apply_patches(self):
         """
