@@ -235,7 +235,8 @@ class Container_Executor:
                 List of commands to execute.
             dirs_to_mount:
                 A list of tuples that represent directories to be mounted into the container. Each tuple contains a
-                path and a string with the correspondig docker/podman volume mount options.
+                path and a string with the correspondig docker/podman volume mount options. Directories which do not
+                exist are ignored.
             custom_params:
                 Additional custom parameters that are passed to the containerization tool.
             print_commands:

@@ -1,5 +1,6 @@
 import sys
 import pathlib
+import shutil
 import urllib
 import inspect
 
@@ -32,6 +33,10 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             block_description=block_description,
             model_class=model_class,
         )
+
+        # Project directories
+        self._ext_modules_src_dir = self._block_src_dir / "external_modules"
+        self._ext_modules_build_dir = self._work_dir / "external_modules"
 
         # Project files
         # File for version & build info tracking
@@ -89,6 +94,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             block_cmds["build"].extend(
                 [
                     self.build_kernel,
+                    self.build_ext_modules,
                     self.export_modules,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
@@ -237,6 +243,81 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             (self._output_dir / "Image").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image")
             (self._output_dir / "Image.gz").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image.gz")
 
+    def build_ext_modules(self):
+        """
+        Builds external modules for the Linux Kernel.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check if sources for external Kernel modules exist
+        if not self._ext_modules_src_dir.is_dir():
+            pretty_print.print_info(
+                f"Source folder for external Kernel modules ({self._ext_modules_src_dir}) not found. No external modules will be built."
+            )
+            return
+
+        # Check if the sources for external Kernel modules contain a Makefile
+        if not (self._ext_modules_src_dir / "Makefile").is_file():
+            pretty_print.print_error(
+                f"Source folder for external Kernel modules ({self._ext_modules_src_dir}) does not contain 'Makefile'."
+            )
+            sys.exit(1)
+
+        # Check if Kernel sources are available
+        if not self._source_repo_dir.is_dir():
+            pretty_print.print_build("No Kernel sources for building external modules...")
+            return
+
+        # Check whether the external modules need to be built
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=[self._ext_modules_src_dir, self._source_repo_dir],
+            out_timestamp=self._build_log.get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
+        ):
+            pretty_print.print_build("No need to build external modules. No altered source files detected...")
+            return
+
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._ext_modules_build_dir.mkdir(parents=True, exist_ok=True)
+
+            # Copy sources for external modules to work dir
+            for item in self._ext_modules_src_dir.iterdir():
+                dst_item = self._ext_modules_build_dir / item.name
+
+                if item.is_dir():
+                    # Skip the .git directory
+                    if item.name == ".git":
+                        continue
+                    else:
+                        shutil.copytree(src=item, dst=dst_item, dirs_exist_ok=True)
+                else:
+                    shutil.copy(src=item, dst=dst_item)
+
+            pretty_print.print_build("Building external modules...")
+
+            ext_mod_build_commands = [
+                f"cd {self._ext_modules_build_dir}",
+                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                f"make ARCH=arm64 MAKE=make KERNEL_SRC={self._source_repo_dir}",
+            ]
+
+            self.container_executor.exec_sh_commands(
+                commands=ext_mod_build_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
+                logfile=self._block_temp_dir / "build_external_modules.log",
+                output_scrolling=True,
+            )
+
     def export_modules(self):
         """
         Exports all built Kernel modules.
@@ -269,7 +350,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
 
         # Check whether the Kernel modules need to be exported
         if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._source_repo_dir],
+            src_search_list=[self._source_repo_dir, self._ext_modules_build_dir],
             src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -288,13 +369,27 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
                 f"cd {self._source_repo_dir}",
                 "export CROSS_COMPILE=aarch64-linux-gnu-",
                 f"make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir}",
-                f"find {self._output_dir}/lib -type l -delete",
-                f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._modules_out_file} {self._output_dir}/lib",
-                f"rm -rf {self._output_dir}/lib",
             ]
+
+            # Add commands to export external modules, if any
+            if self._ext_modules_build_dir.is_dir():
+                export_modules_commands.extend(
+                    [
+                        f"cd {self._ext_modules_build_dir}",
+                        f"make ARCH=arm64 MAKE=make KERNEL_SRC={self._source_repo_dir} modules_install INSTALL_MOD_PATH={self._output_dir}",
+                    ]
+                )
+
+            export_modules_commands.extend(
+                [
+                    f"find {self._output_dir}/lib -type l -delete",
+                    f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._modules_out_file} {self._output_dir}/lib",
+                    f"rm -rf {self._output_dir}/lib",
+                ]
+            )
 
             self.container_executor.exec_sh_commands(
                 commands=export_modules_commands,
-                dirs_to_mount=[(self._repo_dir, "Z"), (self._output_dir, "Z")],
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z"), (self._output_dir, "Z")],
                 print_commands=True,
             )
