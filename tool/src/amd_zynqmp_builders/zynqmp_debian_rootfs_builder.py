@@ -79,10 +79,10 @@ class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
                 [
                     self.build_base_rootfs,
                     self.add_extra_packages,
-                    self.add_pd_layers,
                     self.add_users,
                     self.add_kmodules,
                     self.add_bt_layer,
+                    self.add_pd_layers,
                     self.build_archive,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
@@ -104,10 +104,10 @@ class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
             block_cmds["build"].extend(
                 [
                     self.import_prebuilt,
-                    self.add_pd_layers,
                     self.add_users,
                     self.add_kmodules,
                     self.add_bt_layer,
+                    self.add_pd_layers,
                     self.build_archive,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
