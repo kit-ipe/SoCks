@@ -202,10 +202,12 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
 
         # Check whether the devicetree needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._dt_incl_dir, self._base_work_dir],
+            src_search_list=[self._dt_incl_dir, self._base_work_dir, self._dependencies_dir / "vivado"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
+        ) and not self._build_validator.check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "dt_includes"]]
         ):
             pretty_print.print_build("No need to rebuild the devicetree. No altered source files detected...")
             return
@@ -217,6 +219,14 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
 
             pretty_print.print_build("Building the base devicetree...")
 
+            # Add devicetree include files from vivado block
+            dt_include_files = []
+            for dt_incl in [path.name for path in (self._dependencies_dir / "vivado").glob("*.dtsi")]:
+                # Devicetree includes are copied before every build to make sure they are up to date
+                shutil.copy(self._dependencies_dir / "vivado" / dt_incl, self._base_work_dir / dt_incl)
+                dt_include_files.append(dt_incl)
+
+            # Add user defined devicetree include files
             if self.block_cfg.project.dt_includes != None:
                 for dt_incl in self.block_cfg.project.dt_includes:
                     if not (self._dt_incl_dir / dt_incl).is_file():
@@ -227,20 +237,24 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
 
                     # Devicetree includes are copied before every build to make sure they are up to date
                     shutil.copy(self._dt_incl_dir / dt_incl, self._base_work_dir / dt_incl)
-                    # Check if this file is already included, and if not, include it
-                    with (self._base_work_dir / "system-top.dts").open("r+") as dts_top_file:
-                        contents = dts_top_file.read()
-                        incl_line = f'#include "{dt_incl}"\n'
-                        if incl_line not in contents:
-                            # If the line was not found, the file pointer is now at the end
-                            # Write the include line
-                            dts_top_file.write(incl_line)
+                    dt_include_files.append(dt_incl)
+
+            # Include files in top level
+            for dt_incl in dt_include_files:
+                # Check if this file is already included, and if not, include it
+                with (self._base_work_dir / "system-top.dts").open("r+") as dts_top_file:
+                    contents = dts_top_file.read()
+                    incl_line = f'#include "{dt_incl}"\n'
+                    if incl_line not in contents:
+                        # If the line was not found, the file pointer is now at the end
+                        # Write the include line
+                        dts_top_file.write(incl_line)
 
             # The *.dts file created by gcc is for humans difficult to read. Therefore, in the last step, it is replaced by one created with the devicetree compiler.
             dt_build_commands = [
                 f"cd {self._base_work_dir}",
                 "gcc -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -o system.dts system-top.dts",
-                "dtc -I dts -O dtb -@ -o system.dtb system.dts",
+                "dtc -I dts -O dtb -A -@ -o system.dtb system.dts",
                 "dtc -I dtb -O dts -o system.dts system.dtb",
             ]
 
