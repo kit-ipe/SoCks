@@ -114,7 +114,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         """
 
         super().validate_srcs()
-        self.import_src_tpl()
+        self.import_req_src_tpl()
 
     def prepare_dt_sources(self):
         """
@@ -367,10 +367,10 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             for symlink in self._overlay_work_dir.glob("*.dtbo"):
                 (self._output_dir / symlink.name).symlink_to(symlink)
 
-    def import_src_tpl(self):
+    def import_req_src_tpl(self):
         """
         This function checks whether there are already sources for this block
-        and, if not, offers the user to import a source code template.
+        and, if not, asks the user to import a source code template.
 
         Args:
             None
@@ -383,7 +383,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
                 If the CSV file that describes the devicetree includes has more than one column
         """
 
-        super().import_src_tpl()
+        super().import_req_src_tpl()
 
         # Import devicetree includes into the project configuration file
         try:

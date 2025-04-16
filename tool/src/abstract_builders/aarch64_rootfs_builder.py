@@ -65,7 +65,7 @@ class AArch64_RootFS_Builder(Builder):
         """
 
         super().validate_srcs()
-        self.import_src_tpl()
+        self.import_req_src_tpl()
 
     @abstractmethod
     def build_base_rootfs(self):

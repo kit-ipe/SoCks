@@ -101,7 +101,7 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
         """
 
         super().validate_srcs()
-        # self.import_src_tpl()
+        # self.import_req_src_tpl()
 
     def create_plm_project(self):
         """

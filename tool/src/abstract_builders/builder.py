@@ -938,11 +938,11 @@ class Builder(ABC):
             print_commands=True,
         )
 
-    def import_clean_srcs(self):
+    def create_proj_cfg_patch(self):
         """
-        This function checks whether there are already sources for this block
-        and, if not, offers the user to prepare and import a source code template.
-        This is only possible for blocks that have a definition of the function prep_clean_srcs.
+        This function checks whether there are already git patches for this block and,
+        if not, generates an architecture specific configuration patch. This is only possible
+        for blocks that have a definition of the function prep_clean_srcs.
 
         Args:
             None
@@ -960,7 +960,7 @@ class Builder(ABC):
                 f"Object of type {self.__class__.__name__} does not have the expected method 'prep_clean_srcs'"
             )
 
-        # If there are already sources, there is nothing to do
+        # If there are already patches, there is nothing to do
         if self._patch_dir.is_dir():
             return
 
@@ -968,7 +968,8 @@ class Builder(ABC):
         results = self.shell_executor.get_sh_results(["git", "-C", str(self._source_repo_dir), "status", "--porcelain"])
         if results.stdout:
             pretty_print.print_error(
-                f"Unable to create clean sources, because there are uncommited changes in {self._source_repo_dir}. "
+                f"Unable to create architecture specific configuration patch, "
+                f"because there are uncommited changes in {self._source_repo_dir}. "
                 f"Please commit the changes or clean this block ({self.block_id})."
             )
             sys.exit(1)
@@ -982,10 +983,63 @@ class Builder(ABC):
         )
         self.create_patches()
 
-    def import_src_tpl(self):
+    def _import_src_tpl(self, template: pathlib.Path):
+        """
+        Imports the provided source template.
+
+        Args:
+            template:
+                The source template to be imported
+
+        Returns:
+            None
+
+        Raises:
+            ValueError:
+                If the CSV file that describes the patches has more than one column
+        """
+
+        # Import template
+        pretty_print.print_build(f"Importing template '{template.name.split('.')[0]}' into the project...")
+        self._block_src_dir.mkdir(parents=True)
+        with tarfile.open(template, "r:*") as archive:
+            # Extract all contents to the output directory
+            archive.extractall(path=self._block_src_dir)
+
+        # Import patches into the project configuration file
+        try:
+            patches_file = self._patch_dir / "patches.csv"
+            with open(patches_file, mode="r", newline="") as file:
+                reader = csv.reader(file)
+                patches = list(reader)
+
+            # Check the entire file before anything is done
+            for patch in patches:
+                if len(patch) != 1:
+                    raise ValueError(f"File '{patches_file}' has more than one column")
+
+            for patch in patches:
+                # Add patch to project configuration file
+                # ToDo: Maybe the main project configuration file should not be hard coded here
+                YAML_Editor.append_list_entry(
+                    file=self._project_dir / "project.yml",
+                    keys=["blocks", self.block_id, "project", "patches"],
+                    data=patch[0],
+                )
+                # Add patch to currently used project configuration
+                if self.block_cfg.project.patches == None:
+                    self.block_cfg.project.patches = [patch[0]]
+                else:
+                    self.block_cfg.project.patches.append(patch[0])
+
+            os.remove(patches_file)
+        except FileNotFoundError:
+            pass
+
+    def import_req_src_tpl(self):
         """
         This function checks whether there are already sources for this block
-        and, if not, offers the user to import a source code template.
+        and, if not, asks the user to import a source code template.
 
         Args:
             None
@@ -994,8 +1048,7 @@ class Builder(ABC):
             None
 
         Raises:
-            ValueError:
-                If the CSV file that describes the patches has more than one column
+            None
         """
 
         # If there are already sources, there is nothing to do
@@ -1035,42 +1088,65 @@ class Builder(ABC):
             print()
             exit(1)
 
-        # Import template
-        pretty_print.print_build(f"Importing template {choice + 1} into the project...")
-        self._block_src_dir.mkdir(parents=True)
-        with tarfile.open(templates[choice], "r:*") as archive:
-            # Extract all contents to the output directory
-            archive.extractall(path=self._block_src_dir)
+        self._import_src_tpl(template=templates[choice])
 
-        # Import patches into the project configuration file
+    def import_opt_src_tpl(self):
+        """
+        This function checks whether there are already sources for this block
+        and, if not, offers the user to import an optional source code template.
+        To avoid bothering the user with this question with every build, it is
+        only asked if there are no temp files for this block yet.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # If there are already sources or temp files, there is nothing to do
+        if self._block_src_dir.is_dir() or self._block_temp_dir.is_dir():
+            return
+
+        # Check if there are source templates that can be imported for this builder
+        templates = list(
+            (self._builders_dir / "templates" / "block_srcs" / self.__class__.__name__.lower()).glob("*.tar.gz")
+        )
+        if not templates:
+            return
+
+        # Let the user select a template
+        pretty_print.print_info(
+            f"Optional templates are available for block '{self.block_id}'. "
+            "Please select one of the following options:\n"
+        )
+        print(f"1) no template")
+        for i, item in enumerate(templates):
+            print(f"{i + 2}) {item.name.split('.')[0]}")
+
         try:
-            patches_file = self._patch_dir / "patches.csv"
-            with open(patches_file, mode="r", newline="") as file:
-                reader = csv.reader(file)
-                patches = list(reader)
+            while True:
+                choice = input("\nEnter number: ")
 
-            # Check the entire file before anything is done
-            for patch in patches:
-                if len(patch) != 1:
-                    raise ValueError(f"File '{patches_file}' has more than one column")
+                if not re.fullmatch(pattern="\d+", string=choice) or not 0 < int(choice) <= len(templates) + 1:
+                    print("Invalid choice, please try again.")
+                    continue
 
-            for patch in patches:
-                # Add patch to project configuration file
-                # ToDo: Maybe the main project configuration file should not be hard coded here
-                YAML_Editor.append_list_entry(
-                    file=self._project_dir / "project.yml",
-                    keys=["blocks", self.block_id, "project", "patches"],
-                    data=patch[0],
-                )
-                # Add patch to currently used project configuration
-                if self.block_cfg.project.patches == None:
-                    self.block_cfg.project.patches = [patch[0]]
-                else:
-                    self.block_cfg.project.patches.append(patch[0])
+                choice = int(choice) - 2
+                break
+        except KeyboardInterrupt:
+            print()
+            exit(1)
 
-            os.remove(patches_file)
-        except FileNotFoundError:
-            pass
+        if choice == -1:
+            # The user has chosen not to use a template
+            pretty_print.print_build(f"No template will be imported...")
+            return
+        else:
+            self._import_src_tpl(template=templates[choice])
 
     def clean_repo(self, as_root: bool = False):
         """

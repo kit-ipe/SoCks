@@ -81,7 +81,7 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
                     self.import_dependencies,
                     self.init_repo,
                     self.apply_patches,
-                    self.import_clean_srcs,
+                    self.create_proj_cfg_patch,
                     self.copy_atf,
                     self._build_validator.save_project_cfg_prepare,
                 ]
@@ -117,12 +117,13 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
 
         super().validate_srcs()
 
-        if not self._block_src_dir.is_dir():
+        if not self._patch_dir.is_dir():
             self.pre_action_warnings.append(
-                "This block requires source files, but none were found. "
-                "If you proceed, SoCks will automatically generate clean sources and add them to your project."
+                "This block requires the source repo to be initialized with an architecture specific configuration, "
+                "but no patches were found. If you proceed, SoCks will automatically generate the architecture "
+                "specific configuration patch and add it to your project."
             )
-            # Function 'import_clean_srcs' is called with block command 'prepare' at a suitable stage.
+            # Function 'create_proj_cfg_patch' is called with block command 'prepare' at a suitable stage.
             # Calling it here would not make sense, because the  repo might not be ready yet.
 
     def run_menuconfig(self):
