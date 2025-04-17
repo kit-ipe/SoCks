@@ -134,6 +134,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             create_vivado_project_commands = (
                 [
                     f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                    f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
                     f"source {self._amd_vivado_path}/settings64.sh",
                     "source ~/py_envs/logicc/bin/activate",
                 ]
@@ -192,6 +193,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             vivado_build_commands = (
                 [
                     f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                    f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
                     f"source {self._amd_vivado_path}/settings64.sh",
                     "source ~/py_envs/logicc/bin/activate",
                 ]
@@ -199,7 +201,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
                 + [
                     f"cd {self._logicc_build_dir}",  # This is done to create the logicc logfiles in this dir
                     f"logicc run {self.block_cfg.project.name}",
-                    "true",  # This is a ugly fix, but without it logicc sometimes gets stuck after synthesis (I think the issue is not really in logicc. It looks like Vivado simply does not return after finishing the job.)
+                    "true",  # This is an ugly fix, but without it logicc sometimes gets stuck after synthesis (I think the issue is not really in logicc. It looks like Vivado simply does not return after finishing the job.)
                 ]
             )
 
@@ -216,10 +218,11 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             )
 
             # Create symlinks to the output files
-            for file in (self._logicc_image_dir / self.block_cfg.project.name).glob("*"):
-                (self._output_dir / file.name).symlink_to(
-                    self._logicc_image_dir / self.block_cfg.project.name / file.name
-                )
+            logicc_output_dir = self._logicc_image_dir
+            for substr in self.block_cfg.project.name.split(":", 1):
+                logicc_output_dir = logicc_output_dir / substr
+            for file in logicc_output_dir.glob("*"):
+                (self._output_dir / file.name).symlink_to(file)
 
             # Extract bit-file
             with zipfile.ZipFile(self._output_dir / "system_top.xsa", "r") as archive:
@@ -244,6 +247,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         start_vivado_gui_commands = (
             [
                 f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
                 f"source {self._amd_vivado_path}/settings64.sh",
                 "source ~/py_envs/logicc/bin/activate",
             ]
@@ -287,6 +291,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
 
         init_commands = [
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
+            f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
             f"source {self._amd_vivado_path}/settings64.sh",
             "source ~/py_envs/logicc/bin/activate",
             'export PS1="${VIRTUAL_ENV_PROMPT}[\\u@\\h \\W]\\$ "',  # This is an ugly hack to fix the prompt in the container. It is needed because if the activated Python environment in the container.
