@@ -312,29 +312,38 @@ class Builder(ABC):
 
         build_info = ""
 
-        results = self.shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "rev-parse", "HEAD"])
-        build_info = build_info + f"GIT_COMMIT_SHA: {results.stdout.splitlines()[0]}\n"
+        # Use the git command to collect information, if possible
+        if (
+            self.shell_executor.get_sh_results(
+                command=["git", "-C", str(self._project_dir), "rev-parse", "--is-inside-work-tree"], check=False
+            ).returncode
+            == 0
+        ):
+            # The project directory is a git directory
+            results = self.shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "rev-parse", "HEAD"])
+            build_info = build_info + f"GIT_COMMIT_SHA: {results.stdout.splitlines()[0]}\n"
 
-        results = self.shell_executor.get_sh_results(
-            ["git", "-C", str(self._project_dir), "rev-parse", "--abbrev-ref", "HEAD"]
-        )
-        git_ref_name = results.stdout.splitlines()[0]
-        if git_ref_name == "HEAD":
             results = self.shell_executor.get_sh_results(
-                ["git", "-C", str(self._project_dir), "describe", "--exact-match", git_ref_name], check=False
+                ["git", "-C", str(self._project_dir), "rev-parse", "--abbrev-ref", "HEAD"]
             )
-            if results.returncode == 0:
-                git_tag_name = results.stdout.splitlines()[0]
-                build_info = build_info + f"GIT_TAG_NAME: {git_tag_name}\n"
-        else:
-            build_info = build_info + f"GIT_BRANCH_NAME: {git_ref_name}\n"
+            git_ref_name = results.stdout.splitlines()[0]
+            if git_ref_name == "HEAD":
+                results = self.shell_executor.get_sh_results(
+                    ["git", "-C", str(self._project_dir), "describe", "--exact-match", git_ref_name], check=False
+                )
+                if results.returncode == 0:
+                    git_tag_name = results.stdout.splitlines()[0]
+                    build_info = build_info + f"GIT_TAG_NAME: {git_tag_name}\n"
+            else:
+                build_info = build_info + f"GIT_BRANCH_NAME: {git_ref_name}\n"
 
-        results = self.shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "status", "--porcelain"])
-        if results.stdout:
-            build_info = build_info + "GIT_IS_REPO_CLEAN: false\n\n"
-        else:
-            build_info = build_info + "GIT_IS_REPO_CLEAN: true\n\n"
+            results = self.shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "status", "--porcelain"])
+            if results.stdout:
+                build_info = build_info + "GIT_IS_REPO_CLEAN: false\n\n"
+            else:
+                build_info = build_info + "GIT_IS_REPO_CLEAN: true\n\n"
 
+        # Collect information for which the git command is not required
         current_time = time.time()
         if os.environ.get("GITLAB_CI") == "true":
             build_info = build_info + "BUILD_TYPE: gitlab\n"
