@@ -217,10 +217,12 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
                 output_scrolling=True,
             )
 
-            # Create symlinks to the output files
+            # Find output directory (This is required to handle abstract logicc projects)
             logicc_output_dir = self._logicc_image_dir
             for substr in self.block_cfg.project.name.split(":", 1):
                 logicc_output_dir = logicc_output_dir / substr
+
+            # Create symlinks to the output files
             for file in logicc_output_dir.glob("*"):
                 (self._output_dir / file.name).symlink_to(file)
 

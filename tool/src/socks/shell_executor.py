@@ -34,6 +34,8 @@ class Shell_Executor:
                 https://docs.python.org/3/library/subprocess.html#subprocess.Popen
             cwd:
                 If cwd is not None, the working directory is changed to cwd before the commands are executed.
+            check:
+                If set to True, the exit code of the process is checked.
 
         Returns:
             An object that contains stdout (str), stderr (str) and returncode (int).
@@ -80,6 +82,8 @@ class Shell_Executor:
                 here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
             cwd:
                 If cwd is not None, the working directory is changed to cwd before the commands are executed.
+            check:
+                If set to True, the exit code of the process is checked.
             logfile:
                 Logfile as pathlib.Path object. None if no log file is to be used.
             output_scrolling:

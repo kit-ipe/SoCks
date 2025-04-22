@@ -165,11 +165,35 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             f"SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa)",
             'printf "hsi open_hw_design ${SOURCE_XSA_PATH}'
             f"    \r\nhsi set_repo_path {self._source_repo_dir} "
-            "    \r\nhsi create_sw_design device-tree -os device_tree -proc psu_cortexa53_0 "
-            f"    \r\nhsi generate_target -dir {self._base_work_dir} "
-            f'    \r\nhsi close_hw_design [hsi current_hw_design]" > {self._base_work_dir}/generate_dts_prj.tcl',
-            f"xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl",
+            "    \r\nhsi create_sw_design device-tree -os device_tree -proc psu_cortexa53_0 ",
         ]
+
+        # If an evaluation card is used, include card specific devicetree section
+        if self.block_cfg.project.board != "custom":
+            # Dict is derived from https://github.com/Xilinx/meta-xilinx-tools/blob/rel-v2020.2/recipes-bsp/device-tree/device-tree.bbappend
+            eval_boards = {
+                "ultra96": "BOARD avnet-ultra96-rev1",
+                "zcu102": "BOARD zcu102-rev1.0",
+                "zcu104": "BOARD zcu104-revc",
+                "zcu106": "BOARD zcu106-reva",
+                "zc1254": "BOARD zc1254-reva",
+                "zcu1275": "BOARD zcu1275-revb",
+                "zcu1285": "BOARD zcu1285-reva",
+                "zcu111": "BOARD zcu111-reva",
+                "zcu208": "BOARD zcu208-reva",
+                "zcu216": "BOARD zcu216-reva",
+            }
+            prep_dt_srcs_commands[-1] = (
+                prep_dt_srcs_commands[-1]
+                + f'    \r\nhsi set_property CONFIG.periph_type_overrides \\"{{{eval_boards[self.block_cfg.project.board]}}}\\" [hsi get_os]'
+            )
+
+        prep_dt_srcs_commands[-1] = (
+            prep_dt_srcs_commands[-1]
+            + f"    \r\nhsi generate_target -dir {self._base_work_dir} "
+            + f'    \r\nhsi close_hw_design [hsi current_hw_design]" > {self._base_work_dir}/generate_dts_prj.tcl'
+        )
+        prep_dt_srcs_commands.append(f"xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl")
 
         self.container_executor.exec_sh_commands(
             commands=prep_dt_srcs_commands,

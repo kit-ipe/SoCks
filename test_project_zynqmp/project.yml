@@ -167,3 +167,4 @@ blocks:
     project:
       dt_includes:
         - system-user.dtsi
+      board: "custom"
