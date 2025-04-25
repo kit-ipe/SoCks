@@ -446,7 +446,7 @@ class Container_Executor:
         """
 
         # Check if x11docker is installed
-        results = self._shell_executor.get_sh_results(["command", "-v", "x11docker"])
+        results = self._shell_executor.get_sh_results(command=["command", "-v", "x11docker"], check=False)
         if not results.stdout:
             pretty_print.print_error(
                 "Command 'x11docker' not found. Install x11docker (https://github.com/mviereck/x11docker)."
