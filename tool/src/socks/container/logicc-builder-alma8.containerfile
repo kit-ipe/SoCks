@@ -35,12 +35,11 @@ USER $user_name
 WORKDIR /home/$user_name
 
 # Install logicc
-RUN mkdir -p ~/tools
-RUN mkdir -p -m 0700 ~/.ssh && ssh-keyscan gitlab.kit.edu >> ~/.ssh/known_hosts
-RUN --mount=type=ssh,uid=$user_id cd ~/tools; git clone git@gitlab.kit.edu:kit/ipe-sdr/ipe-sdr-dev/hardware/logicc.git --branch vivado-2022-2-migration
+ADD --chown=$user_name:$user_name git@gitlab.kit.edu:kit/ipe-sdr/ipe-sdr-dev/hardware/logicc.git#vivado-2022-2-migration /home/$user_name/tools/logicc
 RUN mkdir -p ~/py_envs
 RUN python3 -m venv ~/py_envs/logicc
 RUN source ~/py_envs/logicc/bin/activate; cd ~/tools/logicc; pip install -U .
+RUN mkdir -p -m 0700 ~/.ssh && ssh-keyscan gitlab.kit.edu >> ~/.ssh/known_hosts
 RUN --mount=type=ssh,uid=$user_id cd ~/tools/logicc; ./install_toml_parser
 
 # Configure logicc
