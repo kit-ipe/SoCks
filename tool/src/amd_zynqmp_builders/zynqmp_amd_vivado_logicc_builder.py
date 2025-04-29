@@ -169,9 +169,18 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             None
         """
 
+        # Find vivado build directory
+        vivado_build_dir = self._logicc_build_dir
+        for substr in self.block_cfg.project.name.split(":", 1):
+            vivado_build_dir = vivado_build_dir / substr
+
         # Check if the project needs to be build
         if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._source_repo_dir, self._logicc_build_dir],
+            src_ignore_list=[
+                vivado_build_dir / f"{self.block_cfg.project.name.split(':', 1)[0]}.runs",
+                vivado_build_dir / f"{self.block_cfg.project.name.split(':', 1)[0]}.cache",
+            ],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
