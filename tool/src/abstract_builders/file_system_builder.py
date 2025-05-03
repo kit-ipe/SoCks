@@ -290,28 +290,33 @@ class File_System_Builder(Builder):
         with self._source_kmods_md5_file.open("w") as f:
             print(md5_new_file, file=f, end="")
 
-    def _build_archive(self, tar_compress_param: str, archive_name: str, file_extension: str):
+    def _build_archive(self, archive_name: str, file_extension: str, tar_compress_param: str = ""):
         """
         Packs the entire file system in an archive.
 
         Args:
+            archive_name:
+                Name of the archive.
+            file_extension:
+                The extension to be added to the archive name.
+                For rootfs: "tar.gz", "tar.xz"
+                For ramfs: "cpio.gz"
             tar_compress_param:
-                The compression option to be used by tar.
+                The compression option to be used by tar. Only relevant
+                for root file systems, as ram file systems are not
+                archived with tar.
                 Tar was tested with three compression options:
                     Option      Size    Duration
                     "--xz"      872M    real	17m59.080s
                     "-I pxz"    887M    real	3m43.987s
                     "-I pigz"   1.3G    real	0m20.747s
-            archive_name:
-                Name of the archive.
-            file_extension:
-                The extension to be added to the archive name. E.g. "tar.gz" or "tar.xz"
 
         Returns:
             None
 
         Raises:
-            None
+            ValueError:
+                If block_id has an unexpected value
         """
 
         # Check if the archive needs to be built
@@ -360,13 +365,24 @@ class File_System_Builder(Builder):
                     run_as_root=True,
                 )
 
-            archive_build_commands = [
-                f"cd {self._build_dir}",
-                f"tar {tar_compress_param} --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.{file_extension}'} ./",
-                f"if id {self._host_user} >/dev/null 2>&1; then "
-                f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.{file_extension}'}; "
-                f"fi",
-            ]
+            if self.block_id == "rootfs":
+                archive_build_commands = [
+                    f"cd {self._build_dir}",
+                    f"tar {tar_compress_param} --numeric-owner -p -cf  {self._output_dir / f'{archive_name}.{file_extension}'} ./",
+                    f"if id {self._host_user} >/dev/null 2>&1; then "
+                    f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.{file_extension}'}; "
+                    f"fi",
+                ]
+            elif self.block_id == "ramfs":
+                archive_build_commands = [
+                    f"cd {self._build_dir}",
+                    f"find . | cpio -H newc -o | gzip -9 > {self._output_dir / f'{archive_name}.{file_extension}'}",
+                    f"if id {self._host_user} >/dev/null 2>&1; then "
+                    f"    chown -R {self._host_user}:{self._host_user} {self._output_dir / f'{archive_name}.{file_extension}'}; "
+                    f"fi",
+                ]
+            else:
+                raise ValueError(f"Value of 'block_id' must be 'rootfs' or 'ramfs'")
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
@@ -422,7 +438,8 @@ class File_System_Builder(Builder):
             None
 
         Raises:
-            None
+            ValueError:
+                If block_id has an unexpected value
         """
 
         # Get path of the pre-built file system
@@ -489,10 +506,18 @@ class File_System_Builder(Builder):
             # Extract file system archive to the work directory
             archive.extract(member=prebuilt_fs_archive, path=self._work_dir)
 
-        extract_pb_fs_commands = [
-            f"mkdir -p {self._build_dir}",
-            f"tar --numeric-owner -p -xf {self._work_dir / prebuilt_fs_archive} -C {self._build_dir}",
-        ]
+        if self.block_id == "rootfs":
+            extract_pb_fs_commands = [
+                f"mkdir -p {self._build_dir}",
+                f"tar --numeric-owner -p -xf {self._work_dir / prebuilt_fs_archive} -C {self._build_dir}",
+            ]
+        elif self.block_id == "ramfs":
+            extract_pb_fs_commands = [
+                f"mkdir -p {self._build_dir}",
+                f'gunzip -c {self._work_dir / prebuilt_fs_archive} | sh -c "cd {self._build_dir}/ && cpio -i"'
+            ]
+        else:
+            raise ValueError(f"Value of 'block_id' must be 'rootfs' or 'ramfs'")
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.container_executor.exec_sh_commands(

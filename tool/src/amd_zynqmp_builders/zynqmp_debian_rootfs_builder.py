@@ -351,4 +351,4 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
         else:
             archive_name = self._file_system_name
 
-        self._build_archive(tar_compress_param="-I pixz", archive_name=archive_name, file_extension="tar.xz")
+        self._build_archive(archive_name=archive_name, file_extension="tar.xz", tar_compress_param="-I pixz")

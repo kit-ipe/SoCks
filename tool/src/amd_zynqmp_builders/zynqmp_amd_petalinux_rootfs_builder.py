@@ -518,7 +518,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(File_System_Builder):
         else:
             archive_name = self._file_system_name
 
-        self._build_archive(archive_name=archive_name)
+        self._build_archive(archive_name=archive_name, file_extension="tar.xz", tar_compress_param="-I pxz")
 
     def clean_repo(self):
         """
