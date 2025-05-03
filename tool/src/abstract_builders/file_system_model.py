@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
 
-class AArch64_RootFS_Installable_Item_Model(BaseModel):
+class File_System_Installable_Item_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     src_block: str = Field(
@@ -24,7 +24,7 @@ class AArch64_RootFS_Installable_Item_Model(BaseModel):
     )
 
 
-class AArch64_RootFS_User_Model(BaseModel):
+class File_System_User_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     name: str = Field(default=..., description="Username")

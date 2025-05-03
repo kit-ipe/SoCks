@@ -4,11 +4,11 @@ import inspect
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
-from abstract_builders.aarch64_rootfs_builder import AArch64_RootFS_Builder
+from abstract_builders.aarch64_rootfs_builder import File_System_Builder
 from amd_zynqmp_builders.zynqmp_debian_rootfs_model import ZynqMP_Debian_RootFS_Model
 
 
-class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
+class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
     """
     Debian root file system builder class
     """
@@ -18,6 +18,7 @@ class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
         project_cfg: dict,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
+        block_id: str = "rootfs",
         block_description: str = "Build an Debian root file system",
         model_class: type[object] = ZynqMP_Debian_RootFS_Model,
     ):
@@ -77,7 +78,7 @@ class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
             block_cmds["build"].extend(block_cmds["prepare"])
             block_cmds["build"].extend(
                 [
-                    self.build_base_rootfs,
+                    self.build_base_file_system,
                     self.add_extra_packages,
                     self.add_users,
                     self.add_kmodules,
@@ -91,7 +92,7 @@ class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
             block_cmds["prebuild"].extend(block_cmds["prepare"])
             block_cmds["prebuild"].extend(
                 [
-                    self.build_base_rootfs,
+                    self.build_base_file_system,
                     self.add_extra_packages,
                     self.build_archive_prebuilt,
                     self.export_block_package,
@@ -116,10 +117,10 @@ class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
         return block_cmds
 
     @property
-    def _rootfs_name(self):
+    def _file_system_name(self):
         return f"debian_{self.block_cfg.project.release}_zynqmp_{self.project_cfg.project.name}"
 
-    def build_base_rootfs(self):
+    def build_base_file_system(self):
         """
         Builds the base root file system.
 
@@ -223,7 +224,7 @@ class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
         # Check whether extra packages are provided
         if not self.block_cfg.project.extra_debs:
             pretty_print.print_info(
-                f"'rootfs -> project -> extra_debs' not specified. No additional deb packages will be installed."
+                f"'{self.block_id} -> project -> extra_debs' not specified. No additional deb packages will be installed."
             )
             return
 
@@ -348,6 +349,6 @@ class ZynqMP_Debian_RootFS_Builder(AArch64_RootFS_Builder):
         if prebuilt:
             archive_name = f"debian_{self.block_cfg.project.release}_zynqmp_pre-built"
         else:
-            archive_name = self._rootfs_name
+            archive_name = self._file_system_name
 
         self._build_archive(tar_compress_param="-I pixz", archive_name=archive_name, file_extension="tar.xz")

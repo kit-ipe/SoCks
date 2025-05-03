@@ -54,5 +54,5 @@ class Versal_AlmaLinux_RootFS_Builder(ZynqMP_AlmaLinux_RootFS_Builder):
         return block_deps
 
     @property
-    def _rootfs_name(self):
+    def _file_system_name(self):
         return f"almalinux{self.block_cfg.project.release}_versal_{self.project_cfg.project.name}"

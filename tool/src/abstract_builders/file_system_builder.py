@@ -12,9 +12,9 @@ from socks.build_validator import Build_Validator
 from abstract_builders.builder import Builder
 
 
-class AArch64_RootFS_Builder(Builder):
+class File_System_Builder(Builder):
     """
-    Abstract aarch64 root file system builder class
+    Abstract file system builder class
     """
 
     def __init__(
@@ -24,7 +24,7 @@ class AArch64_RootFS_Builder(Builder):
         project_dir: pathlib.Path,
         block_description: str,
         model_class: type[object],
-        block_id: str = "rootfs",
+        block_id: str,
     ):
 
         super().__init__(
@@ -37,7 +37,7 @@ class AArch64_RootFS_Builder(Builder):
         )
 
         # Project directories
-        self._build_dir = self._work_dir / self._rootfs_name
+        self._build_dir = self._work_dir / self._file_system_name
 
         # Project files
         # File for version & build info tracking
@@ -47,7 +47,7 @@ class AArch64_RootFS_Builder(Builder):
 
     @property
     @abstractmethod
-    def _rootfs_name(self):
+    def _file_system_name(self):
         pass
 
     def validate_srcs(self):
@@ -68,9 +68,9 @@ class AArch64_RootFS_Builder(Builder):
         self.import_req_src_tpl()
 
     @abstractmethod
-    def build_base_rootfs(self):
+    def build_base_file_system(self):
         """
-        Builds the base root file system.
+        Builds the base file system.
 
         Args:
             None
@@ -86,7 +86,7 @@ class AArch64_RootFS_Builder(Builder):
 
     def add_pd_layers(self):
         """
-        Adds predefined file system layers to the root file system.
+        Adds predefined file system layers to the file system.
 
         Args:
             None
@@ -157,7 +157,7 @@ class AArch64_RootFS_Builder(Builder):
         # Check whether the layer needs to be added
         if not self.block_cfg.project.build_time_fs_layer:
             pretty_print.print_info(
-                f"'rootfs -> project -> build_time_fs_layer' not specified. No files and directories created at build time will be added."
+                f"'{self.block_id} -> project -> build_time_fs_layer' not specified. No files and directories created at build time will be added."
             )
             return
         layer_already_added = (
@@ -188,13 +188,13 @@ class AArch64_RootFS_Builder(Builder):
             for item in self.block_cfg.project.build_time_fs_layer:
                 if item.src_block not in self._block_deps.keys():
                     pretty_print.print_error(
-                        f"Source block '{item.src_block}' specified in 'rootfs -> project -> build_time_fs_layer' is invalid."
+                        f"Source block '{item.src_block}' specified in '{self.block_id} -> project -> build_time_fs_layer' is invalid."
                     )
                     sys.exit(1)
                 srcs = (self._dependencies_dir / item.src_block).glob(item.src_name)
                 if not srcs:
                     pretty_print.print_error(
-                        f"Source item '{item.src_name}' specified in 'rootfs -> project -> build_time_fs_layer' could not be found in the block package of source block '{item.src_block}'."
+                        f"Source item '{item.src_name}' specified in '{self.block_id} -> project -> build_time_fs_layer' could not be found in the block package of source block '{item.src_block}'."
                     )
                     sys.exit(1)
                 add_bt_layer_commands.append(f"mkdir -p {self._build_dir}/{item.dest_path}")
@@ -219,7 +219,7 @@ class AArch64_RootFS_Builder(Builder):
 
     def add_kmodules(self):
         """
-        Adds kernel modules to the root file system.
+        Adds kernel modules to the file system.
 
         Args:
             None
@@ -292,7 +292,7 @@ class AArch64_RootFS_Builder(Builder):
 
     def _build_archive(self, tar_compress_param: str, archive_name: str, file_extension: str):
         """
-        Packs the entire rootfs in an archive.
+        Packs the entire file system in an archive.
 
         Args:
             tar_compress_param:
@@ -379,7 +379,7 @@ class AArch64_RootFS_Builder(Builder):
     @abstractmethod
     def build_archive(self, prebuilt: bool):
         """
-        Packs the entire rootfs in an archive.
+        Packs the entire file system in an archive.
 
         Args:
             prebuilt:
@@ -397,7 +397,7 @@ class AArch64_RootFS_Builder(Builder):
 
     def build_archive_prebuilt(self):
         """
-        Packs the entire pre-built rootfs in a archive.
+        Packs the entire pre-built file system in an archive.
 
         Args:
             None
@@ -413,7 +413,7 @@ class AArch64_RootFS_Builder(Builder):
 
     def import_prebuilt(self):
         """
-        Imports a pre-built root file system and overwrites the existing one.
+        Imports a pre-built file system and overwrites the existing one.
 
         Args:
             None
@@ -425,7 +425,7 @@ class AArch64_RootFS_Builder(Builder):
             None
         """
 
-        # Get path of the pre-built root file system
+        # Get path of the pre-built file system
         if self.block_cfg.project.import_src is None:
             pretty_print.print_error(
                 f"The property blocks/{self.block_id}/project/import_src is required to import the block, but it is not set."
@@ -463,17 +463,17 @@ class AArch64_RootFS_Builder(Builder):
             with self._source_pb_md5_file.open("r") as f:
                 md5_existsing_file = f.read()
 
-        # Check if the pre-built root file system needs to be imported
+        # Check if the pre-built file system needs to be imported
         if md5_existsing_file == md5_new_file:
             pretty_print.print_build(
-                "No need to import the pre-built root file system. No altered source files detected..."
+                "No need to import the pre-built file system. No altered source files detected..."
             )
             return
 
         self.clean_work()
         self._work_dir.mkdir(parents=True)
 
-        pretty_print.print_build("Importing pre-built root file system...")
+        pretty_print.print_build("Importing pre-built file system...")
 
         # Extract pre-built files
         with tarfile.open(prebuilt_block_package, "r:*") as archive:
@@ -485,26 +485,26 @@ class AArch64_RootFS_Builder(Builder):
                     f"There are {len(tar_files)} *.tar.xz and *.tar.gz files in archive {prebuilt_block_package}. Expected was 1."
                 )
                 sys.exit(1)
-            prebuilt_rootfs_archive = tar_files[0]
-            # Extract rootfs archive to the work directory
-            archive.extract(member=prebuilt_rootfs_archive, path=self._work_dir)
+            prebuilt_fs_archive = tar_files[0]
+            # Extract file system archive to the work directory
+            archive.extract(member=prebuilt_fs_archive, path=self._work_dir)
 
-        extract_pb_rootfs_commands = [
+        extract_pb_fs_commands = [
             f"mkdir -p {self._build_dir}",
-            f"tar --numeric-owner -p -xf {self._work_dir / prebuilt_rootfs_archive} -C {self._build_dir}",
+            f"tar --numeric-owner -p -xf {self._work_dir / prebuilt_fs_archive} -C {self._build_dir}",
         ]
 
         # The root user is used in this container. This is necessary in order to build a RootFS image.
         self.container_executor.exec_sh_commands(
-            commands=extract_pb_rootfs_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
+            commands=extract_pb_fs_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
         )
 
         # Save checksum in file
         with self._source_pb_md5_file.open("w") as f:
             print(md5_new_file, file=f, end="")
 
-        # Delete imported, pre-built rootfs archive
-        (self._work_dir / prebuilt_rootfs_archive).unlink()
+        # Delete imported, pre-built file system archive
+        (self._work_dir / prebuilt_fs_archive).unlink()
 
     def clean_work(self):
         """

@@ -3,7 +3,7 @@ from typing_extensions import Annotated
 from typing import Optional
 
 from abstract_builders.block_model import Block_Model, Block_Project_Model, Block_Project_Model_Default_Fields
-from abstract_builders.aarch64_rootfs_model import AArch64_RootFS_Installable_Item_Model, AArch64_RootFS_User_Model
+from abstract_builders.aarch64_rootfs_model import File_System_Installable_Item_Model, File_System_User_Model
 from socks.zynqmp_base_model import ZynqMP_Base_Model
 
 
@@ -22,10 +22,10 @@ class ZynqMP_AlmaLinux_RootFS_Block_Project_Model(Block_Project_Model):
         default=..., description="Release version of the OS to be built"
     )
     extra_rpms: Optional[list[str]] = Field(default=None, description="List of additional rpm packages to be installed")
-    build_time_fs_layer: Optional[list[AArch64_RootFS_Installable_Item_Model]] = Field(
+    build_time_fs_layer: Optional[list[File_System_Installable_Item_Model]] = Field(
         default=None, description="List of files to be installed that were generated at build time"
     )
-    users: list[AArch64_RootFS_User_Model] = Field(default=None, description="List of users to be added")
+    users: list[File_System_User_Model] = Field(default=None, description="List of users to be added")
     add_build_info: bool = Block_Project_Model_Default_Fields.add_build_info
     dependencies: ZynqMP_AlmaLinux_RootFS_Dependencies_Model = Block_Project_Model_Default_Fields.dependencies
 

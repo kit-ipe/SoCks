@@ -99,7 +99,7 @@ class ZynqMP_AMD_PetaLinux_RAMFS_Builder(ZynqMP_AMD_PetaLinux_RootFS_Builder):
             if prebuilt:
                 archive_name = f"petalinux_zynqmp_pre-built"
             else:
-                archive_name = self._rootfs_name
+                archive_name = self._file_system_name
 
             archive_build_commands = [
                 f"cd {self._mod_dir}",

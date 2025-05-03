@@ -9,14 +9,14 @@ import csv
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
 from socks.yaml_editor import YAML_Editor
-from abstract_builders.aarch64_rootfs_builder import AArch64_RootFS_Builder
+from abstract_builders.aarch64_rootfs_builder import File_System_Builder
 from amd_zynqmp_builders.zynqmp_amd_petalinux_rootfs_model import (
     ZynqMP_AMD_PetaLinux_RootFS_Model,
     ZynqMP_AMD_PetaLinux_RootFS_Patch_Model,
 )
 
 
-class ZynqMP_AMD_PetaLinux_RootFS_Builder(AArch64_RootFS_Builder):
+class ZynqMP_AMD_PetaLinux_RootFS_Builder(File_System_Builder):
     """
     AMD PetaLinux root file system builder class
     """
@@ -26,6 +26,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(AArch64_RootFS_Builder):
         project_cfg: dict,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
+        block_id: str = "rootfs",
         block_description: str = "Build an AMD PetaLinux root file system",
         model_class: type[object] = ZynqMP_AMD_PetaLinux_RootFS_Model,
     ):
@@ -93,7 +94,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(AArch64_RootFS_Builder):
             block_cmds["build"].extend(block_cmds["prepare"])
             block_cmds["build"].extend(
                 [
-                    self.build_base_rootfs,
+                    self.build_base_file_system,
                     self.add_kmodules,
                     self.build_archive,
                     self.export_block_package,
@@ -103,7 +104,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(AArch64_RootFS_Builder):
             block_cmds["prebuild"].extend(block_cmds["prepare"])
             block_cmds["prebuild"].extend(
                 [
-                    self.build_base_rootfs,
+                    self.build_base_file_system,
                     self.build_archive_prebuilt,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
@@ -125,7 +126,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(AArch64_RootFS_Builder):
         return block_cmds
 
     @property
-    def _rootfs_name(self):
+    def _file_system_name(self):
         return f"petalinux_zynqmp_{self.project_cfg.project.name}"
 
     def validate_srcs(self):
@@ -433,7 +434,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(AArch64_RootFS_Builder):
             commands=yocto_init_commands, dirs_to_mount=[(self._repo_dir, "Z"), (self._block_src_dir, "Z")]
         )
 
-    def build_base_rootfs(self):
+    def build_base_file_system(self):
         """
         Builds the base root file system.
 
@@ -515,7 +516,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(AArch64_RootFS_Builder):
         if prebuilt:
             archive_name = f"petalinux_zynqmp_pre-built"
         else:
-            archive_name = self._rootfs_name
+            archive_name = self._file_system_name
 
         self._build_archive(archive_name=archive_name)
 
