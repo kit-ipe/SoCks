@@ -40,6 +40,8 @@ ENV PATH="$PATH:/app/tools/crosstool-ng/bin"
 
 # Install busybox dependencies
 RUN dnf -y install perl-Pod-Html ncurses-devel && \
+# Install required packages to modify the base RootFS
+    dnf -y install rsync && \
 # Install required packages to package the initramfs
     dnf -y install pigz pxz && \
 # Install sudo and allow all users to use sudo without a password

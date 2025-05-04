@@ -4,7 +4,7 @@ import inspect
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
-from abstract_builders.aarch64_rootfs_builder import File_System_Builder
+from abstract_builders.file_system_builder import File_System_Builder
 from amd_zynqmp_builders.zynqmp_debian_rootfs_model import ZynqMP_Debian_RootFS_Model
 
 
@@ -27,6 +27,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
             project_cfg=project_cfg,
             socks_dir=socks_dir,
             project_dir=project_dir,
+            block_id=block_id,
             block_description=block_description,
             model_class=model_class,
         )
@@ -34,7 +35,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
         self._target_arch = "arm64"
 
         # Project directories
-        self._repo_dir = self._block_src_dir / "resources"
+        self._resources_dir = self._block_src_dir / "resources"
 
     @property
     def _block_deps(self):
@@ -134,7 +135,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
             None
         """
 
-        mod_base_install_script = self._repo_dir / "mod_base_install.sh"
+        mod_base_install_script = self._resources_dir / "mod_base_install.sh"
 
         # Check whether the base root file system needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
@@ -190,7 +191,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=base_rootfs_build_commands,
-                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "build_base.log",
@@ -325,7 +326,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_users_commands,
-                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
                 print_commands=True,
                 run_as_root=True,
             )

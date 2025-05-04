@@ -98,9 +98,9 @@ class File_System_Builder(Builder):
             None
         """
 
-        # Check whether a RootFS is present
+        # Check whether a file system is present
         if not self._build_dir.is_dir():
-            pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
+            pretty_print.print_error(f"File system at {self._build_dir} not found.")
             sys.exit(1)
 
         # Check whether the predefined file system layers need to be added
@@ -109,7 +109,7 @@ class File_System_Builder(Builder):
             != 0.0
         )
         if layers_already_added and not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._repo_dir / "predefined_fs_layers"],
+            src_search_list=[self._resources_dir / "predefined_fs_layers"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
@@ -123,21 +123,22 @@ class File_System_Builder(Builder):
             pretty_print.print_build("Adding predefined file system layers...")
 
             add_pd_layers_commands = [
-                f"cd {self._repo_dir / 'predefined_fs_layers'}",
+                f"cd {self._resources_dir / 'predefined_fs_layers'}",
                 f'for dir in ./*; do "$dir"/install_layer.sh {self._build_dir}/; done',
             ]
 
-            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            # The root user is used in this container. This is necessary in order to build a file system image.
             self.container_executor.exec_sh_commands(
                 commands=add_pd_layers_commands,
-                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
                 print_commands=True,
                 run_as_root=True,
             )
 
     def add_bt_layer(self):
         """
-        Adds external files and directories created at build time.
+        Adds external files and directories created by other blocks at
+        build time.
 
         Args:
             None
@@ -149,15 +150,16 @@ class File_System_Builder(Builder):
             None
         """
 
-        # Check whether a RootFS is present
+        # Check whether a file system is present
         if not self._build_dir.is_dir():
-            pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
+            pretty_print.print_error(f"File system at {self._build_dir} not found.")
             sys.exit(1)
 
         # Check whether the layer needs to be added
         if not self.block_cfg.project.build_time_fs_layer:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> build_time_fs_layer' not specified. No files and directories created at build time will be added."
+                f"'{self.block_id} -> project -> build_time_fs_layer' not specified. "
+                "No files and directories created by other blocks at build time will be added."
             )
             return
         layer_already_added = (
@@ -177,7 +179,8 @@ class File_System_Builder(Builder):
             )
         ):
             pretty_print.print_build(
-                "No need to add external files and directories created at build time. No altered source files detected..."
+                "No need to add external files and directories created at build time. "
+                "No altered source files detected..."
             )
             return
 
@@ -194,7 +197,8 @@ class File_System_Builder(Builder):
                 srcs = (self._dependencies_dir / item.src_block).glob(item.src_name)
                 if not srcs:
                     pretty_print.print_error(
-                        f"Source item '{item.src_name}' specified in '{self.block_id} -> project -> build_time_fs_layer' could not be found in the block package of source block '{item.src_block}'."
+                        f"Source item '{item.src_name}' specified in '{self.block_id} -> project -> build_time_fs_layer' "
+                        f"could not be found in the block package of source block '{item.src_block}'."
                     )
                     sys.exit(1)
                 add_bt_layer_commands.append(f"mkdir -p {self._build_dir}/{item.dest_path}")
@@ -209,10 +213,10 @@ class File_System_Builder(Builder):
                             f"chmod -R {item.dest_permissions} {self._build_dir}/{item.dest_path}/{item.dest_name}"
                         )
 
-            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            # The root user is used in this container. This is necessary in order to build a file system image.
             self.container_executor.exec_sh_commands(
                 commands=add_bt_layer_commands,
-                dirs_to_mount=[(self._repo_dir, "Z"), (self._dependencies_dir, "Z"), (self._work_dir, "Z")],
+                dirs_to_mount=[(self._dependencies_dir, "Z"), (self._work_dir, "Z")],
                 print_commands=True,
                 run_as_root=True,
             )
@@ -238,7 +242,7 @@ class File_System_Builder(Builder):
             pretty_print.print_info(f"File {kmods_archive} not found. No kernel modules are added.")
             if any((self._build_dir / "lib" / "modules").iterdir()):
                 delete_old_kmodules_commands = [f"rm -rf {self._build_dir}/lib/modules/*"]
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                # The root user is used in this container. This is necessary in order to build a file system image.
                 self.container_executor.exec_sh_commands(
                     commands=delete_old_kmodules_commands,
                     dirs_to_mount=[(self._work_dir, "Z")],
@@ -246,9 +250,9 @@ class File_System_Builder(Builder):
                 )
             return
 
-        # Check whether a RootFS is present
+        # Check whether a file system is present
         if not self._build_dir.is_dir():
-            pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
+            pretty_print.print_error(f"File system at {self._build_dir} not found.")
             sys.exit(1)
 
         # Calculate md5 of the provided file
@@ -278,7 +282,7 @@ class File_System_Builder(Builder):
             "rm -rf lib",
         ]
 
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        # The root user is used in this container. This is necessary in order to build a file system image.
         self.container_executor.exec_sh_commands(
             commands=add_kmodules_commands,
             dirs_to_mount=[(self._dependencies_dir, "Z"), (self._work_dir, "Z")],
@@ -348,7 +352,7 @@ class File_System_Builder(Builder):
                     f"chmod 0444 {self._build_dir}/etc/fs_build_info",
                 ]
 
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                # The root user is used in this container. This is necessary in order to build a file system image.
                 self.container_executor.exec_sh_commands(
                     commands=add_build_info_commands,
                     dirs_to_mount=[(self._work_dir, "Z")],
@@ -358,7 +362,7 @@ class File_System_Builder(Builder):
                 # Remove existing build information file
                 clean_build_info_commands = [f"rm -f {self._build_dir}/etc/fs_build_info"]
 
-                # The root user is used in this container. This is necessary in order to build a RootFS image.
+                # The root user is used in this container. This is necessary in order to build a file system image.
                 self.container_executor.exec_sh_commands(
                     commands=clean_build_info_commands,
                     dirs_to_mount=[(self._work_dir, "Z")],
@@ -384,7 +388,7 @@ class File_System_Builder(Builder):
             else:
                 raise ValueError(f"Value of 'block_id' must be 'rootfs' or 'ramfs'")
 
-            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            # The root user is used in this container. This is necessary in order to build a file system image.
             self.container_executor.exec_sh_commands(
                 commands=archive_build_commands,
                 dirs_to_mount=[(self._work_dir, "Z"), (self._output_dir, "Z")],
@@ -482,9 +486,7 @@ class File_System_Builder(Builder):
 
         # Check if the pre-built file system needs to be imported
         if md5_existsing_file == md5_new_file:
-            pretty_print.print_build(
-                "No need to import the pre-built file system. No altered source files detected..."
-            )
+            pretty_print.print_build("No need to import the pre-built file system. No altered source files detected...")
             return
 
         self.clean_work()
@@ -514,12 +516,12 @@ class File_System_Builder(Builder):
         elif self.block_id == "ramfs":
             extract_pb_fs_commands = [
                 f"mkdir -p {self._build_dir}",
-                f'gunzip -c {self._work_dir / prebuilt_fs_archive} | sh -c "cd {self._build_dir}/ && cpio -i"'
+                f'gunzip -c {self._work_dir / prebuilt_fs_archive} | sh -c "cd {self._build_dir}/ && cpio -i"',
             ]
         else:
             raise ValueError(f"Value of 'block_id' must be 'rootfs' or 'ramfs'")
 
-        # The root user is used in this container. This is necessary in order to build a RootFS image.
+        # The root user is used in this container. This is necessary in order to build a file system image.
         self.container_executor.exec_sh_commands(
             commands=extract_pb_fs_commands, dirs_to_mount=[(self._work_dir, "Z")], run_as_root=True
         )

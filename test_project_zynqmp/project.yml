@@ -134,6 +134,12 @@ blocks:
       build_srcs:
         source: "https://git.busybox.net/busybox/"
         branch: "1_36_1"
+      source_repo_fs_layer:
+        - src_name: "examples/udhcp/simple.script"
+          dest_path: "/usr/share/udhcpc"
+          dest_name: "default.script"
+          dest_owner_group: "root:root"
+          dest_permissions: "u=rwx,go=rx"
       add_build_info: false
       dependencies:
         kernel: "temp/kernel/output/bp_kernel_*.tar.gz"

@@ -9,7 +9,7 @@ import csv
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
 from socks.yaml_editor import YAML_Editor
-from abstract_builders.aarch64_rootfs_builder import File_System_Builder
+from abstract_builders.file_system_builder import File_System_Builder
 from amd_zynqmp_builders.zynqmp_amd_petalinux_rootfs_model import (
     ZynqMP_AMD_PetaLinux_RootFS_Model,
     ZynqMP_AMD_PetaLinux_RootFS_Patch_Model,
@@ -35,6 +35,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(File_System_Builder):
             project_cfg=project_cfg,
             socks_dir=socks_dir,
             project_dir=project_dir,
+            block_id=block_id,
             block_description=block_description,
             model_class=model_class,
         )

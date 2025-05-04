@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
 
-class File_System_Installable_Item_Model(BaseModel):
+class File_System_Installable_Build_Time_Item_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     src_block: str = Field(
