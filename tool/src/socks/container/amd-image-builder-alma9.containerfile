@@ -36,7 +36,7 @@ RUN dnf -y install wget && \
     rm -rf u-boot-$uboot_version/ && \
 # Install tools to build SD card image
     dnf -y install guestfs-tools
-ENV LIBGUESTFS_BACKEND direct
+ENV LIBGUESTFS_BACKEND=direct
 
 # Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
 RUN getent group $user_name || groupadd --gid $user_id $user_name && \
