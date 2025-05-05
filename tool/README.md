@@ -98,7 +98,7 @@ In some case one needs to modify source files for a block without having access 
 
 ### ZynqMP_AlmaLinux_RootFS_Builder
 
-This builder is designed to build an AlmaLinux 8 or 9 root file system with yocto. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with a custom shell script.
+This builder is designed to build an AlmaLinux 8 or 9 root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with a custom shell script.
 
 #### Block Configuration
 
@@ -132,9 +132,9 @@ rootfs:
       - name: "root"
         pw_hash: "$1$abFTnq2K$2Obyh.ZKwwExNujN/aCjQ." # alma
       - name: "kria"
-        pw_hash: "$1$abFTnq2K$2Obyh.ZKwwExNujN/aCjQ." # alma
+        pw_hash: "$1$DaewGWW3$9Qauc9z14L7B9PbF5SuE8." # regular.user
         groups: ["wheel", "dialout"]
-    import_src: "https://serenity.web.cern.ch/.../rootfs.tar.gz"
+    import_src: "https://serenity.web.cern.ch/.../almalinux9_rootfs.tar.gz"
     add_build_info: false
     dependencies:
       kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
@@ -168,9 +168,9 @@ Key:
 - **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
   - The URL of a file online. In this case the string must start with `https://`.
   - The path of a local file. In this case the string must start with `file://`.
-- **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the Kernel. If it is set to `true`, SoCks creates a file with build related information encoded in a C-array in the source repo under `include/build_info.h`. This file can then be used to add this information to the `/proc` filesystem of the Kernel.
+- **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
-- **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
+- **container -> image**: The container image to be used for building. The selection should be compatible with the version of AlmaLinux to be built. The following images are available for this block:
   - `petalinux-rootfs-builder-alma8`
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
 
@@ -317,7 +317,7 @@ Key:
 - **source**: The source of the block. Options are:
   - **build**: Build the block locally
   - **import**: Import an already built block package
-- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Kernel_Builder`.
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_FSBL_Builder`.
 - **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
   - The URL of a file online. In this case the string must start with `https://`.
   - The path of a local file. In this case the string must start with `file://`.
@@ -448,6 +448,10 @@ Key:
 
 SoCks does not require any external files in order to build this block. However, it is possible to create patches for the source repo.
 
+### ZynqMP_AMD_PetaLinux_RAMFS_Builder
+
+This builder is designed to build a Petalinux RAM file system with yocto. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. This builder is a slightly adapted version of the `ZynqMP_AMD_PetaLinux_RootFS_Builder`. Visit the section of `ZynqMP_AMD_PetaLinux_RootFS_Builder` for details on how to use this builder.
+
 ### ZynqMP_AMD_PetaLinux_RootFS_Builder
 
 This builder is designed to build a Petalinux root file system with yocto. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams.
@@ -465,7 +469,7 @@ rootfs:
     build_srcs:
       source: "https://github.com/Xilinx/yocto-manifests.git"
       branch: "rel-v{{external_tools/xilinx/version}}"
-    import_src: "https://serenity.web.cern.ch/.../rootfs.tar.gz"
+    import_src: "https://serenity.web.cern.ch/.../petalinux_rootfs.tar.gz"
     add_build_info: true
     dependencies:
       kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
@@ -489,7 +493,7 @@ Key:
 - **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
   - The URL of a file online. In this case the string must start with `https://`.
   - The path of a local file. In this case the string must start with `file://`.
-- **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the Kernel. If it is set to `true`, SoCks creates a file with build related information encoded in a C-array in the source repo under `include/build_info.h`. This file can then be used to add this information to the `/proc` filesystem of the Kernel.
+- **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **project -> patches**: A list of dicts describing patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. In contrast to most other blocks dict are used to describe the patches. This is because yocto uses one git repo per layer. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/rootfs/patches`.
 - **project -> patches -> [N] -> project**: The target git repo of this patch.
@@ -502,6 +506,445 @@ Key:
 
 SoCks requires external files in order to build this block. The following template packages are available:
 - **universal_2022_2**: Contains a template file `local.conf.append`. This file can be used to extend the yocto configuration file `local.conf`. SoCks automatically appends `local.conf.append` to the end of `local.conf`. Furthermore, this template package contains a patch that modifies the Petalinux yocto configuration so that only the root file system is built and nothing else (No FSBL, U-Boot, Kernel, ...). This patch is tested with Petalinux 2022.2.
+
+### ZynqMP_AMD_PMUFW_Builder
+
+This builder is designed to build the Platform Management Unit (PMU) firmware for an AMD ZynqMP SoCs.
+
+#### Block Configuration
+
+The default configuration `project-zynqmp-default` contains a complete configuration for this block. You can use it in your SoCks project configuration as follows:
+```
+import:
+  - project-zynqmp-default.yml
+``` 
+
+Configuration example:
+```
+pmu_fw:
+  source: "build"
+  builder: "ZynqMP_AMD_PMUFW_Builder"
+  project:
+    import_src: "https://serenity.web.cern.ch/.../pmu_fw.tar.gz"
+    dependencies:
+      vivado: "temp/vivado/output/bp_vivado_*.tar.gz"
+    patches:
+      - 0001-Add-gitignore.patch
+  container:
+    image: "amd-xilinx-tools-alma8"
+    tag: "socks"
+```
+
+Key:
+- **source**: The source of the block. Options are:
+  - **build**: Build the block locally
+  - **import**: Import an already built block package
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_PMUFW_Builder`.
+- **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
+  - The URL of a file online. In this case the string must start with `https://`.
+  - The path of a local file. In this case the string must start with `file://`.
+- **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
+- **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/fsbl/patches`.
+- **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
+  - `amd-xilinx-tools-alma8`
+  - `amd-xilinx-tools-alma9`
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+
+#### External Source Files
+
+SoCks does not require any external files in order to build this block. However, it is possible to create patches for the source repo. The following template packages are available:
+- **universal**: Contains a default gitignore file for the autogenerated repo.
+
+### ZynqMP_AMD_UBoot_Builder
+
+This builder is designed to build the [AMD fork](https://github.com/Xilinx/u-boot-xlnx) of das U-Boot.
+
+#### Block Configuration
+
+The default configuration `project-zynqmp-default` contains a complete configuration for this block. You can use it in your SoCks project configuration as follows:
+```
+import:
+  - project-zynqmp-default.yml
+``` 
+
+Configuration example:
+```
+uboot:
+  source: "build"
+  builder: "ZynqMP_AMD_UBoot_Builder"
+  project:
+    build_srcs:
+      source: "https://github.com/Xilinx/u-boot-xlnx.git"
+      branch: "xilinx-v{{external_tools/xilinx/version}}"
+    import_src: "https://serenity.web.cern.ch/.../uboot.tar.gz"
+    add_build_info: false
+    dependencies:
+      atf: "temp/atf/output/bp_atf_*.tar.gz"
+    patches:
+      - 0001-Add-default-config.patch
+  container:
+    image: "kernel-builder-alma9"
+    tag: "socks"
+```
+
+Key:
+- **source**: The source of the block. Options are:
+  - **build**: Build the block locally
+  - **import**: Import an already built block package
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_UBoot_Builder`.
+- **project -> build_srcs -> source**: The source to be used to build this block in URI format. Options are:
+  - The URL of a git repository. In this case the string must start with `https://` or `ssh://`.
+  - The path to a local folder, e.g. if the repo was checked out manually. In this case the string must start with `file://`.
+- **project -> build_srcs -> branch [optional]**: Specifies the branch of the source repo to be used. Only permitted if *project -> build_srcs -> source* contains the URL of a git repo.
+- **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
+  - The URL of a file online. In this case the string must start with `https://`.
+  - The path of a local file. In this case the string must start with `file://`.
+- **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into das U-Boot. If it is set to `true`, SoCks creates a file with build related information encoded in a C-array in the source repo under `include/build_info.h`. This file can then be used e.g. to create a custom U-Boot command that shows this information.
+- **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/uboot/patches`.
+- **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
+  - `kernel-builder-alma8`
+  - `kernel-builder-alma9`
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+
+#### External Source Files
+
+SoCks does not require any external files in order to build this block. However, it is possible to create patches for the source repo.
+
+### ZynqMP_AMD_Vivado_Hog_Builder
+
+This builder is designed to build a Vivado project with Hog.
+
+#### Block Configuration
+
+The default configuration `project-zynqmp-default` contains an incomplete base configuration for this block. You can use the default configuration in your SoCks project configuration as follows:
+```
+import:
+  - project-zynqmp-default.yml
+blocks:
+  vivado:
+    builder: "ZynqMP_AMD_Vivado_Hog_Builder"
+    project:
+      build_srcs:
+        source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
+        branch: "test"
+      name: "serenity-s1-kria"
+``` 
+
+Configuration example:
+```
+vivado:
+  source: "build"
+  builder: "ZynqMP_AMD_Vivado_Hog_Builder"
+  project:
+    build_srcs:
+      source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw.git"
+      branch: "test"
+    import_src: "https://serenity.web.cern.ch/.../vivado.tar.gz"
+    name: "serenity-s1-kria"
+  container:
+    image: "amd-xilinx-tools-alma8"
+    tag: "socks"
+```
+
+Key:
+- **source**: The source of the block. Options are:
+  - **build**: Build the block locally
+  - **import**: Import an already built block package
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Vivado_Hog_Builder`.
+- **project -> build_srcs -> source**: The source to be used to build this block in URI format. Options are:
+  - The URL of a git repository. In this case the string must start with `https://` or `ssh://`.
+  - The path to a local folder, e.g. if the repo was checked out manually. In this case the string must start with `file://`.
+- **project -> build_srcs -> branch [optional]**: Specifies the branch of the source repo to be used. Only permitted if *project -> build_srcs -> source* contains the URL of a git repo.
+- **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
+  - The URL of a file online. In this case the string must start with `https://`.
+  - The path of a local file. In this case the string must start with `file://`.
+- **project -> name**: Name of the Hog project
+- **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
+  - `amd-xilinx-tools-alma8`
+  - `amd-xilinx-tools-alma9`
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+
+#### External Source Files
+
+SoCks does not require any external files in order to build this block.
+
+### ZynqMP_AMD_Vivado_IPBB_Builder
+
+This builder is designed to build a Vivado project with the IPbus Builder (IPBB) framework.
+
+#### Block Configuration
+
+The default configuration `project-zynqmp-default` contains an incomplete base configuration for this block. You can use the default configuration in your SoCks project configuration as follows:
+```
+import:
+  - project-zynqmp-default.yml
+blocks:
+  vivado:
+    builder: "ZynqMP_AMD_Vivado_IPBB_Builder"
+    project:
+      build_srcs:
+        - source: "https://github.com/ipbus/ipbus-firmware.git"
+          branch: "-r 60d7efed3ddba10e551790de7505bfea5bfc738b"
+        - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/firmware/serenity-service.git"
+          branch: "-b v0.4.4"
+        - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw"
+          branch: "-b main"
+      name: "s1-kria"
+    container:
+      image: "ipbb-builder-alma8"
+``` 
+
+Configuration example:
+```
+vivado:
+  source: "build"
+  builder: "ZynqMP_AMD_Vivado_IPBB_Builder"
+  project:
+    build_srcs:
+      - source: "https://github.com/ipbus/ipbus-firmware.git"
+        branch: "-r 60d7efed3ddba10e551790de7505bfea5bfc738b"
+      - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/firmware/serenity-service.git"
+        branch: "-b v0.4.4"
+      - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw"
+        branch: "-b main"
+    import_src: "https://serenity.web.cern.ch/.../vivado.tar.gz"
+    name: "s1-kria"
+  container:
+    image: "ipbb-builder-alma8"
+    tag: "socks"
+```
+
+Key:
+- **source**: The source of the block. Options are:
+  - **build**: Build the block locally
+  - **import**: Import an already built block package
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Vivado_IPBB_Builder`.
+- **project -> build_srcs [optional]**: A list of dicts describing git repos to be used by IPBB.
+- **project -> build_srcs -> [N] -> source**: The source to be used to build this block in URI format. Options are:
+  - The URL of a git repository. In this case the string must start with `https://` or `ssh://`.
+  - The path to a local folder, e.g. if the repo was checked out manually. In this case the string must start with `file://`.
+- **project -> build_srcs -> [N] -> branch [optional]**: Specifies the branch of the source repo to be used. Only permitted if *project -> build_srcs -> source* contains the URL of a git repo. The string has to start with '-b ' for branches and tags or with '-r ' for commit ids.
+- **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
+  - The URL of a file online. In this case the string must start with `https://`.
+  - The path of a local file. In this case the string must start with `file://`.
+- **project -> name**: Name of the IPBB project
+- **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
+  - `ipbb-builder-alma8`
+  - `ipbb-builder-alma9`
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+
+#### External Source Files
+
+SoCks does not require any external files in order to build this block.
+
+### ZynqMP_AMD_Vivado_logicc_Builder
+
+This builder is designed to build a Vivado project with the logicc framework.
+
+#### Block Configuration
+
+The default configuration `project-zynqmp-default` contains an incomplete base configuration for this block. You can use the default configuration in your SoCks project configuration as follows:
+```
+import:
+  - project-zynqmp-default.yml
+blocks:
+  vivado:
+    builder: "ZynqMP_AMD_Vivado_logicc_Builder"
+    project:
+      build_srcs:
+        source: "ssh://git@gitlab.kit.edu/kit/ipe-sdr/ipe-sdr-dev/hardware/sdr_hardware.git"
+        branch: "master"
+      name: "qup:zcu216_rfdc_full"
+    container:
+      image: "logicc-builder-alma8"
+``` 
+
+Configuration example:
+```
+vivado:
+  source: "build"
+  builder: "ZynqMP_AMD_Vivado_logicc_Builder"
+  project:
+    build_srcs:
+      source: "ssh://git@gitlab.kit.edu/kit/ipe-sdr/ipe-sdr-dev/hardware/sdr_hardware.git"
+      branch: "master"
+    import_src: "file:///home/marvin/Projects/SDR/SoCks/zcu216_demo_SoCks/vivado.tar.gz"
+    name: "qup:zcu216_rfdc_full"
+  container:
+    image: "logicc-builder-alma8"
+    tag: "socks"
+```
+
+Key:
+- **source**: The source of the block. Options are:
+  - **build**: Build the block locally
+  - **import**: Import an already built block package
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Vivado_logicc_Builder`.
+- **project -> build_srcs -> source**: The source to be used to build this block in URI format. Options are:
+  - The URL of a git repository. In this case the string must start with `https://` or `ssh://`.
+  - The path to a local folder, e.g. if the repo was checked out manually. In this case the string must start with `file://`.
+- **project -> build_srcs -> branch [optional]**: Specifies the branch of the source repo to be used. Only permitted if *project -> build_srcs -> source* contains the URL of a git repo.
+- **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
+  - The URL of a file online. In this case the string must start with `https://`.
+  - The path of a local file. In this case the string must start with `file://`.
+- **project -> name**: Name of the logicc project. The format for regular projects is `<project>`. For grouped projects the format is `<group>:<project>`.
+- **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
+  - `logicc-builder-alma8`
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+
+#### External Source Files
+
+SoCks does not require any external files in order to build this block.
+
+### ZynqMP_BusyBox_RAMFS_Builder
+
+This builder is designed to build a BusyBox RAM file system. Kernel modules are automatically added, and it is also possible to add external files automatically.
+
+#### Block Configuration
+
+The default configuration `project-zynqmp-default` does not contain any configuration for this block. The entire configuration must be carried out in the project configuration file.
+
+Configuration example:
+```
+ramfs:
+  source: "build"
+  builder: "ZynqMP_BusyBox_RAMFS_Builder"
+  project:
+    build_srcs:
+      source: "https://git.busybox.net/busybox/"
+      branch: "1_36_1"
+    import_src: "https://serenity.web.cern.ch/.../busybox_ramfs.tar.gz"
+    source_repo_fs_layer:
+      - src_name: "examples/udhcp/simple.script"
+        dest_path: "/usr/share/udhcpc"
+        dest_name: "default.script"
+        dest_owner_group: "root:root"
+        dest_permissions: "u=rwx,go=rx"
+    add_build_info: false
+    dependencies:
+      kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
+    patches:
+      - 0001-Add-default-config.patch
+  container:
+    image: "busybox-ramfs-builder-alma9"
+    tag: "socks"
+```
+
+Key:
+- **source**: The source of the block. Options are:
+  - **build**: Build the block locally
+  - **import**: Import an already built block package
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_BusyBox_RAMFS_Builder`.
+- **project -> build_srcs -> source**: The source to be used to build this block in URI format. Options are:
+  - The URL of a git repository. In this case the string must start with `https://` or `ssh://`.
+  - The path to a local folder, e.g. if the repo was checked out manually. In this case the string must start with `file://`.
+- **project -> build_srcs -> branch [optional]**: Specifies the branch of the source repo to be used. Only permitted if *project -> build_srcs -> source* contains the URL of a git repo.
+- **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
+  - The URL of a file online. In this case the string must start with `https://`.
+  - The path of a local file. In this case the string must start with `file://`.
+- **project -> source_repo_fs_layer [optional]**: A list of dicts describing files and folders from the sorce repo to be added to the RAM file system without any modifications. The file `simple.script` in the configuration example is required to enable dhcp support.
+- **project -> source_repo_fs_layer -> [N] -> src_name**: The name of the file or folder in the source repo.
+- **project -> source_repo_fs_layer -> [N] -> dest_path**: The target path in the RAM file system where this file or folder is to be placed.
+- **project -> source_repo_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
+- **project -> source_repo_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
+- **project -> source_repo_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
+- **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the RAM file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the RAM file system.
+- **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
+- **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/ramfs/patches`.
+- **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
+  - `busybox-ramfs-builder-alma8`
+  - `busybox-ramfs-builder-alma9`
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+
+#### External Source Files
+
+SoCks requires external files in order to build this block. The following template packages are available:
+- **mounts-nfs-rootfs**: Contains template files for building a busybox RAM file system with network support that is able to mount an NFS root file system. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base RAM file system. Every layer requires a shell script that is used to add the layer. The file `predefined_fs_layers/common/init` is the init script of the RAM file system. It contains all steps required to initialize the RAM file system, mount the NFS root file system, and do the handover from busybox RAMFS to NFS RootFS. The folder `predefined_fs_layers/common/etc/network` contains files and folders required to establish a connection to the network.
+- **mounts-overlay-rootfs**: Contains template files for building a busybox RAM file system with network support that is able to mount an overlay root file system consisting of an NFS file system used as the read-only base layer and a read/write layer on a local media such as SSD or an SD card. This template package contains equivalent files to `mounts-nfs-rootfs`, but the init script is modfied to enable the overlay root file system.
+
+### ZynqMP_Debian_RootFS_Builder
+
+This builder is designed to build a Debian root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with a custom shell script.
+
+#### Block Configuration
+
+The default configuration `project-zynqmp-default` does not contain any configuration for this block. The entire configuration must be carried out in the project configuration file.
+
+Configuration example:
+```
+rootfs:
+  source: "build"
+  builder: "ZynqMP_Debian_RootFS_Builder"
+  project:
+    release: "bookworm"
+    mirror: "http://ftp.de.debian.org/debian/"
+    extra_debs: ["sudo", "python3", "openssh-server", "nano", "vim"]
+    build_time_fs_layer:
+      - src_block: "vivado"
+        src_name: "*.bit"
+        dest_path: "/lib/firmware"
+        dest_name: "serenity_s1_k26_pl.bit"
+        dest_owner_group: "root:root"
+        dest_permissions: "u=rw,go=r"
+      - src_block: "devicetree"
+        src_name: "*.dtbo"
+        dest_path: "/etc/dt-overlays"
+        dest_owner_group: "root:root"
+        dest_permissions: "u=rwX,go=rX"
+      - src_block: "vivado"
+        src_name: "addrtab"
+        dest_path: "/etc/serenity"
+        dest_name: "zynq-addrtab"
+    users:
+      - name: "root"
+        pw_hash: "$6$vZIHKtcF/ibXBtIg$8hD7jbElXZVHNBhUIL4G97lqgsZ.7hq1YtjwdZpG.YRwqFy9kWwACLgf4hEFbXQYr81X08B2EJIDSKO3ZeBF4/" # debian
+      - name: "kria"
+        pw_hash: "$6$G5Sswo/P0ILiqfS1$zqLYE2HP22Eg2WeTAQNJCrItEbs1utYN6TLF6nKbaoRHuyEUd8peeWPQ59Jx4jVpAto6brgV9FxA3veBYUg8.1" # regular.user
+        groups: ["sudo", "dialout"]
+    import_src: "https://serenity.web.cern.ch/.../debian_rootfs.tar.gz"
+    add_build_info: false
+    dependencies:
+      kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
+      devicetree: "temp/devicetree/output/bp_devicetree*.tar.gz"
+      vivado: "temp/vivado/output/bp_vivado*.tar.gz"
+  container:
+    image: "debian-rootfs-builder-debian12"
+    tag: "socks"
+```
+
+Key:
+- **source**: The source of the block. Options are:
+  - **build**: Build the block locally
+  - **import**: Import an already built block package
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_Debian_RootFS_Builder`.
+- **project -> release**: The release version of Debian to be built. Options are:
+  - bookworm
+- **project -> mirror**: Debian mirror to be used. Choose a local mirror to speed up the build process.
+- **project -> extra_debs [optional]**: A list of additional deb packages to be installed in the root file system.
+- **project -> build_time_fs_layer [optional]**: A list of dicts describing files and folders generated by other blocks and are to be added to the root file system.
+- **project -> build_time_fs_layer -> [N] -> src_block**: The ID of the block that generates this file or folder.
+- **project -> build_time_fs_layer -> [N] -> src_name**: The name of the file or folder in the block package of the source block.
+- **project -> build_time_fs_layer -> [N] -> dest_path**: The target path in the root file system where this file or folder is to be placed.
+- **project -> build_time_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
+- **project -> build_time_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
+- **project -> build_time_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
+- **project -> users**: A list of dicts describing users to be added to the root file system.
+- **project -> users -> [N] -> name**: The name of the user.
+- **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -6`.
+- **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
+- **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
+  - The URL of a file online. In this case the string must start with `https://`.
+  - The path of a local file. In this case the string must start with `file://`.
+- **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
+- **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
+- **container -> image**: The container image to be used for building. The selection should be compatible with the version of Debian to be built. The following images are available for this block:
+  - `debian-rootfs-builder-debian12`
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+
+#### External Source Files
+
+SoCks requires external files in order to build this block. The following template packages are available:
+- **universal**: Contains universal template files to build a Debian root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer.
 
 ## Background
 
