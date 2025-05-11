@@ -84,7 +84,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             block_cmds["build"].extend(
                 [
                     self.build_base_file_system,
-                    self.add_extra_packages,
+                    self.add_addl_packages,
                     self.add_users,
                     self.add_kmodules,
                     self.add_bt_layer,
@@ -98,7 +98,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             block_cmds["prebuild"].extend(
                 [
                     self.build_base_file_system,
-                    self.add_extra_packages,
+                    self.add_addl_packages,
                     self.build_archive_prebuilt,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
@@ -211,9 +211,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             self._build_log.del_logged_timestamp(identifier=f"function-add_bt_layer-success")
             self._build_log.del_logged_timestamp(identifier=f"function-add_users-success")
 
-    def add_extra_packages(self):
+    def add_addl_packages(self):
         """
-        Installs user defined rpm packages.
+        Installs additional user defined rpm packages.
 
         Args:
             None
@@ -231,9 +231,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             sys.exit(1)
 
         # Check whether extra packages are provided
-        if not self.block_cfg.project.extra_rpms:
+        if not self.block_cfg.project.addl_pkgs:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> extra_rpms' not specified. No additional rpm packages will be installed."
+                f"'{self.block_id} -> project -> addl_pkgs' not specified. No additional rpm packages will be installed."
             )
             return
 
@@ -243,9 +243,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             != 0.0
         )
         if packages_already_added and not self._build_validator.check_rebuild_bc_config(
-            keys=[["blocks", self.block_id, "project", "extra_rpms"]]
+            keys=[["blocks", self.block_id, "project", "addl_pkgs"]]
         ):
-            pretty_print.print_build("No need to install extra packages. No altered source files detected...")
+            pretty_print.print_build("No need to install additional packages. No altered source files detected...")
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
@@ -253,7 +253,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                 pretty_print.print_error(f"The following dnf configuration file is required: {self._dnf_conf_file}")
                 sys.exit(1)
 
-            pretty_print.print_build("Installing extra packages...")
+            pretty_print.print_build("Installing additional packages...")
 
             dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
             add_packages_commands = [
@@ -265,7 +265,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                 # Update all the installed packages
                 dnf_base_command + "update",
                 # Installing user defined packages
-                dnf_base_command + "install " + " ".join(self.block_cfg.project.extra_rpms),
+                dnf_base_command + "install " + " ".join(self.block_cfg.project.addl_pkgs),
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
@@ -276,7 +276,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
                 print_commands=True,
                 run_as_root=True,
-                logfile=self._block_temp_dir / "install_extra_packages.log",
+                logfile=self._block_temp_dir / "install_additional_packages.log",
                 output_scrolling=True,
             )
 

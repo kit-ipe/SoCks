@@ -48,7 +48,7 @@ class Versal_AlmaLinux_RootFS_Block_Project_Model(Block_Project_Model):
     release: Annotated[str, StringConstraints(pattern=r"^[0-9.]+$")] = Field(
         default=..., description="Release version of the OS to be built"
     )
-    extra_rpms: Optional[list[str]] = Field(default=None, description="List of additional rpm packages to be installed")
+    addl_pkgs: Optional[list[str]] = Field(default=None, description="List of additional rpm packages to be installed")
     build_time_fs_layer: Optional[list[Versal_AlmaLinux_RootFS_Installable_Item_Model]] = Field(
         default=None, description="List of files to be installed that were generated at build time"
     )

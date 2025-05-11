@@ -365,7 +365,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             # Remove old build artifacts
             self._modules_out_file.unlink(missing_ok=True)
 
-            pretty_print.print_build("Exporting Kernel Modules...")
+            pretty_print.print_build("Exporting Kernel modules...")
 
             export_modules_commands = [
                 f"cd {self._source_repo_dir}",
