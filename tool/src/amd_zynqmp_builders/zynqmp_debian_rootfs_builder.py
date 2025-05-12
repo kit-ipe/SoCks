@@ -305,7 +305,9 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
         if packages_already_added and not self._build_validator.check_rebuild_bc_config(
             keys=[["blocks", self.block_id, "project", "addl_ext_pkgs"]]
         ):
-            pretty_print.print_build("No need to install additional packages from external *.deb files. No altered source files detected...")
+            pretty_print.print_build(
+                "No need to install additional packages from external *.deb files. No altered source files detected..."
+            )
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
@@ -321,7 +323,9 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
             for uri in self.block_cfg.project.addl_ext_pkgs:
                 if uri.rpartition(".")[2] != "deb":
                     # The provided file is not a Debian package
-                    pretty_print.print_error(f"The file specified in '{self.block_id} -> project -> addl_ext_pkgs' is not a Debian package")
+                    pretty_print.print_error(
+                        f"The file specified in '{self.block_id} -> project -> addl_ext_pkgs' is not a Debian package"
+                    )
                     sys.exit(1)
                 if urllib.parse.urlparse(uri).scheme == "file":
                     # This package is provided locally
@@ -329,7 +333,9 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
                     local_pkg_src_path = self._resources_dir / "additional_packages" / local_pkg_file
                     # Check whether the specified file exists
                     if not local_pkg_src_path.is_file():
-                        pretty_print.print_error(f"The package specified in '{self.block_id} -> project -> addl_ext_pkgs' does not exist: '{local_pkg_src_path}'")
+                        pretty_print.print_error(
+                            f"The package specified in '{self.block_id} -> project -> addl_ext_pkgs' does not exist: '{local_pkg_src_path}'"
+                        )
                         sys.exit(1)
                     # Copy file to work dir
                     shutil.copy(local_pkg_src_path, ext_pkgs_dir / local_pkg_file)

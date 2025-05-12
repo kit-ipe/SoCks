@@ -446,7 +446,7 @@ Key:
 
 #### External Source Files
 
-SoCks does not require any external files in order to build this block. However, it is possible to create patches for the source repo.
+SoCks does not require any external files in order to build this block. However, it is possible to create patches for the source repo. It is also possible to provide sources for custom Kernel modules in `src/kernel/external_modules`. SoCks will use `make` to build these sources and to merge them with the modules configured in the Kernel configuration. It is therefore necessary that the sources provided contain a `Makefile`. `src/kernel/external_modules` may be a git submodule.
 
 ### ZynqMP_AMD_PetaLinux_RAMFS_Builder
 
