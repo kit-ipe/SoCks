@@ -34,6 +34,7 @@ blocks:
           branch: "-b v0.4.4"
         - source: "ssh://git@gitlab.cern.ch:7999/p2-xware/zynq/serenity-s1-k26c-fw"
           branch: "-b main"
+      main_prj_src: "serenity-s1-k26c-fw"
       name: "s1-kria"
     container:
       image: "ipbb-builder-alma8"
@@ -99,7 +100,7 @@ blocks:
   #     addl_ext_pkgs:
   #       - "file:libmetal-2022.2-1.deb"
   #       - "file:librfdc-2022.2-1.deb"
-  #       - "file:servicehub-0.1.1-Linux.deb"
+  #       - "https://bwsyncandshare.kit.edu/s/L6gynyC2a3GQx38/download?path=%2F&files=servicehub-0.1.1-Linux.deb"
   #     build_time_fs_layer:
   #       - src_block: "vivado"
   #         src_name: "*.bit"

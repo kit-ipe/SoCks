@@ -6,6 +6,7 @@ import shutil
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
+from socks.file_downloader import File_Downloader
 from abstract_builders.file_system_builder import File_System_Builder
 from amd_zynqmp_builders.zynqmp_debian_rootfs_model import ZynqMP_Debian_RootFS_Model
 
@@ -341,8 +342,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
                     shutil.copy(local_pkg_src_path, ext_pkgs_dir / local_pkg_file)
                 elif urllib.parse.urlparse(uri).scheme in ["http", "https"]:
                     # This package needs to be downloaded
-                    pretty_print.print_error(f"Feature not yet implemented!")
-                    sys.exit(1)
+                    File_Downloader.get_file(url=uri, output_dir=ext_pkgs_dir)
                 else:
                     raise ValueError(
                         "The following string is not a valid reference to a Debian package file: "

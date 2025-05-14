@@ -7,9 +7,7 @@ import sys
 from datetime import datetime
 from dateutil import parser
 import urllib
-import requests
 import validators
-import tqdm
 import tarfile
 import re
 import hashlib
@@ -23,6 +21,7 @@ import socks.pretty_print as pretty_print
 from socks.shell_executor import Shell_Executor
 from socks.container_executor import Container_Executor
 from socks.build_validator import Build_Validator
+from socks.file_downloader import File_Downloader
 from socks.timestamp_logger import Timestamp_Logger
 from socks.yaml_editor import YAML_Editor
 import abstract_builders
@@ -581,36 +580,8 @@ class Builder(ABC):
             None
         """
 
-        # Progress callback function to show a status bar
-        def download_progress(block_num, block_size, total_size):
-            if download_progress.t is None:
-                download_progress.t = tqdm.tqdm(total=total_size, unit="B", unit_scale=True, unit_divisor=1024)
-            downloaded = block_num * block_size
-            download_progress.t.update(downloaded - download_progress.t.n)
-
-        # Send a HEAD request to get the HTTP headers
-        response = requests.head(self.block_cfg.project.import_src, allow_redirects=True)
-
-        if response.status_code == 404:
-            # File not found
-            pretty_print.print_error(
-                f"The following file could not be downloaded: {self.block_cfg.project.import_src}\nStatus code {response.status_code} (File not found)"
-            )
-            sys.exit(1)
-        elif response.status_code != 200:
-            # Unexpected status code
-            pretty_print.print_error(
-                f"The following file could not be downloaded: {self.block_cfg.project.import_src}\nUnexpected status code {response.status_code}"
-            )
-            sys.exit(1)
-
         # Get timestamp of the file online
-        last_mod_online = response.headers.get("Last-Modified")
-        if last_mod_online:
-            last_mod_online_timestamp = parser.parse(last_mod_online).timestamp()
-        else:
-            pretty_print.print_error(f"No 'Last-Modified' header found for {self.block_cfg.project.import_src}")
-            sys.exit(1)
+        last_mod_online_timestamp = File_Downloader.get_last_modified(url=self.block_cfg.project.import_src)
 
         # Get timestamp of the downloaded file, if any
         last_mod_local_timestamp = 0
@@ -635,13 +606,7 @@ class Builder(ABC):
         pretty_print.print_build("Downloading archive with pre-built files...")
 
         # Download the file
-        download_progress.t = None
-        filename = self.block_cfg.project.import_src.rpartition("/")[2]
-        urllib.request.urlretrieve(
-            url=self.block_cfg.project.import_src, filename=self._download_dir / filename, reporthook=download_progress
-        )
-        if download_progress.t:
-            download_progress.t.close()
+        File_Downloader.get_file(url=self.block_cfg.project.import_src, output_dir=self._download_dir)
 
     def import_prebuilt(self):
         """
