@@ -13,6 +13,9 @@ class ZynqMP_AMD_Vivado_IPBB_Block_Project_Model(Block_Project_Model):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     build_srcs: list[Build_Srcs_Model] = Block_Project_Model_Default_Fields.build_srcs
+    main_prj_src: str = Field(
+        default=..., description="The main project source (repo/folder) that contains the actual IPBB project"
+    )
     name: str = Field(default=..., description="Name of the project")
 
 

@@ -170,8 +170,8 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         create_vivado_project_commands = [
             "source ~/tools/ipbb-*/env.sh",
             f"cd {self._ipbb_work_dir}",
-            f"ipbb toolbox check-dep vivado serenity-s1-k26c-fw:projects/{self.block_cfg.project.name} top.dep",
-            f"ipbb proj create vivado {self.block_cfg.project.name} serenity-s1-k26c-fw:projects/{self.block_cfg.project.name}",
+            f"ipbb toolbox check-dep vivado {self.block_cfg.project.main_prj_src}:projects/{self.block_cfg.project.name} top.dep",
+            f"ipbb proj create vivado {self.block_cfg.project.name} {self.block_cfg.project.main_prj_src}:projects/{self.block_cfg.project.name}",
             f"cd proj/{self.block_cfg.project.name}",
             "export LD_LIBRARY_PATH=/opt/cactus/lib:\$$LD_LIBRARY_PATH PATH=/opt/cactus/bin/uhal/tools:\$$PATH",
             "ipbb ipbus gendecoders -c",
