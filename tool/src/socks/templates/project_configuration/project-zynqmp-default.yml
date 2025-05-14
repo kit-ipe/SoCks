@@ -93,6 +93,8 @@ blocks:
     builder: "ZynqMP_AMD_Image_Builder"
     project:
       # If no 'import_src' property is specified, the block must be built locally
+      size_boot_partition: 500
+      size_rootfs_partition: 3500
       dependencies:
         atf: "temp/atf/output/bp_atf_*.tar.gz"
         devicetree: "temp/devicetree/output/bp_devicetree_*.tar.gz"

@@ -391,6 +391,11 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
+        ) and not self._build_validator.check_rebuild_bc_config(
+            keys=[
+                ["blocks", self.block_id, "project", "size_boot_partition"],
+                ["blocks", self.block_id, "project", "size_rootfs_partition"],
+            ]
         ):
             pretty_print.print_build("No need to rebuild the SD card image. No altered source files detected...")
             return
@@ -398,9 +403,12 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
             pretty_print.print_build(f"Building SD card image {self._sdc_image_name} (This may take a few minutes)...")
 
+            boot_partition_size = self.block_cfg.project.size_boot_partition
+            total_image_size = self.block_cfg.project.size_boot_partition + self.block_cfg.project.size_rootfs_partition
+
             sdc_img_build_commands = [
                 f"rm -f {self._output_dir}/{self._sdc_image_name}",
-                f"guestfish -N {self._output_dir}/{self._sdc_image_name}=bootroot:vfat:ext4:6G:500M -- "
+                f"guestfish -N {self._output_dir}/{self._sdc_image_name}=bootroot:vfat:ext4:{total_image_size}M:{boot_partition_size}M -- "
                 f"    set-label /dev/sda1 BOOT : "
                 f"    set-label /dev/sda2 ROOTFS : "
                 f"    mkmountpoint /p1 : "

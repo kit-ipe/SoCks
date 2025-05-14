@@ -28,6 +28,8 @@ class ZynqMP_AMD_Image_Dependencies_Model(BaseModel):
 class ZynqMP_AMD_Image_Block_Project_Model(Block_Project_Model):
     model_config = ConfigDict(extra="forbid", strict=True)
 
+    size_boot_partition: int = Field(default=..., description="Size of the boot partition in MiB")
+    size_rootfs_partition: int = Field(default=..., description="Size of the root file system partition in MiB")
     dependencies: ZynqMP_AMD_Image_Dependencies_Model = Block_Project_Model_Default_Fields.dependencies
 
 

@@ -360,6 +360,8 @@ image:
   builder: "ZynqMP_AMD_Image_Builder"
   project:
     import_src: "https://serenity.web.cern.ch/.../image.tar.gz"
+    size_boot_partition: 500
+    size_rootfs_partition: 3500
     dependencies:
       atf: "temp/atf/output/bp_atf_*.tar.gz"
       devicetree: "temp/devicetree/output/bp_devicetree_*.tar.gz"
@@ -383,6 +385,8 @@ Key:
 - **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
   - The URL of a file online. In this case the string must start with `https://`.
   - The path of a local file. In this case the string must start with `file://`.
+- **project -> size_boot_partition**: Size of the boot partition in the SD card image in MiB. It is possible to extend the size of this partition after the image has been flashed to an SD card.
+- **project -> size_rootfs_partition**: Size of the root file system partition in the SD card image in MiB. It is possible to extend the size of this partition after the image has been flashed to an SD card.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
   - `amd-image-builder-alma8`
