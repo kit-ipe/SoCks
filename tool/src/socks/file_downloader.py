@@ -106,10 +106,10 @@ class File_Downloader:
         response = requests.head(url, allow_redirects=True)
 
         # Check the Content-Disposition header
-        content_disposition = response.headers.get('Content-Disposition')
-        if content_disposition and 'filename=' in content_disposition:
+        content_disposition = response.headers.get("Content-Disposition")
+        if content_disposition and "filename=" in content_disposition:
             # Extract the filename from the header
-            filename = content_disposition.split('filename=')[1].strip('"')
+            filename = content_disposition.split("filename=")[1].strip('"')
         else:
             # Fallback to extracting the filename from the URL
             filename = pathlib.Path(urllib.parse.urlparse(url=url).path).name
@@ -120,8 +120,6 @@ class File_Downloader:
         # Download the file
         download_progress.t = None
         print(f"Downloading {filename}...")
-        urllib.request.urlretrieve(
-            url=url, filename=output_dir / filename, reporthook=download_progress
-        )
+        urllib.request.urlretrieve(url=url, filename=output_dir / filename, reporthook=download_progress)
         if download_progress.t:
             download_progress.t.close()
