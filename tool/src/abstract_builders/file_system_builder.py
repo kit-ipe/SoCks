@@ -103,13 +103,21 @@ class File_System_Builder(Builder):
             pretty_print.print_error(f"File system at {self._build_dir} not found.")
             sys.exit(1)
 
-        # Check whether the predefined file system layers need to be added
+        # Check whether predefined file system layers are available
+        pd_layers_dir = self._resources_dir / "predefined_fs_layers"
+        if not pd_layers_dir.is_dir():
+            pretty_print.print_info(
+                f"Directory '{pd_layers_dir}' does not exist. No predefined file system layers will be added."
+            )
+            return
+
+        # Check whether the layers need to be added
         layers_already_added = (
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
         )
         if layers_already_added and not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._resources_dir / "predefined_fs_layers"],
+            src_search_list=[pd_layers_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
@@ -155,13 +163,15 @@ class File_System_Builder(Builder):
             pretty_print.print_error(f"File system at {self._build_dir} not found.")
             sys.exit(1)
 
-        # Check whether the layer needs to be added
+        # Check whether the build time file system layer is specified
         if not self.block_cfg.project.build_time_fs_layer:
             pretty_print.print_info(
                 f"'{self.block_id} -> project -> build_time_fs_layer' not specified. "
                 "No files and directories created by other blocks at build time will be added."
             )
             return
+
+        # Check whether the layer needs to be added
         layer_already_added = (
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
@@ -470,9 +480,9 @@ class File_System_Builder(Builder):
             )
 
         # Check whether the file is a supported archive
-        if prebuilt_block_package.name.partition(".")[2] not in ["tar.gz", "tgz", "tar.xz", "txz"]:
+        if not prebuilt_block_package.name.endswith(("tar.gz", "tgz", "tar.xz", "txz")):
             pretty_print.print_error(
-                f'Unable to import block package. The following archive type is not supported: {prebuilt_block_package.name.partition(".")[2]}'
+                f"Unable to import block package. The type of this archive is not supported: {prebuilt_block_package.name}"
             )
             sys.exit(1)
 

@@ -690,9 +690,9 @@ class Builder(ABC):
             sys.exit(1)
 
         # Check whether the file is a supported archive
-        if prebuilt_block_package.name.partition(".")[2] not in ["tar.gz", "tgz", "tar.xz", "txz"]:
+        if not prebuilt_block_package.name.endswith(("tar.gz", "tgz", "tar.xz", "txz")):
             pretty_print.print_error(
-                f'Unable to import block package. The following archive type is not supported: {prebuilt_block_package.name.partition(".")[2]}'
+                f"Unable to import block package. The type of this archive is not supported: '{prebuilt_block_package.name}'"
             )
             sys.exit(1)
 
@@ -822,9 +822,9 @@ class Builder(ABC):
                 sys.exit(1)
 
             # Check whether the file is a tar.gz archive
-            if block_pkg_path.name.partition(".")[2] != "tar.gz":
+            if not block_pkg_path.name.endswith(("tar.gz", "tgz", "tar.xz", "txz")):
                 pretty_print.print_error(
-                    f'Unable to import block package. The following archive type is not supported: {block_pkg_path.name.partition(".")[2]}'
+                    f"Unable to import block package. The type of this archive is not supported: '{block_pkg_path.name}'"
                 )
                 sys.exit(1)
 
