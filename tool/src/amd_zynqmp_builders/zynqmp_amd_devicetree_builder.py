@@ -182,6 +182,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
                 "zcu111": "BOARD zcu111-reva",
                 "zcu208": "BOARD zcu208-reva",
                 "zcu216": "BOARD zcu216-reva",
+                "sm-k26": "BOARD sm-k26-reva",
             }
             prep_dt_srcs_commands[-1] = (
                 prep_dt_srcs_commands[-1]
@@ -341,26 +342,28 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             # Copy and adapt generated device tree sources that can be used as includes in devicetree overlays
             includes_dir = self._overlay_work_dir / "include"
             includes_dir.mkdir(parents=True)
-            shutil.copy(self._base_work_dir / "pl.dtsi", includes_dir / "pl.dtsi")
-            with (includes_dir / "pl.dtsi").open("r") as f:
-                pl_dtsi_content = f.readlines()
 
-            # Modify pl.dtsi so that it can be used in devicetree overlays
-            for i, line in enumerate(pl_dtsi_content):
-                if "/ {" in line:
-                    del pl_dtsi_content[i]
-                    break
-            for i, line in enumerate(pl_dtsi_content):
-                if "amba_pl: amba_pl@0 {" in line:
-                    pl_dtsi_content[i] = pl_dtsi_content[i].replace("amba_pl: amba_pl@0 {", "&amba_pl {")
-                    break
-            for i, line in enumerate(reversed(pl_dtsi_content)):
-                if "};" in line:
-                    del pl_dtsi_content[-i - 1]
-                    break
+            if (self._base_work_dir / "pl.dtsi").is_file():
+                shutil.copy(self._base_work_dir / "pl.dtsi", includes_dir / "pl.dtsi")
+                with (includes_dir / "pl.dtsi").open("r") as f:
+                    pl_dtsi_content = f.readlines()
 
-            with (includes_dir / "pl.dtsi").open("w") as f:
-                f.writelines(pl_dtsi_content)
+                # Modify pl.dtsi so that it can be used in devicetree overlays
+                for i, line in enumerate(pl_dtsi_content):
+                    if "/ {" in line:
+                        del pl_dtsi_content[i]
+                        break
+                for i, line in enumerate(pl_dtsi_content):
+                    if "amba_pl: amba_pl@0 {" in line:
+                        pl_dtsi_content[i] = pl_dtsi_content[i].replace("amba_pl: amba_pl@0 {", "&amba_pl {")
+                        break
+                for i, line in enumerate(reversed(pl_dtsi_content)):
+                    if "};" in line:
+                        del pl_dtsi_content[-i - 1]
+                        break
+
+                with (includes_dir / "pl.dtsi").open("w") as f:
+                    f.writelines(pl_dtsi_content)
 
             # Copy all overlays to the work directory to make them accessable in the container
             # The overlays are copied before every build to make sure they are up to date
