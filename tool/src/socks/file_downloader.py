@@ -85,7 +85,7 @@ class File_Downloader:
                 Target directory in which the downloaded file is to be stored.
 
         Returns:
-            None
+            Path of the downloaded file.
 
         Raises:
             RuntimeError:
@@ -120,6 +120,10 @@ class File_Downloader:
         # Download the file
         download_progress.t = None
         print(f"Downloading {filename}...")
-        urllib.request.urlretrieve(url=url, filename=output_dir / filename, reporthook=download_progress)
+        download_location = output_dir / filename
+        urllib.request.urlretrieve(url=url, filename=download_location, reporthook=download_progress)
         if download_progress.t:
             download_progress.t.close()
+
+        # Return path of the downloaded file
+        return download_location

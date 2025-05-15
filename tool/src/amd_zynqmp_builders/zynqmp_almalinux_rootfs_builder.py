@@ -1,9 +1,12 @@
 import sys
 import pathlib
 import inspect
+import urllib
+import shutil
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
+from socks.file_downloader import File_Downloader
 from abstract_builders.file_system_builder import File_System_Builder
 from amd_zynqmp_builders.zynqmp_almalinux_rootfs_model import ZynqMP_AlmaLinux_RootFS_Model
 
@@ -85,6 +88,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                 [
                     self.build_base_file_system,
                     self.add_addl_packages,
+                    self.add_addl_ext_packages,
                     self.add_users,
                     self.add_kmodules,
                     self.add_bt_layer,
@@ -99,6 +103,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                 [
                     self.build_base_file_system,
                     self.add_addl_packages,
+                    self.add_addl_ext_packages,
                     self.build_archive_prebuilt,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
@@ -148,7 +153,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
         ) and not self._build_validator.check_rebuild_bc_config(
-            keys=[["blocks", self.block_id, "project"], ["project", "name"]]
+            keys=[["blocks", self.block_id, "project", "release"], ["project", "name"]]
         ):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
@@ -277,6 +282,118 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_packages.log",
+                output_scrolling=True,
+            )
+
+    def add_addl_ext_packages(self):
+        """
+        Installs additional user defined RPM packages from external *.rpm files.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check whether a RootFS is present
+        if not self._build_dir.is_dir():
+            pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
+            sys.exit(1)
+
+        # Check whether extra packages are provided
+        if not self.block_cfg.project.addl_ext_pkgs:
+            pretty_print.print_info(
+                f"'{self.block_id} -> project -> addl_ext_pkgs' not specified. "
+                "No additional RPM packages will be installed from external *.rpm files."
+            )
+            return
+
+        # Check whether the extra packages need to be added
+        packages_already_added = (
+            self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
+            != 0.0
+        )
+        if packages_already_added and not self._build_validator.check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "addl_ext_pkgs"]]
+        ):
+            pretty_print.print_build(
+                "No need to install additional packages from external *.rpm files. No altered source files detected..."
+            )
+            return
+
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            pretty_print.print_build("Installing additional packages from external *.rpm files...")
+
+            # Clean package directory
+            ext_pkgs_dir = self._work_dir / "external_packages"
+            shutil.rmtree(path=ext_pkgs_dir, ignore_errors=True)
+            ext_pkgs_dir.mkdir(parents=True)
+
+            # Collect package files
+            ext_pkgs_to_install = []
+            for uri in self.block_cfg.project.addl_ext_pkgs:
+                if uri.rpartition(".")[2] != "rpm":
+                    # The provided file is not an RPM package
+                    pretty_print.print_error(
+                        f"The file specified in '{uri}' in '{self.block_id} -> project -> addl_ext_pkgs' is not an RPM package"
+                    )
+                    sys.exit(1)
+                if urllib.parse.urlparse(uri).scheme == "file":
+                    # This package is provided locally
+                    local_pkg_file = urllib.parse.urlparse(uri).path
+                    local_pkg_src_path = self._resources_dir / "additional_packages" / local_pkg_file
+                    # Check whether the specified file exists
+                    if not local_pkg_src_path.is_file():
+                        pretty_print.print_error(
+                            f"The package specified in '{self.block_id} -> project -> addl_ext_pkgs' does not exist: '{local_pkg_src_path}'"
+                        )
+                        sys.exit(1)
+                    # Copy file to work dir
+                    shutil.copy(local_pkg_src_path, ext_pkgs_dir / local_pkg_file)
+                elif urllib.parse.urlparse(uri).scheme in ["http", "https"]:
+                    # This package needs to be downloaded
+                    local_pkg_path = File_Downloader.get_file(url=uri, output_dir=ext_pkgs_dir)
+                    local_pkg_file = local_pkg_path.name
+                else:
+                    raise ValueError(
+                        "The following string is not a valid reference to an RPM package file: "
+                        f"{uri}. Only URI schemes 'https', 'http', and 'file' are supported."
+                    )
+
+                # Append file to list of packages
+                ext_pkgs_to_install.append(local_pkg_file)
+
+            rel_pkg_paths = ["./" + pkg for pkg in ext_pkgs_to_install]
+            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
+            add_packages_commands = [
+                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                f"    mkdir -p {self._build_dir}/usr/bin && "
+                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"fi",
+                # Update all the installed packages
+                dnf_base_command + "update",
+                # Movo to directory with local packages
+                f"cd {ext_pkgs_dir}",
+                # Installing user defined external packages
+                dnf_base_command + "install " + " ".join(rel_pkg_paths),
+                # Movo back to the previous directory
+                "cd -",
+                # The QEMU binary if only required during build, so delete it if it exists
+                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+            ]
+
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.container_executor.exec_sh_commands(
+                commands=add_packages_commands,
+                dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                print_commands=True,
+                run_as_root=True,
+                logfile=self._block_temp_dir / "install_additional_external_packages.log",
                 output_scrolling=True,
             )
 

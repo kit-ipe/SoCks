@@ -325,7 +325,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
                 if uri.rpartition(".")[2] != "deb":
                     # The provided file is not a Debian package
                     pretty_print.print_error(
-                        f"The file specified in '{self.block_id} -> project -> addl_ext_pkgs' is not a Debian package"
+                        f"The file specified in '{uri}' in '{self.block_id} -> project -> addl_ext_pkgs' is not a Debian package"
                     )
                     sys.exit(1)
                 if urllib.parse.urlparse(uri).scheme == "file":
@@ -342,7 +342,8 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
                     shutil.copy(local_pkg_src_path, ext_pkgs_dir / local_pkg_file)
                 elif urllib.parse.urlparse(uri).scheme in ["http", "https"]:
                     # This package needs to be downloaded
-                    File_Downloader.get_file(url=uri, output_dir=ext_pkgs_dir)
+                    local_pkg_path = File_Downloader.get_file(url=uri, output_dir=ext_pkgs_dir)
+                    local_pkg_file = local_pkg_path.name
                 else:
                     raise ValueError(
                         "The following string is not a valid reference to a Debian package file: "
