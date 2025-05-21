@@ -125,6 +125,9 @@ class Shell_Executor:
         # Regex to strip ANSI escape sequences from strings
         ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
+        # Adapt the number of visible lines to the size of the terminal, if necessary
+        visible_lines = min(visible_lines, shutil.get_terminal_size().lines - 2)
+
         # Prepare to process the command line output of the command
         printed_lines = 0
         last_lines = []
@@ -198,9 +201,7 @@ class Shell_Executor:
                     update_last_lines(stderr_line)
 
                 # Move the cursor to the beginning of the scrolling output
-                for _ in range(printed_lines):
-                    # Move the cursor up one line
-                    sys.stdout.write("\033[F")
+                sys.stdout.write(f"\033[{printed_lines}F")
                 sys.stdout.flush()
 
                 # Print output
