@@ -12,7 +12,7 @@ ARG user_id=0
 USER root
 
 # Install required packages to build the base RootFS
-RUN dnf -y install make wget sudo git python3 python3-devel gcc libffi-devel && \
+RUN dnf -y install make wget sudo git python3 && \
     dnf -y install epel-release && \
 # Install required packages to modify the base RootFS
     dnf -y install rsync && \
