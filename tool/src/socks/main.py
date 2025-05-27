@@ -135,7 +135,9 @@ if project_model_module is None:
                 module = importlib.import_module(module_name)
                 # Find classes that end with the project model suffix
                 classes = [
-                    cls for name, cls in inspect.getmembers(module, inspect.isclass) if name.endswith(project_model_suffix)
+                    cls
+                    for name, cls in inspect.getmembers(module, inspect.isclass)
+                    if name.endswith(project_model_suffix)
                 ]
                 available_prj_model_classes.extend(classes)
 

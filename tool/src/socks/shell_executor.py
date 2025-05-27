@@ -45,7 +45,9 @@ class Shell_Executor:
         """
 
         try:
-            result = subprocess.run(" ".join(command), shell=True, cwd=cwd, capture_output=True, text=True, check=check)
+            result = subprocess.run(
+                " ".join(command), shell=True, executable="bash", cwd=cwd, capture_output=True, text=True, check=check
+            )
         except subprocess.CalledProcessError as e:
             if e.stdout:
                 print(f"\n{e.stdout}")
@@ -104,7 +106,9 @@ class Shell_Executor:
         # to run the subprocess
         if self._prohibit_output_processing or (output_scrolling == False and visible_lines != 0 and logfile == None):
             try:
-                subprocess.run(" ".join(command), shell=True, cwd=cwd, check=check, env=os.environ.copy())
+                subprocess.run(
+                    " ".join(command), shell=True, executable="bash", cwd=cwd, check=check, env=os.environ.copy()
+                )
             except subprocess.CalledProcessError as e:
                 if e.stdout:
                     print(f"\n{e.stdout}")
@@ -147,6 +151,7 @@ class Shell_Executor:
         process = subprocess.Popen(
             " ".join(command),
             shell=True,
+            executable="bash",
             cwd=cwd,
             env=os.environ.copy(),
             stdout=subprocess.PIPE,
