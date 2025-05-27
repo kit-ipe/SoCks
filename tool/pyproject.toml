@@ -24,8 +24,8 @@ dependencies = [
 
 [tool.setuptools.package-data]
 socks = ["container/*.containerfile", "templates/**/*"]
-amd_zynqmp_builders = ["templates/**/*"]
-amd_versal_builders = ["templates/**/*"]
+amd_zynqmp_support = ["templates/**/*"]
+amd_versal_support = ["templates/**/*"]
 
 [tool.black]
 line-length = 120

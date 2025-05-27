@@ -112,22 +112,32 @@ project_cfg, _ = Configuration_Compiler.compile(
 )
 
 # Check project type and find respective module
+arch_supp_pkgs = ["amd_zynqmp_support", "amd_versal_support"]
 project_model_suffix = "_Base_Model"
 project_model_class_name = project_cfg["project"]["type"] + project_model_suffix
-try:
-    project_model_module = importlib.import_module("socks." + project_model_class_name.lower())
-except ImportError:
+project_model_module = None
+for package in arch_supp_pkgs:
+    try:
+        project_model_module = importlib.import_module(f"{package}.{project_model_class_name.lower()}")
+        selected_arch_supp_pkg = package
+        break  # Exit the loop if the module is successfully imported
+    except ImportError:
+        continue  # Try the next package if import fails
+if project_model_module is None:
     available_prj_model_classes = []
-    # Iterate over all modules in the socks package
-    for _, module_name, _ in pkgutil.walk_packages(path=[str(socks_dir)], prefix="socks."):
-        # Find modules that end with the project model suffix
-        if module_name.endswith(project_model_suffix.lower()):
-            module = importlib.import_module(module_name)
-            # Find classes that end with the project model suffix
-            classes = [
-                cls for name, cls in inspect.getmembers(module, inspect.isclass) if name.endswith(project_model_suffix)
-            ]
-            available_prj_model_classes.extend(classes)
+    # Iterate over all modules in the available architecture support packages
+    for package in arch_supp_pkgs:
+        package_module = importlib.import_module(f"{package}")
+        package_dir = pathlib.Path(importlib.resources.files(package_module))
+        for _, module_name, _ in pkgutil.walk_packages(path=[str(package_dir)], prefix=f"{package}."):
+            # Find modules that end with the project model suffix
+            if module_name.endswith(project_model_suffix.lower()):
+                module = importlib.import_module(module_name)
+                # Find classes that end with the project model suffix
+                classes = [
+                    cls for name, cls in inspect.getmembers(module, inspect.isclass) if name.endswith(project_model_suffix)
+                ]
+                available_prj_model_classes.extend(classes)
 
     supported_prj_types = [
         "'" + cls.__name__.split(project_model_suffix)[0] + "'" for cls in available_prj_model_classes
@@ -163,23 +173,17 @@ except pydantic.ValidationError as e:
 
 # Create builder objects
 builders = {}
-builder_packages = ["amd_zynqmp_builders", "amd_versal_builders"]
 for block in project_cfg_model.blocks.model_fields:
     block_cfg = getattr(project_cfg_model.blocks, block)
     if block_cfg is None:
         continue
 
-    # Search builder module in all builder packages
-    module = None
-    for package in builder_packages:
-        try:
-            module = importlib.import_module(f"{package}.{block_cfg.builder.lower()}")
-            break  # Exit the loop if the module is successfully imported
-        except ImportError:
-            continue  # Try the next package if import fails
-    if module is None:
+    # Search builder module in architecture support package
+    try:
+        module = importlib.import_module(f"{selected_arch_supp_pkg}.{block_cfg.builder.lower()}")
+    except ImportError:
         pretty_print.print_error(
-            f"Builder '{block_cfg.builder}' not found in any of the packages: {', '.join(builder_packages)}"
+            f"Builder '{block_cfg.builder}' not found in selected architecture support package: {selected_arch_supp_pkg}"
         )
         sys.exit(1)
 
