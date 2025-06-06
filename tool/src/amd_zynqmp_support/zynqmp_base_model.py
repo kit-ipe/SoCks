@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field, ConfigDict, StringConstraints, model_vali
 from typing import Optional, Literal
 from typing_extensions import Annotated
 
+import multiprocessing
+
 
 class Project_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
@@ -16,7 +18,11 @@ class Make_Settings_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     max_build_threads: Annotated[int, Field(strict=True, gt=0)] = Field(
-        default=..., description="Number of Makefile recipes to be executed simultaneously"
+        default=multiprocessing.cpu_count(),
+        description=(
+            "Number of Makefile recipes to be executed simultaneously "
+            "(If not specified, the number of CPU cores is used)"
+        ),
     )
 
 
@@ -27,7 +33,11 @@ class Xilinx_Tools_Settings_Model(BaseModel):
         default=..., description="Version of the toolset to use"
     )
     max_threads_vivado: Annotated[int, Field(strict=True, gt=0)] = Field(
-        default=..., description="Maximum number of jobs to be executed simultaneously by Vivado"
+        default=multiprocessing.cpu_count(),
+        description=(
+            "Maximum number of jobs to be executed simultaneously by Vivado "
+            "(If not specified, the number of CPU cores is used)"
+        ),
     )
 
 
@@ -37,7 +47,7 @@ class External_Tools_Settings_Model(BaseModel):
     container_tool: Literal["docker", "podman", "none"] = Field(
         default=..., description="Container management tool to be used"
     )
-    make: Make_Settings_Model
+    make: Optional[Make_Settings_Model] = Make_Settings_Model()
     xilinx: Xilinx_Tools_Settings_Model
 
 
