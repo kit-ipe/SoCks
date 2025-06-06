@@ -355,11 +355,11 @@ def main():
             sys.exit(1)
 
     # Execute the command for all active blocks
-    for block in active_blocks:
+    for index, block in enumerate(active_blocks):
         builder_name = project_cfg["blocks"][block]["builder"]
         builder = builders[builder_name]
         if block_cmd in builder.block_cmds:
-            pretty_print.print_build_stage(f"Block '{block}'...")
+            pretty_print.print_build_stage(f"[{index + 1}/{len(active_blocks)}] Block '{block}'...")
             for func in builder.block_cmds[block_cmd]:
                 func()
 
