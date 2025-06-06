@@ -34,9 +34,11 @@ USER $user_name
 WORKDIR /home/$user_name
 
 # Install logicc
-ADD --chown=$user_name:$user_name git@gitlab.kit.edu:kit/ipe-sdr/ipe-sdr-dev/hardware/logicc.git /home/$user_name/tools/logicc
 RUN --mount=type=ssh,uid=$user_id \
-    mkdir -p -m 0700 ~/.ssh && ssh-keyscan gitlab.kit.edu >> ~/.ssh/known_hosts && \
+    mkdir -p -m 0700 ~/.ssh && \
+    ssh-keyscan gitlab.kit.edu >> ~/.ssh/known_hosts && \
+    mkdir -p ~/tools && \
+    git clone git@gitlab.kit.edu:kit/ipe-sdr/ipe-sdr-dev/hardware/logicc.git ~/tools/logicc && \
     mkdir -p ~/py_envs && \
     python3 -m venv ~/py_envs/logicc && \
     source ~/py_envs/logicc/bin/activate; cd ~/tools/logicc; pip install -U . && \
