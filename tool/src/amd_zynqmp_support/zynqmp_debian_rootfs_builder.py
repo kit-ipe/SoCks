@@ -197,6 +197,9 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
             self.container_executor.exec_sh_commands(
                 commands=base_rootfs_build_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                custom_params=(
+                    ["--cap-add=SYS_ADMIN"] if self.project_cfg.external_tools.container_tool == "podman" else []
+                ),  # Not sure why podman needs the SYS_ADMIN capability, but without it, debootstrap complains that the file system would be mounted with the 'noexec' option
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "build_base.log",
