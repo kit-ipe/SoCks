@@ -10,6 +10,6 @@ image {
 	id = 0x1c000000, name=apu_subsystem
 	{ type=raw, load=0x1000, file=<DTB_PATH> }
 	{ core=a72-0, exception_level=el-3, trustzone, file=<ATF_PATH> }
-	{ core=a72-0, exception_level=el-2, file=<UBOOT_PATH> }
+	{ core=a72-0, exception_level=el-2, file=<SSBL_PATH> }
 }
 }

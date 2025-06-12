@@ -63,9 +63,9 @@ blocks:
     container:
       image: "amd-xilinx-tools-alma9"
       tag: "socks"
-  uboot:
+  ssbl:
     source: "build"
-    builder: "Versal_AMD_UBoot_Builder"
+    builder: "Versal_AMD_UBoot_SSBL_Builder"
     project:
       build_srcs:
         source: "https://github.com/Xilinx/u-boot-xlnx.git"
@@ -97,7 +97,7 @@ blocks:
         kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
         plm: "temp/plm/output/bp_plm_*.tar.gz"
         psm_fw: "temp/psm_fw/output/bp_psm_fw_*.tar.gz"
-        uboot: "temp/uboot/output/bp_uboot_*.tar.gz"
+        ssbl: "temp/ssbl/output/bp_ssbl_*.tar.gz"
         vivado: "temp/vivado/output/bp_vivado_*.tar.gz"
     container:
       image: "amd-image-builder-alma9"

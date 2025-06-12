@@ -40,7 +40,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         self._fsbl_img_path = self._dependencies_dir / "fsbl/fsbl.elf"
         self._kernel_img_path = self._dependencies_dir / "kernel/Image.gz"
         self._pmufw_img_path = self._dependencies_dir / "pmu_fw/pmufw.elf"
-        self._uboot_img_path = self._dependencies_dir / "uboot/u-boot.elf"
+        self._ssbl_img_path = self._dependencies_dir / "ssbl/u-boot.elf"
         self._vivado_bitfile_path = (
             None  # Must be initialized outside the constructor, as the name of the file it not fixed.
         )
@@ -65,7 +65,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             "pmu_fw": ["pmufw.elf"],
             "ramfs": [".*.cpio.gz"],
             "rootfs": [".*.tar.xz"],
-            "uboot": ["u-boot.elf"],
+            "ssbl": ["u-boot.elf"],
             "vivado": [".*.bit"],
         }
         return block_deps
@@ -308,7 +308,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                 self._vivado_bitfile_path,
                 self._atf_img_path,
                 self._dt_img_path,
-                self._uboot_img_path,
+                self._ssbl_img_path,
                 self._output_dir / "image.ub",
                 self._output_dir / "boot.scr",
             ],
@@ -338,7 +338,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                 f'sed -i "s:<PLBIT_PATH>:{self._vivado_bitfile_path}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<ATF_PATH>:{self._atf_img_path}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<DTB_PATH>:{self._dt_img_path}:g;" {self._work_dir}/bootgen.bif',
-                f'sed -i "s:<UBOOT_PATH>:{self._uboot_img_path}:g;" {self._work_dir}/bootgen.bif',
+                f'sed -i "s:<SSBL_PATH>:{self._ssbl_img_path}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<LINUX_PATH>:{self._output_dir / "image.ub"}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<BSCR_PATH>:{self._output_dir / "boot.scr"}:g;" {self._work_dir}/bootgen.bif',
                 f"bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN",

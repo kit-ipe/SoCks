@@ -41,7 +41,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         self._plm_img_path = self._dependencies_dir / "plm/plm.elf"
         self._psmfw_img_path = self._dependencies_dir / "psm_fw/psmfw.elf"
         self._kernel_img_path = self._dependencies_dir / "kernel/Image"
-        self._uboot_img_path = self._dependencies_dir / "uboot/u-boot.elf"
+        self._ssbl_img_path = self._dependencies_dir / "ssbl/u-boot.elf"
         self._vivado_pdi_file_path = None  # Must be initialized outside the constructor, as the file needs to be extracted and the name of the file it not fixed.
 
         # Project directories
@@ -63,7 +63,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
             "psm_fw": ["psmfw.elf"],
             "ramfs": [".*.cpio.gz"],
             "rootfs": [".*.tar.xz"],
-            "uboot": ["u-boot.elf"],
+            "ssbl": ["u-boot.elf"],
             "vivado": [".*.xsa"],
         }
         return block_deps
@@ -239,7 +239,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
                 self._vivado_pdi_file_path,
                 self._atf_img_path,
                 self._dt_img_path,
-                self._uboot_img_path,
+                self._ssbl_img_path,
                 self._output_dir / "image.ub",
                 self._output_dir / "boot.scr",
             ],
@@ -269,7 +269,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
                 f'sed -i "s:<PDI_PATH>:{self._vivado_pdi_file_path}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<ATF_PATH>:{self._atf_img_path}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<DTB_PATH>:{self._dt_img_path}:g;" {self._work_dir}/bootgen.bif',
-                f'sed -i "s:<UBOOT_PATH>:{self._uboot_img_path}:g;" {self._work_dir}/bootgen.bif',
+                f'sed -i "s:<SSBL_PATH>:{self._ssbl_img_path}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<LINUX_PATH>:{self._output_dir / "image.ub"}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<BSCR_PATH>:{self._output_dir / "boot.scr"}:g;" {self._work_dir}/bootgen.bif',
                 f"bootgen -arch versal -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN",

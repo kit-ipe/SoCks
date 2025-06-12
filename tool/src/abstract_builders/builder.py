@@ -863,7 +863,7 @@ class Builder(ABC):
 
         Args:
             menuconfig_commands:
-                The commands to be executed in a container to configure U-Boot interactively.
+                The commands to be executed in a container to configure the Linux kernel or U-Boot interactively.
 
         Returns:
             None

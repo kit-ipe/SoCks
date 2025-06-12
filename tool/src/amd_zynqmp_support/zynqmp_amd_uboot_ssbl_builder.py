@@ -8,10 +8,10 @@ import inspect
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
 from abstract_builders.builder import Builder
-from amd_zynqmp_support.zynqmp_amd_uboot_model import ZynqMP_AMD_UBoot_Model
+from amd_zynqmp_support.zynqmp_amd_uboot_ssbl_model import ZynqMP_AMD_UBoot_SSBL_Model
 
 
-class ZynqMP_AMD_UBoot_Builder(Builder):
+class ZynqMP_AMD_UBoot_SSBL_Builder(Builder):
     """
     AMD U-Boot builder class
     """
@@ -21,9 +21,9 @@ class ZynqMP_AMD_UBoot_Builder(Builder):
         project_cfg: dict,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
-        block_id: str = "uboot",
+        block_id: str = "ssbl",
         block_description: str = "Build the official AMD/Xilinx version of U-Boot for ZynqMP devices",
-        model_class: type[object] = ZynqMP_AMD_UBoot_Model,
+        model_class: type[object] = ZynqMP_AMD_UBoot_SSBL_Model,
     ):
 
         super().__init__(

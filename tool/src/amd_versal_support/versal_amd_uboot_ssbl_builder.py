@@ -1,10 +1,10 @@
 import pathlib
 
-from amd_zynqmp_support.zynqmp_amd_uboot_builder import ZynqMP_AMD_UBoot_Builder
-from amd_versal_support.versal_amd_uboot_model import Versal_AMD_UBoot_Model
+from amd_zynqmp_support.zynqmp_amd_uboot_ssbl_builder import ZynqMP_AMD_UBoot_SSBL_Builder
+from amd_versal_support.versal_amd_uboot_ssbl_model import Versal_AMD_UBoot_SSBL_Model
 
 
-class Versal_AMD_UBoot_Builder(ZynqMP_AMD_UBoot_Builder):
+class Versal_AMD_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
     """
     AMD U-Boot builder class
     """
@@ -14,9 +14,9 @@ class Versal_AMD_UBoot_Builder(ZynqMP_AMD_UBoot_Builder):
         project_cfg: dict,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
-        block_id: str = "uboot",
+        block_id: str = "ssbl",
         block_description: str = "Build the official AMD/Xilinx version of U-Boot for Versal devices",
-        model_class: type[object] = Versal_AMD_UBoot_Model,
+        model_class: type[object] = Versal_AMD_UBoot_SSBL_Model,
     ):
 
         super().__init__(

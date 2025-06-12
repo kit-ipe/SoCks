@@ -168,7 +168,7 @@ blocks:
     project:
       patches:
         - 0001-Add-default-config.patch
-  uboot:
+  ssbl:
     project:
       patches:
         - 0001-Add-default-config-for-ZynqMP.patch

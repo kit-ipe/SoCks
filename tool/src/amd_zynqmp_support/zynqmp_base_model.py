@@ -67,7 +67,7 @@ class Blocks_Model(BaseModel):
     pmu_fw: Dummy_Block_Model
     ramfs: Optional[Dummy_Block_Model] = None
     rootfs: Optional[Dummy_Block_Model] = None
-    uboot: Dummy_Block_Model
+    ssbl: Dummy_Block_Model
     vivado: Dummy_Block_Model
     image: Dummy_Block_Model
 
