@@ -38,7 +38,6 @@ WORKDIR /home/$user_name
 RUN mkdir -p /home/$user_name/tools && \
     cd /home/$user_name/tools; curl -L https://github.com/ipbus/ipbb/archive/dev/2024d.tar.gz | tar xvz && \
     cd /home/$user_name/tools; source ipbb-dev-2024d/env.sh && \
-# Create SSH directory and add known hosts
+# Create SSH directory to simplify subsequently adding known hosts
     mkdir /home/$user_name/.ssh && \
-    chmod 700 /home/$user_name/.ssh && \
-    ssh-keyscan -p 7999 gitlab.cern.ch >> /home/$user_name/.ssh/known_hosts
+    chmod 700 /home/$user_name/.ssh

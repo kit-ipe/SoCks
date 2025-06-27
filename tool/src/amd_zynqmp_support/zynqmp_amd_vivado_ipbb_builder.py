@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import inspect
+import re
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
@@ -97,6 +98,22 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             None
         """
 
+        def extract_domain(url):
+            # Regular expression to find the domain in HTTP/HTTPS and SSH URLs
+            pattern = r'(?:https?:\/\/|ssh:\/\/git@)([^:\/]+)'
+            match = re.search(pattern, url)
+            if match:
+                return match.group(1)
+            return None
+
+        def extract_port(url):
+            # Regular expression to find the port in the URL
+            pattern = r':(\d+)'
+            match = re.search(pattern, url)
+            if match:
+                return match.group(1)
+            return None
+
         # Skip all operations if the repo config hasn't changed
         if not self._build_validator.check_rebuild_bc_config(
             keys=[["blocks", self.block_id, "project", "build_srcs"]], accept_prep=True
@@ -129,6 +146,15 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
                     f"Entries in blocks/{self.block_id}/project/build_srcs[N]/branch have to start with '-b ' for branches and tags or with '-r ' for commit ids."
                 )
                 sys.exit(1)
+            # Manually add Git hosts to list of known hosts to prevent being prompted for confirmation
+            if self.project_cfg.external_tools.container_tool in ["docker", "podman"]:
+                uri = self._source_repos[index]['url']
+                domain = extract_domain(uri)
+                port = extract_port(uri)
+                if domain is not None and port is not None:
+                    init_ipbb_env_commands.append(f"ssh-keyscan -p {port} {domain} >> ~/.ssh/known_hosts")
+                elif domain is not None:
+                    init_ipbb_env_commands.append(f"ssh-keyscan {domain} >> ~/.ssh/known_hosts")
             init_ipbb_env_commands.append(
                 f"ipbb add git {self._source_repos[index]['url']} {self._source_repos[index]['branch']}"
             )
