@@ -41,7 +41,7 @@ If you need further assistance you can put `--help` behind every sub-command. E.
 $ socks --help
 $ socks fsbl --help
 ```
-SoCks supports tab completion, but you have to enable it manually in every new shell with the following command:
+SoCks supports tab completion, but you have to enable it in the `activate` script of your Python environment or manually in every new shell. In both cases, use the following command:
 ```
 $ eval "$(register-python-argcomplete socks)"
 ```

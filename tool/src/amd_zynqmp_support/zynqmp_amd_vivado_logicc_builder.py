@@ -1,7 +1,6 @@
 import sys
 import pathlib
 import inspect
-import zipfile
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
@@ -234,10 +233,6 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             # Create symlinks to the output files
             for file in logicc_output_dir.glob("*"):
                 (self._output_dir / file.name).symlink_to(file)
-
-            # Extract bit-file
-            with zipfile.ZipFile(self._output_dir / "system_top.xsa", "r") as archive:
-                archive.extract("system_top.bit", path=str(self._output_dir))
 
     def start_vivado_gui(self):
         """

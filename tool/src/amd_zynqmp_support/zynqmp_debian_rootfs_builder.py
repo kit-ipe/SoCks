@@ -50,7 +50,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
         block_deps = {
             "kernel": [".*"],
             "devicetree": ["system.dtb", "system.dts"],
-            "vivado": [".*.bit"],
+            "vivado": [".*.xsa"],
         }
         return block_deps
 

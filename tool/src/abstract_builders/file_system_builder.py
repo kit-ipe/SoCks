@@ -2,6 +2,7 @@ import sys
 import pathlib
 import hashlib
 import tarfile
+import zipfile
 import urllib
 import validators
 import inspect
@@ -66,6 +67,38 @@ class File_System_Builder(Builder):
 
         super().validate_srcs()
         self.import_req_src_tpl()
+
+    def import_dependencies(self):
+        super().import_dependencies()
+
+        # Stop if this block does not depend on the Vivado block
+        if self.block_cfg.project.dependencies.vivado is None:
+            return
+
+        xsafiles = list((self._dependencies_dir / "vivado").glob("*.xsa"))
+        if len(xsafiles) != 1:
+            pretty_print.print_error(f'Not exactly one *.xsa file in {self._dependencies_dir / "vivado"}.')
+            sys.exit(1)
+
+        # Extract the *.bit file only if it was not already extracted. This folder is deleted by the implementation
+        # of this function in the parent class if the respective block package is reimported.
+        xsa_extract_dir = self._dependencies_dir / "vivado" / "xsa_extracted"
+        if xsa_extract_dir.is_dir():
+            return
+
+        # Extract *.bit file from the XSA if it contains one
+        with zipfile.ZipFile(xsafiles[0], "r") as archive:
+            # Find all .bit files in the archive
+            bitfiles = [file for file in archive.namelist() if file.endswith(".bit")]
+            # Stop if there is more than one bit file
+            if len(bitfiles) > 1:
+                pretty_print.print_error(f"More than one *.bit file in {xsafiles[0]}.")
+                sys.exit(1)
+            elif len(bitfiles) == 1:
+                # Create a folder with the name of the XSA
+                xsa_extract_dir.mkdir()
+                # Extract the single .bit file
+                archive.extract(bitfiles[0], path=str(xsa_extract_dir))
 
     @abstractmethod
     def build_base_file_system(self):

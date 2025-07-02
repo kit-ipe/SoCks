@@ -100,7 +100,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
 
         def extract_domain(url):
             # Regular expression to find the domain in HTTP/HTTPS and SSH URLs
-            pattern = r'(?:https?:\/\/|ssh:\/\/git@)([^:\/]+)'
+            pattern = r"(?:https?:\/\/|ssh:\/\/git@)([^:\/]+)"
             match = re.search(pattern, url)
             if match:
                 return match.group(1)
@@ -108,7 +108,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
 
         def extract_port(url):
             # Regular expression to find the port in the URL
-            pattern = r':(\d+)'
+            pattern = r":(\d+)"
             match = re.search(pattern, url)
             if match:
                 return match.group(1)
@@ -148,7 +148,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
                 sys.exit(1)
             # Manually add Git hosts to list of known hosts to prevent being prompted for confirmation
             if self.project_cfg.external_tools.container_tool in ["docker", "podman"]:
-                uri = self._source_repos[index]['url']
+                uri = self._source_repos[index]["url"]
                 domain = extract_domain(uri)
                 port = extract_port(uri)
                 if domain is not None and port is not None:

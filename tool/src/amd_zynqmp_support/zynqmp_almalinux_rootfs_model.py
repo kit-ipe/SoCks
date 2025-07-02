@@ -11,8 +11,8 @@ class ZynqMP_AlmaLinux_RootFS_Dependencies_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     kernel: str
-    devicetree: str
-    vivado: str
+    devicetree: Optional[str] = None
+    vivado: Optional[str] = None
 
 
 class ZynqMP_AlmaLinux_RootFS_Block_Project_Model(Block_Project_Model):

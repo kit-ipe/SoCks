@@ -64,7 +64,7 @@ blocks:
          - "file:rsync-3.2.3-20.el9.aarch64.rpm"
       build_time_fs_layer:
         - src_block: "vivado"
-          src_name: "*.bit"
+          src_name: "xsa_extracted/*.bit"
           dest_path: "/lib/firmware"
           dest_name: "serenity_s1_k26_pl.bit"
           dest_owner_group: "root:root"

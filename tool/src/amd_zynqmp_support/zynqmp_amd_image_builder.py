@@ -2,6 +2,7 @@ import sys
 import pathlib
 import shutil
 import inspect
+import zipfile
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
@@ -41,14 +42,13 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         self._kernel_img_path = self._dependencies_dir / "kernel/Image.gz"
         self._pmufw_img_path = self._dependencies_dir / "pmu_fw/pmufw.elf"
         self._ssbl_img_path = self._dependencies_dir / "ssbl/u-boot.elf"
-        self._vivado_bitfile_path = (
-            None  # Must be initialized outside the constructor, as the name of the file it not fixed.
-        )
+        self._vivado_bitfile_path = None  # Must be initialized outside the constructor, as the name is not fixed and it might be packed in an XSA.
 
         self._sdc_image_name = f"{self.project_cfg.project.name}_sd_card.img"
 
         # Project directories
         self._resources_dir = self._block_src_dir / "resources"
+        self._xsa_extracted_dir = self._xsa_dir / "extracted"
 
     @property
     def _block_deps(self):
@@ -66,7 +66,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             "ramfs": [".*.cpio.gz"],
             "rootfs": [".*.tar.xz"],
             "ssbl": ["u-boot.elf"],
-            "vivado": [".*.bit"],
+            "vivado": [".*.xsa"],
         }
         return block_deps
 
@@ -91,6 +91,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                     self._build_validator.del_project_cfg,
                     self.container_executor.build_container_image,
                     self.import_dependencies,
+                    self.import_xsa,
                     self._build_validator.save_project_cfg_prepare,
                 ]
             )
@@ -290,14 +291,39 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             None
         """
 
-        # Get *.bit file from vivado block package
-        bitfiles = list((self._dependencies_dir / "vivado").glob("*.bit"))
+        xsa_files = list(self._xsa_dir.glob("*.xsa"))
 
-        if len(bitfiles) != 1:
-            pretty_print.print_error(f'Not exactly one *.bit file in {self._dependencies_dir / "vivado"}')
+        # Check if there is more than one XSA file in the xsa directory
+        if len(xsa_files) != 1:
+            pretty_print.print_error(f"Not exactly one XSA archive in {self._xsa_dir}")
             sys.exit(1)
 
+        if not self._xsa_extracted_dir.is_dir():
+            self._xsa_extracted_dir.mkdir(parents=True)
+
+            # Extract all contents of the XSA file
+            with zipfile.ZipFile(xsa_files[0], "r") as archive:
+                archive.extractall(path=str(self._xsa_extracted_dir))
+
+        # Use the *.bit file from the XSA if it contains one
+        bitfiles = list(self._xsa_extracted_dir.glob("*.bit"))
+        if len(bitfiles) > 1:
+            pretty_print.print_error(f"More than one *.bit file in {self._xsa_extracted_dir}.")
+            sys.exit(1)
         self._vivado_bitfile_path = bitfiles[0]
+        pretty_print.print_info(f"Using *.bit file from the XSA")
+
+        # If there was no bit file in the XSA, check whether there is one directly in the block package
+        if self._vivado_bitfile_path is None:
+            bitfiles = list((self._dependencies_dir / "vivado").glob("*.bit"))
+            if len(bitfiles) != 1:
+                pretty_print.print_error(
+                    f"No *.bit file in {self._xsa_extracted_dir} "
+                    f"and also not exactly one *.bit file in {self._dependencies_dir / 'vivado'}"
+                )
+                sys.exit(1)
+            self._vivado_bitfile_path = bitfiles[0]
+            pretty_print.print_info(f"Using *.bit file directly from the Vivado block package and not from the XSA")
 
         # Check whether the boot script image needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
@@ -350,6 +376,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                     (pathlib.Path(self._amd_tools_path), "ro"),
                     (self._resources_dir, "Z"),
                     (self._dependencies_dir, "Z"),
+                    (self._xsa_dir, "Z"),
                     (self._work_dir, "Z"),
                     (self._output_dir, "Z"),
                 ],
