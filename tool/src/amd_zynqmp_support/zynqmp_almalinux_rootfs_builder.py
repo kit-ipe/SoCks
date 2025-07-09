@@ -344,16 +344,16 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                     sys.exit(1)
                 if urllib.parse.urlparse(uri).scheme == "file":
                     # This package is provided locally
-                    local_pkg_file = urllib.parse.urlparse(uri).path
-                    local_pkg_src_path = self._resources_dir / "additional_packages" / local_pkg_file
+                    local_pkg_path = pathlib.Path(urllib.parse.urlparse(uri).path)
+                    local_pkg_file = local_pkg_path.name
                     # Check whether the specified file exists
-                    if not local_pkg_src_path.is_file():
+                    if not local_pkg_path.is_file():
                         pretty_print.print_error(
-                            f"The package specified in '{self.block_id} -> project -> addl_ext_pkgs' does not exist: '{local_pkg_src_path}'"
+                            f"The package specified in '{self.block_id} -> project -> addl_ext_pkgs' does not exist: '{local_pkg_path}'"
                         )
                         sys.exit(1)
                     # Copy file to work dir
-                    shutil.copy(local_pkg_src_path, ext_pkgs_dir / local_pkg_file)
+                    shutil.copy(local_pkg_path, ext_pkgs_dir / local_pkg_file)
                 elif urllib.parse.urlparse(uri).scheme in ["http", "https"]:
                     # This package needs to be downloaded
                     local_pkg_path = File_Downloader.get_file(url=uri, output_dir=ext_pkgs_dir)

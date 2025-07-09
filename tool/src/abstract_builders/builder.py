@@ -130,7 +130,7 @@ class Builder(ABC):
 
         # Project files
         # File for saving the checksum of the imported, pre-built block package
-        self._source_pb_md5_file = self._work_dir / "source_pb.md5"
+        self._source_bp_md5_file = self._work_dir / "source_bp.md5"
 
         # Helpers
         self._build_validator = Build_Validator(
@@ -610,7 +610,7 @@ class Builder(ABC):
 
     def import_prebuilt(self):
         """
-        Imports a pre-built block package. If a file URI is provided, this directory is used locally. If a http or
+        Imports a pre-built block package. If a file URI is provided, this local block package is imported. If a http or
         https URI is provided, the file is downloaded.
 
         Args:
@@ -665,8 +665,8 @@ class Builder(ABC):
         md5_new_file = hashlib.md5(prebuilt_block_package.read_bytes()).hexdigest()
         # Read md5 of previously used file, if any
         md5_existsing_file = 0
-        if self._source_pb_md5_file.is_file():
-            with self._source_pb_md5_file.open("r") as f:
+        if self._source_bp_md5_file.is_file():
+            with self._source_bp_md5_file.open("r") as f:
                 md5_existsing_file = f.read()
 
         # Check if the pre-built block package needs to be imported
@@ -694,7 +694,7 @@ class Builder(ABC):
             archive.extractall(path=self._output_dir)
 
         # Save checksum in file
-        with self._source_pb_md5_file.open("w") as f:
+        with self._source_bp_md5_file.open("w") as f:
             print(md5_new_file, file=f, end="")
 
     def export_block_package(self):

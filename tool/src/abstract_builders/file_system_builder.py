@@ -523,8 +523,8 @@ class File_System_Builder(Builder):
         md5_new_file = hashlib.md5(prebuilt_block_package.read_bytes()).hexdigest()
         # Read md5 of previously used file, if any
         md5_existsing_file = 0
-        if self._source_pb_md5_file.is_file():
-            with self._source_pb_md5_file.open("r") as f:
+        if self._source_bp_md5_file.is_file():
+            with self._source_bp_md5_file.open("r") as f:
                 md5_existsing_file = f.read()
 
         # Check if the pre-built file system needs to be imported
@@ -570,7 +570,7 @@ class File_System_Builder(Builder):
         )
 
         # Save checksum in file
-        with self._source_pb_md5_file.open("w") as f:
+        with self._source_bp_md5_file.open("w") as f:
             print(md5_new_file, file=f, end="")
 
         # Delete imported, pre-built file system archive
