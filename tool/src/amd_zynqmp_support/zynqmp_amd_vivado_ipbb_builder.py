@@ -348,11 +348,18 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             f"exit",
         ]
 
+        potential_mounts = [
+            (self._xsa_dir, "Z"),
+            (pathlib.Path(self._amd_tools_path), "ro"),
+            (self._repo_dir, "Z"),
+            (self._work_dir, "Z"),
+            (self._output_dir, "Z"),
+        ]
+
+        for path in self._local_source_dirs:
+            potential_mounts.append((path, "Z"))
+
         self.container_executor.start_gui_container(
             start_gui_commands=start_vivado_gui_commands,
-            potential_mounts=[
-                (pathlib.Path(self._amd_tools_path), "ro"),
-                (self._repo_dir, "Z"),
-                (self._output_dir, "Z"),
-            ],
+            potential_mounts=potential_mounts,
         )
