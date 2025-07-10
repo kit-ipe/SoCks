@@ -108,7 +108,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
                 [self.container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
             )
         elif self.block_cfg.source == "import":
-            block_cmds["build"].extend([self.import_prebuilt])
+            block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
         return block_cmds
 
     def validate_srcs(self):

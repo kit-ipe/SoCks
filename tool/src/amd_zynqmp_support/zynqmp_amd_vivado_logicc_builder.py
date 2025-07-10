@@ -88,7 +88,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
                 [self.container_executor.build_container_image, self.start_vivado_gui]
             )
         elif self.block_cfg.source == "import":
-            block_cmds["build"].extend([self.import_prebuilt])
+            block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
         return block_cmds
 
     def create_vivado_project(self):

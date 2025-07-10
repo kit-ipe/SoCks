@@ -111,7 +111,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             block_cmds["build-sd-card"].extend([self.sd_card_img, self._build_validator.save_project_cfg_build])
             block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
         elif self.block_cfg.source == "import":
-            block_cmds["build"].extend([self.import_prebuilt])
+            block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
         return block_cmds
 
     def validate_srcs(self):
