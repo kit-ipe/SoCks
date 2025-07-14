@@ -114,7 +114,8 @@ class Configuration_Compiler:
         gathered_cfg = cfg_layer
 
         if "import" in cfg_layer:
-            for file_name in cfg_layer["import"]:
+            # Iterate through the list in reverse order to give the last element the highest priority
+            for file_name in reversed(cfg_layer["import"]):
                 # Recursively merge the so far composed return value with the file to be imported
                 cfg_buffer, files_buffer = Configuration_Compiler._merge_cfg_files(
                     config_file_name=file_name, socks_dir=socks_dir, project_dir=project_dir
