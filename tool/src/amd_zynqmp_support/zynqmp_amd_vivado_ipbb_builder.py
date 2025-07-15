@@ -251,6 +251,11 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
                 / self.block_cfg.project.name
                 / self.block_cfg.project.name
                 / f"{self.block_cfg.project.name}.cache",
+                self._ipbb_work_dir
+                / "proj"
+                / self.block_cfg.project.name
+                / self.block_cfg.project.name
+                / f"{self.block_cfg.project.name}.xpr",
             ],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"

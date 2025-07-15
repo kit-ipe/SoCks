@@ -179,6 +179,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             src_ignore_list=[
                 vivado_build_dir / f"{self.block_cfg.project.name.split(':', 1)[0]}.runs",
                 vivado_build_dir / f"{self.block_cfg.project.name.split(':', 1)[0]}.cache",
+                vivado_build_dir / f"{self.block_cfg.project.name.split(':', 1)[0]}.xpr",
             ],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
