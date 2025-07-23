@@ -72,7 +72,10 @@ class File_System_Builder(Builder):
         super().import_dependencies()
 
         # Stop if this block does not depend on the Vivado block
-        if self.block_cfg.project.dependencies.vivado is None:
+        if (
+            not hasattr(self.block_cfg.project.dependencies, "vivado")
+            or self.block_cfg.project.dependencies.vivado is None
+        ):
             return
 
         xsafiles = list((self._dependencies_dir / "vivado").glob("*.xsa"))

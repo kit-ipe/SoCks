@@ -703,6 +703,7 @@ blocks:
           branch: "-b main"
       main_prj_src: "serenity-s1-k26c-fw"
       name: "s1-kria"
+      ipbb_tag: "dev/2024d"
     container:
       image: "ipbb-builder-alma8"
 ``` 
@@ -723,6 +724,7 @@ vivado:
     import_src: "https://serenity.web.cern.ch/.../vivado.tar.gz"
     main_prj_src: "serenity-s1-k26c-fw"
     name: "s1-kria"
+    ipbb_tag: "dev/2024d"
   container:
     image: "ipbb-builder-alma8"
     tag: "socks"
@@ -743,6 +745,7 @@ Key:
   - The file URI of a local file. In this case the string must start with `file://`.
 - **project -> main_prj_src**: The main project source that contains the actual IPBB project (repo resp. folder name)
 - **project -> name**: Name of the IPBB project
+- **project -> ipbb_tag**: The tag in the IPBB repo to be used
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
   - `ipbb-builder-alma8`
   - `ipbb-builder-alma9`
@@ -770,6 +773,7 @@ blocks:
         source: "ssh://git@gitlab.kit.edu/kit/ipe-sdr/ipe-sdr-dev/hardware/sdr_hardware.git"
         branch: "master"
       name: "qup:zcu216_rfdc_full"
+      logicc_branch: "master"
     container:
       image: "logicc-builder-alma8"
 ``` 
@@ -785,6 +789,7 @@ vivado:
       branch: "master"
     import_src: "file:///home/marvin/Projects/SDR/SoCks/zcu216_demo_SoCks/vivado.tar.gz"
     name: "qup:zcu216_rfdc_full"
+    logicc_branch: "master"
   container:
     image: "logicc-builder-alma8"
     tag: "socks"
@@ -803,6 +808,7 @@ Key:
   - The URL to a file online. In this case the string must start with `https://` or `http://`.
   - The file URI of a local file. In this case the string must start with `file://`. It is recommended to use absolute paths.
 - **project -> name**: Name of the logicc project. The format for regular projects is `<project>`. For grouped projects the format is `<group>:<project>`.
+- **project -> logicc_branch**: The branch in the logicc repo to be used
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
   - `logicc-builder-alma8`
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.

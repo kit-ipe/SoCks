@@ -1,15 +1,9 @@
 FROM multiarch/qemu-user-static:x86_64-aarch64 AS qemu
+FROM tianon/gosu AS gosu
 FROM debian:bookworm
 
 # Install QEMU binary to run aarch64 binaries on an x86 architecture
 COPY --from=qemu /usr/bin/qemu-aarch64-static /usr/bin
-
-# Build-time variables
-ARG user_name=root
-ARG user_id=0
-
-# Switch to the root user to configure the image
-USER root
 
 # Update all packages
 RUN apt update -y && apt upgrade -y && \
@@ -25,9 +19,15 @@ RUN apt update -y && apt upgrade -y && \
     apt install -y sudo && \
     echo '%sudo ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
-# Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
-RUN getent group $user_name || groupadd --gid $user_id $user_name && \
-    getent passwd $user_name || adduser --uid $user_id --gid $user_id --home "/home" $user_name && \
-    usermod -a -G sudo $user_name
-USER $user_name
-WORKDIR /home/$user_name
+# Install goso as shown here: https://github.com/tianon/gosu/blob/master/INSTALL.md
+COPY --from=gosu /gosu /usr/local/bin/
+
+# Copy the entrypoint script into the container and make it executable
+COPY --from=container_srcs entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Set the entrypoint to the script
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# Set the default command to run when the container starts
+CMD ["/bin/bash"]

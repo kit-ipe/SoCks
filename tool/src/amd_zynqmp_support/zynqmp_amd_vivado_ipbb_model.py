@@ -17,6 +17,7 @@ class ZynqMP_AMD_Vivado_IPBB_Block_Project_Model(Block_Project_Model):
         default=..., description="The main project source (repo/folder) that contains the actual IPBB project"
     )
     name: str = Field(default=..., description="Name of the project")
+    ipbb_tag: str = Field(default=..., description="The tag in the IPBB repo to be used")
 
 
 class ZynqMP_AMD_Vivado_IPBB_Block_Model(Block_Model):

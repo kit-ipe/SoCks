@@ -4,6 +4,7 @@ import:
 project:
   name: "test-project"
 external_tools:
+  container_tool: "docker"
   xilinx:
     version: "2022.2"
 blocks:
@@ -36,6 +37,7 @@ blocks:
           branch: "-b main"
       main_prj_src: "serenity-s1-k26c-fw"
       name: "s1-kria"
+      ipbb_tag: "dev/2024d"
     container:
       image: "ipbb-builder-alma8"
   # vivado:
@@ -101,8 +103,8 @@ blocks:
   #     mirror: "http://ftp.de.debian.org/debian/"
   #     addl_pkgs: ["sudo", "python3", "openssh-server", "nano", "vim"]
   #     addl_ext_pkgs:
-  #       - "file:///home/marvin/Projects/Build_System_Tests/SoCks/test_project_zynqmp/src/rootfs/resources/additional_packages/libmetal-2022.2-1.deb"
-  #       - "file:///home/marvin/Projects/Build_System_Tests/SoCks/test_project_zynqmp/src/rootfs/resources/additional_packages/librfdc-2022.2-1.deb"
+  #       - "https://bwsyncandshare.kit.edu/s/L6gynyC2a3GQx38/download?path=%2F&files=libmetal-2022.2-1.deb"
+  #       - "https://bwsyncandshare.kit.edu/s/L6gynyC2a3GQx38/download?path=%2F&files=librfdc-2022.2-1.deb"
   #       - "https://bwsyncandshare.kit.edu/s/L6gynyC2a3GQx38/download?path=%2F&files=servicehub-0.1.1-Linux.deb"
   #     build_time_fs_layer:
   #       - src_block: "vivado"

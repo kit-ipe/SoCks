@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import inspect
+import shutil
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
@@ -34,11 +35,13 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         )
 
         # Project directories
-        self._temp_logicc_dir = self._work_dir / "logicc"
-        self._logicc_build_dir = self._temp_logicc_dir / "build"
-        self._logicc_image_dir = self._temp_logicc_dir / "image"
+        self._logicc_install_dir = self._work_dir / "logicc-tool"
+        self._logicc_work_dir = self._work_dir / "logicc-work"
+        self._logicc_build_dir = self._logicc_work_dir / "build"
+        self._logicc_image_dir = self._logicc_work_dir / "image"
 
         self._logicc_cfg_cmds = [
+            f"logicc config set lib_dir {self._logicc_install_dir}/logicc/lib",
             f"logicc config set work_dir {self._source_repo_dir}",
             f"logicc config set build_dir {self._logicc_build_dir}",
             f"logicc config set image_dir {self._logicc_image_dir}",
@@ -74,6 +77,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
                 [
                     self._build_validator.del_project_cfg,
                     self.container_executor.build_container_image,
+                    self.init_logicc,
                     self.init_repo,
                     self.create_vivado_project,
                     self._build_validator.save_project_cfg_prepare,
@@ -90,6 +94,60 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         elif self.block_cfg.source == "import":
             block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
         return block_cmds
+
+    def init_logicc(self):
+        """
+        Installs and initializes logicc.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Skip all operations if the repo config hasn't changed
+        if not self._build_validator.check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "logicc_branch"]], accept_prep=True
+        ):
+            pretty_print.print_build("No need to install logicc. It is already installed...")
+            return
+
+        # Clean install directory
+        try:
+            shutil.rmtree(self._logicc_install_dir)
+        except FileNotFoundError:
+            pass  # Ignore if the directory does not exist
+
+        self._logicc_install_dir.mkdir(parents=True)
+
+        pretty_print.print_build("Installing logicc...")
+
+        install_logicc_commands = [
+            # Create SSH directory to simplify subsequently adding known hosts
+            "mkdir -p -m 0700 ~/.ssh",
+            # Manually add Git host to list of known hosts to prevent being prompted for confirmation
+            "ssh-keyscan gitlab.kit.edu >> ~/.ssh/known_hosts",
+            f"git clone --depth 1 --branch {self.block_cfg.project.logicc_branch} "  # Intentionally no comma here
+            f"git@gitlab.kit.edu:kit/ipe-sdr/ipe-sdr-dev/hardware/logicc.git {self._logicc_install_dir}/logicc",
+            f"mkdir -p {self._logicc_install_dir}/py_envs",
+            f"python3 -m venv {self._logicc_install_dir}/py_envs/logicc",
+            f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
+            # Install logicc
+            f"cd {self._logicc_install_dir}/logicc",
+            "pip install -U .",
+            "./install_toml_parser",
+        ]
+
+        self.container_executor.exec_sh_commands(
+            commands=install_logicc_commands,
+            dirs_to_mount=[(self._work_dir, "Z")],
+            custom_params=["-v", "$SSH_AUTH_SOCK:/ssh-auth-sock", "--env", "SSH_AUTH_SOCK=/ssh-auth-sock"],
+            print_commands=True,
+        )
 
     def create_vivado_project(self):
         """
@@ -124,7 +182,12 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
             self.check_amd_tools(required_tools=["vivado"])
 
-            self.clean_work()
+            # Clean work directory
+            try:
+                shutil.rmtree(self._logicc_work_dir)
+            except FileNotFoundError:
+                pass  # Ignore if the directory does not exist
+
             self._logicc_build_dir.mkdir(parents=True)
             self._logicc_image_dir.mkdir(parents=True)
 
@@ -135,7 +198,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
                     f"export XILINXD_LICENSE_FILE={self._amd_license}",
                     f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
                     f"source {self._amd_vivado_path}/settings64.sh",
-                    "source ~/py_envs/logicc/bin/activate",
+                    f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
                 ]
                 + self._logicc_cfg_cmds
                 + [
@@ -204,7 +267,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
                     f"export XILINXD_LICENSE_FILE={self._amd_license}",
                     f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
                     f"source {self._amd_vivado_path}/settings64.sh",
-                    "source ~/py_envs/logicc/bin/activate",
+                    f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
                 ]
                 + self._logicc_cfg_cmds
                 + [
@@ -256,7 +319,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
                 f"export XILINXD_LICENSE_FILE={self._amd_license}",
                 f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
                 f"source {self._amd_vivado_path}/settings64.sh",
-                "source ~/py_envs/logicc/bin/activate",
+                f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
             ]
             + self._logicc_cfg_cmds
             + [f"logicc start {self.block_cfg.project.name}", "exit"]
@@ -300,7 +363,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             f"export XILINXD_LICENSE_FILE={self._amd_license}",
             f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
             f"source {self._amd_vivado_path}/settings64.sh",
-            "source ~/py_envs/logicc/bin/activate",
+            f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
             'export PS1="${VIRTUAL_ENV_PROMPT}[\\u@\\h \\W]\\$ "',  # This is an ugly hack to fix the prompt in the container. It is needed because if the activated Python environment in the container.
         ] + self._logicc_cfg_cmds
 
