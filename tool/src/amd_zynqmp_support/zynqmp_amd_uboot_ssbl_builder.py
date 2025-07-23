@@ -258,7 +258,9 @@ class ZynqMP_AMD_UBoot_SSBL_Builder(Builder):
                 "export CROSS_COMPILE=aarch64-linux-gnu-",
                 "export ARCH=aarch64",
                 "make olddefconfig",
+                "git update-index --assume-unchanged .config",  # Normally .config is in the gitignore file, so U-Boot should not be dirty because of this. .config is sometimes changed automatically due to the container used.
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
+                "git update-index --no-assume-unchanged .config",  # Stop hiding .config
             ]
 
             self.container_executor.exec_sh_commands(

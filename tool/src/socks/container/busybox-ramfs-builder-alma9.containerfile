@@ -1,11 +1,9 @@
+FROM tianon/gosu AS gosu
 FROM almalinux:9
 
 # Build-time variables
-ARG user_name=root
-ARG user_id=0
-
-# Switch to the root user to configure the image
-USER root
+ARG toolchain_user_name=ct-ng_user
+ARG toolchain_user_id=9999
 
 # Enable Power Tools repo
 RUN dnf -y install 'dnf-command(config-manager)' && \
@@ -48,21 +46,60 @@ RUN dnf -y install perl-Pod-Html ncurses-devel && \
     dnf -y install sudo && \
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
-# Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
-RUN getent group $user_name || groupadd --gid $user_id $user_name && \
-    getent passwd $user_name || adduser --uid $user_id --gid $user_id --base-dir "/home" -G wheel $user_name
-USER $user_name
-WORKDIR /home/$user_name
+# Create a user that can build the toolchain
+#RUN getent group $toolchain_user_name || groupadd --gid $toolchain_user_id $toolchain_user_name && \
+#    getent passwd $toolchain_user_name || adduser --uid $toolchain_user_id --gid $toolchain_user_id $toolchain_user_name
+#USER $toolchain_user_name
 
-# Build the cross-compilation toolchain (Must be done as non-root user)
+# Build the cross-compilation toolchain (Should be done as non-root user)
 # For glibc use: aarch64-unknown-linux-gnu
 # For uClibc use: aarch64-unknown-linux-uclibc
-RUN mkdir /home/$user_name/crosstool-ng-workspace && \
-    cd /home/$user_name/crosstool-ng-workspace && \
-    ct-ng aarch64-unknown-linux-uclibc && \
-    ct-ng build
-ENV PATH="$PATH:/home/$user_name/x-tools/aarch64-unknown-linux-uclibc/bin/"
+#RUN mkdir /home/$toolchain_user_name/crosstool-ng-workspace && \
+#    cd /home/$toolchain_user_name/crosstool-ng-workspace && \
+#    ct-ng aarch64-unknown-linux-uclibc && \
+#    ct-ng build
 
-# Set default user and workdir
-USER $user_name
-WORKDIR /home/$user_name
+# Switch back to the root user
+#USER root
+
+# Install the toolchain in a location accessible to all users
+#RUN mkdir /opt/crosstool-ng-toolchains && \
+#    chmod 777 /opt/crosstool-ng-toolchains && \
+#    mv /home/$toolchain_user_name/x-tools/* /opt/crosstool-ng-toolchains/ && \
+#    rmdir /home/$toolchain_user_name/x-tools
+#ENV PATH="$PATH:/opt/crosstool-ng-toolchains/aarch64-unknown-linux-uclibc/bin/"
+
+# Build the cross-compilation toolchain
+# (It is absolutely not recommended to use crosstool-ng as root user, but I think in the container it is fine.
+#  The root user is used primarily because I have not found any other solution that works for podman.)
+# For glibc use: aarch64-unknown-linux-gnu
+# For uClibc use: aarch64-unknown-linux-uclibc
+RUN mkdir /app/tools/crosstool-ng-workspace && \
+    cd /app/tools/crosstool-ng-workspace && \
+    ct-ng aarch64-unknown-linux-uclibc && \
+    ct-ng oldconfig && \
+    echo "CT_EXPERIMENTAL=y" >> .config && \
+    echo "CT_ALLOW_BUILD_AS_ROOT=y" >> .config && \
+    echo "CT_ALLOW_BUILD_AS_ROOT_SURE=y" >> .config && \
+    ct-ng upgradeconfig && \
+    ct-ng build
+
+# Install the toolchain in a location accessible to all users
+RUN mkdir /opt/crosstool-ng-toolchains && \
+    chmod 777 /opt/crosstool-ng-toolchains && \
+    mv /root/x-tools/* /opt/crosstool-ng-toolchains/ && \
+    rmdir /root/x-tools
+ENV PATH="$PATH:/opt/crosstool-ng-toolchains/aarch64-unknown-linux-uclibc/bin/"
+
+# Install goso as shown here: https://github.com/tianon/gosu/blob/master/INSTALL.md
+COPY --from=gosu /gosu /usr/local/bin/
+
+# Copy the entrypoint script into the container and make it executable
+COPY --from=container_srcs entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Set the entrypoint to the script
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# Set the default command to run when the container starts
+CMD ["/bin/bash"]

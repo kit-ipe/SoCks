@@ -230,7 +230,9 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
                 f"cd {self._source_repo_dir}",
                 "export CROSS_COMPILE=aarch64-linux-gnu-",
                 "make ARCH=arm64 olddefconfig",
+                "git update-index --assume-unchanged .config",  # Normally .config is in the gitignore file, so the kernel should not be dirty because of this. .config is sometimes changed automatically due to the container used.
                 f"make ARCH=arm64 -j{self.project_cfg.external_tools.make.max_build_threads}",
+                "git update-index --no-assume-unchanged .config",  # Stop hiding .config
             ]
 
             self.container_executor.exec_sh_commands(

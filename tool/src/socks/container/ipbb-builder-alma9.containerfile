@@ -1,11 +1,5 @@
+FROM tianon/gosu AS gosu
 FROM almalinux:9
-
-# Build-time variables
-ARG user_name=root
-ARG user_id=0
-
-# Switch to the root user to configure the image
-USER root
 
 # Enable Power Tools repo
 RUN dnf -y install 'dnf-command(config-manager)' && \
@@ -31,16 +25,15 @@ RUN dnf -y install glibc-locale-source glibc-langpack-en && \
 RUN curl https://ipbus.web.cern.ch/doc/user/html/_downloads/ipbus-sw.repo -o /etc/yum.repos.d/ipbus-sw.repo && \
     dnf -y groupinstall uhal
 
-# Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
-RUN getent group $user_name || groupadd --gid $user_id $user_name && \
-    getent passwd $user_name || adduser --uid $user_id --gid $user_id --base-dir "/home" $user_name
-USER $user_name
-WORKDIR /home/$user_name
+# Install goso as shown here: https://github.com/tianon/gosu/blob/master/INSTALL.md
+COPY --from=gosu /gosu /usr/local/bin/
 
-# Install IPBB
-RUN mkdir -p /home/$user_name/tools && \
-    cd /home/$user_name/tools; curl -L https://github.com/ipbus/ipbb/archive/dev/2024d.tar.gz | tar xvz && \
-    cd /home/$user_name/tools; source ipbb-dev-2024d/env.sh && \
-# Create SSH directory to simplify subsequently adding known hosts
-    mkdir /home/$user_name/.ssh && \
-    chmod 700 /home/$user_name/.ssh
+# Copy the entrypoint script into the container and make it executable
+COPY --from=container_srcs entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Set the entrypoint to the script
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# Set the default command to run when the container starts
+CMD ["/bin/bash"]

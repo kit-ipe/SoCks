@@ -14,6 +14,7 @@ class ZynqMP_AMD_Vivado_logicc_Block_Project_Model(Block_Project_Model):
 
     build_srcs: Build_Srcs_Model = Block_Project_Model_Default_Fields.build_srcs
     name: str = Field(default=..., description="Name of the project")
+    logicc_branch: str = Field(default=..., description="The branch in the logicc repo to be used")
 
 
 class ZynqMP_AMD_Vivado_logicc_Block_Model(Block_Model):

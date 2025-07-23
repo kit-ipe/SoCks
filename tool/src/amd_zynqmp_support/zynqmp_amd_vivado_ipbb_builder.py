@@ -36,6 +36,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         self._ipbb_work_dir_name = "ipbb-work"
 
         # Project directories
+        self._ipbb_install_dir = self._repo_dir / "ipbb-tool"
         self._ipbb_work_dir = self._repo_dir / self._ipbb_work_dir_name
 
     @property
@@ -129,7 +130,14 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         pretty_print.print_build("Initializing the IPBB environment...")
 
         init_ipbb_env_commands = [
-            "source ~/tools/ipbb-*/env.sh",
+            # Create SSH directory to simplify subsequently adding known hosts
+            "mkdir -p -m 0700 ~/.ssh",
+            # Install IPBB
+            f"mkdir {self._ipbb_install_dir}",
+            f"cd {self._ipbb_install_dir}",
+            f"curl -L https://github.com/ipbus/ipbb/archive/{self.block_cfg.project.ipbb_tag}.tar.gz | tar xvz",
+            f"source {self._ipbb_install_dir}/ipbb-{self.block_cfg.project.ipbb_tag.replace('/', '-')}/env.sh",
+            # Initialize IPBB
             f"cd {self._repo_dir}",
             f"ipbb init {self._ipbb_work_dir_name}",
             f"cd {self._ipbb_work_dir}",
@@ -194,7 +202,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         pretty_print.print_build("Creating the Vivado Project...")
 
         create_vivado_project_commands = [
-            "source ~/tools/ipbb-*/env.sh",
+            f"source {self._ipbb_install_dir}/ipbb-{self.block_cfg.project.ipbb_tag.replace('/', '-')}/env.sh",
             f"cd {self._ipbb_work_dir}",
             f"ipbb toolbox check-dep vivado {self.block_cfg.project.main_prj_src}:projects/{self.block_cfg.project.name} top.dep",
             f"ipbb proj create vivado {self.block_cfg.project.name} {self.block_cfg.project.main_prj_src}:projects/{self.block_cfg.project.name}",
@@ -276,7 +284,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             pretty_print.print_build("Building the Vivado Project...")
 
             vivado_build_commands = [
-                "source ~/tools/ipbb-*/env.sh",
+                f"source {self._ipbb_install_dir}/ipbb-{self.block_cfg.project.ipbb_tag.replace('/', '-')}/env.sh",
                 f"export XILINXD_LICENSE_FILE={self._amd_license}",
                 f"source {self._amd_vivado_path}/settings64.sh",
                 f"cd {self._ipbb_work_dir}/proj/{self.block_cfg.project.name}",

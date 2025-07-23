@@ -7,6 +7,7 @@ import inspect
 import subprocess
 
 import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
 from socks.shell_executor import Shell_Executor
 from socks.timestamp_logger import Timestamp_Logger
 
@@ -61,6 +62,10 @@ class Container_Executor:
         # Identifier of the container image in format <image name>:<image tag>.
         self._container_image_tagged = f"{container_image}:{container_image_tag}"
 
+        # Get host user and id (a bit complicated but should work in most Unix environments)
+        self._host_user_id = os.getuid()
+        self._host_user = pwd.getpwuid(self._host_user_id).pw_name
+
         # Enforce printing shell commands before they are executed in the container.
         # This setting overwrites all other shell command printing settings.
         self._enforce_command_printing = enforce_command_printing
@@ -114,15 +119,13 @@ class Container_Executor:
             pretty_print.print_error(f"File {self._container_file} not found.")
             sys.exit(1)
 
-        # Get last build timestamp
-        last_build_timestamp = self._container_log.get_logged_timestamp(
-            identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
-        )
-        # Get last modification time of the container file
-        last_file_mod_timestamp = self._container_file.stat().st_mtime
-
         # Check whether the image needs to be built
-        if last_build_timestamp > last_file_mod_timestamp:
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=[self._container_file, self._container_file.parent / "entrypoint.sh"],
+            out_timestamp=self._container_log.get_logged_timestamp(
+                identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
+            ),
+        ):
             pretty_print.print_build(f"No need to build {self._container_tool} image {self._container_image_tagged}...")
             return
 
@@ -130,10 +133,6 @@ class Container_Executor:
             identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
         ):
             if self._container_tool == "docker":
-                # Get host user and id (a bit complicated but should work in most Unix environments)
-                host_user_id = os.getuid()
-                host_user = pwd.getpwuid(host_user_id).pw_name
-
                 pretty_print.print_build(f"Building docker image {self._container_image_tagged}...")
 
                 self._shell_executor.exec_sh_command(
@@ -147,10 +146,8 @@ class Container_Executor:
                         str(self._container_file),
                         "--ssh",
                         "default",
-                        "--build-arg",
-                        f"user_name={host_user}",
-                        "--build-arg",
-                        f"user_id={host_user_id}",
+                        "--build-context",
+                        f"container_srcs={str(self._container_file.parent)}",
                         "--load",
                         ".",
                     ]
@@ -169,6 +166,9 @@ class Container_Executor:
                         str(self._container_file),
                         "--ssh",
                         "default",
+                        "--build-context",
+                        f"container_srcs={str(self._container_file.parent)}",
+                        "--ulimit nofile=2048:2048",  # This is required to be able to build a toolchain with crosstool-ng in the container
                         ".",
                     ]
                 )
@@ -273,12 +273,31 @@ class Container_Executor:
         comp_commands = comp_commands + "'"
 
         if self._container_tool in ("docker", "podman"):
+            # Prepare mounts
             existing_mounts = [mount for mount in dirs_to_mount if mount[0].is_dir()]
             mounts = " ".join([f"-v {i[0]}:{i[0]}:{i[1]}" for i in existing_mounts])
+
+            # Prepare user
+            if run_as_root or self._container_tool == "podman":
+                # The root user should always be used in podman containers. Using a different user causes permission issues.
+                # Files created on the host via mounted directories belong to the user who started the container anyway.
+                container_user = "root"
+                container_user_id = "0"
+            else:
+                container_user = self._host_user
+                container_user_id = self._host_user_id
+
             # Run commands in container
-            user_opt = "-u root" if run_as_root else ""
             self._shell_executor.exec_sh_command(
-                command=[self._container_tool, "run", "--rm", "-it", user_opt, mounts]
+                command=[
+                    self._container_tool,
+                    "run",
+                    "--rm",
+                    "-it",
+                    f"--env CONTAINER_USER={container_user}",
+                    f"--env CONTAINER_USER_ID={container_user_id}",
+                    mounts,
+                ]
                 + custom_params
                 + [self._container_image_tagged, "bash", "-c", comp_commands],
                 logfile=logfile,
@@ -396,6 +415,16 @@ class Container_Executor:
                         comp_commands = comp_commands + command + " && "
                 comp_commands = comp_commands + "'"
 
+            # Prepare user
+            if self._container_tool == "podman":
+                # The root user should always be used in podman containers. Using a different user causes permission issues.
+                # Files created on the host via mounted directories belong to the user who started the container anyway.
+                container_user = "root"
+                container_user_id = "0"
+            else:
+                container_user = self._host_user
+                container_user_id = self._host_user_id
+
             pretty_print.print_build("Starting container...")
 
             if comp_commands:
@@ -405,6 +434,8 @@ class Container_Executor:
                         "run",
                         "--rm",
                         "-it",
+                        f"--env CONTAINER_USER={container_user}",
+                        f"--env CONTAINER_USER_ID={container_user_id}",
                         mounts,
                         self._container_image_tagged,
                         "bash",
@@ -415,7 +446,16 @@ class Container_Executor:
                 )
             else:
                 self._shell_executor.exec_sh_command(
-                    command=[self._container_tool, "run", "--rm", "-it", mounts, self._container_image_tagged],
+                    command=[
+                        self._container_tool,
+                        "run",
+                        "--rm",
+                        "-it",
+                        f"--env CONTAINER_USER={container_user}",
+                        f"--env CONTAINER_USER_ID={container_user_id}",
+                        mounts,
+                        self._container_image_tagged,
+                    ],
                     check=False,
                 )
 
@@ -478,7 +518,8 @@ class Container_Executor:
                     "--network",
                     "--clipboard=yes",
                     "--xauth=trusted",
-                    "--user=RETAIN",
+                    f"--user={self._host_user_id}:{self._host_user_id}",  # Replaces the entrypoint script in GUI containers
+                    "--no-entrypoint",  # The entrypoint script doesn't work if x11docker uses the docker backend
                     mounts,
                     self._container_image_tagged,
                     f"--runasuser={comp_commands}",
@@ -496,6 +537,8 @@ class Container_Executor:
                     "--xauth=trusted",
                     "--cap-default",
                     "--user=RETAIN",
+                    f"--env CONTAINER_USER={self._host_user}",
+                    f"--env CONTAINER_USER_ID={self._host_user_id}",
                     mounts,
                     self._container_image_tagged,
                     f"--runasuser={comp_commands}",
