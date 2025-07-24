@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [tool.setuptools.package-data]
-socks = ["container/*.containerfile", "templates/**/*"]
+socks = ["container/*.containerfile", "container/*.sh", "templates/**/*"]
 amd_zynqmp_support = ["templates/**/*"]
 amd_versal_support = ["templates/**/*"]
 
