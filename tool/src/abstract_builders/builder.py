@@ -552,7 +552,7 @@ class Builder(ABC):
 
                 # Apply patch
                 self.shell_executor.exec_sh_command(
-                    ["git", "-C", str(self._source_repo_dir), "am", str(self._patch_dir / patch)]
+                    ["git", "-C", str(self._source_repo_dir), "am", "--ignore-whitespace", str(self._patch_dir / patch)]
                 )
 
             # Update the branch self._git_local_ref_branch so that it contains the applied patches and is in sync with self._git_local_dev_branch. This is important to be able to create new patches.
