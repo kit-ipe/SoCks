@@ -47,7 +47,6 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         self._sdc_image_name = f"{self.project_cfg.project.name}_sd_card.img"
 
         # Project directories
-        self._resources_dir = self._block_src_dir / "resources"
         self._xsa_extracted_dir = self._xsa_dir / "extracted"
 
     @property

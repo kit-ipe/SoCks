@@ -37,9 +37,6 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
 
         self._target_arch = "aarch64"
 
-        # Project directories
-        self._resources_dir = self._block_src_dir / "resources"
-
         # Project files
         # dnf configuration file to be used to build the file system for the target architecture
         self._dnf_conf_file = self._resources_dir / "dnf_build_time.conf"
@@ -87,12 +84,14 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             block_cmds["build"].extend(
                 [
                     self.build_base_file_system,
+                    self.run_base_install_mod_script,
                     self.add_addl_packages,
                     self.add_addl_ext_packages,
                     self.add_users,
                     self.add_kmodules,
                     self.add_bt_layer,
                     self.add_pd_layers,
+                    self.run_concluding_mod_script,
                     self.build_archive,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
@@ -102,6 +101,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             block_cmds["prebuild"].extend(
                 [
                     self.build_base_file_system,
+                    self.run_base_install_mod_script,
                     self.add_addl_packages,
                     self.add_addl_ext_packages,
                     self.build_archive_prebuilt,
@@ -119,6 +119,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                     self.add_kmodules,
                     self.add_bt_layer,
                     self.add_pd_layers,
+                    self.run_concluding_mod_script,
                     self.build_archive,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
@@ -144,11 +145,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             None
         """
 
-        mod_base_install_script = self._resources_dir / "mod_base_install.sh"
-
         # Check whether the base root file system needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._dnf_conf_file, mod_base_install_script],
+            src_search_list=[self._dnf_conf_file],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
@@ -183,23 +182,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                 'printf "\nInstall the base os via dnf group install...\n\n"',
                 # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
                 dnf_base_command + 'groupinstall --with-optional "Minimal Install"',
+                # The QEMU binary if only required during build, so delete it if it exists
+                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
-
-            if mod_base_install_script.is_file():
-                base_rootfs_build_commands.extend(
-                    [
-                        'printf "\nCall user-defined script to make changes to the base os...\n\n"',
-                        f"chmod a+x {mod_base_install_script}",
-                        f"{mod_base_install_script} {self._target_arch} {self.block_cfg.project.release} {self._dnf_conf_file} {self._build_dir}",
-                    ]
-                )
-            else:
-                pretty_print.print_info(
-                    f"File {mod_base_install_script} not found. No user-defined changes are made to the base os."
-                )
-
-            # The QEMU binary if only required during build, so delete it if it exists
-            base_rootfs_build_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
@@ -212,6 +197,8 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             )
 
             # Reset timestamps
+            self._build_log.del_logged_timestamp(identifier=f"function-run_base_install_mod_script-success")
+            self._build_log.del_logged_timestamp(identifier=f"function-run_concluding_mod_script-success")
             self._build_log.del_logged_timestamp(identifier=f"function-add_pd_layers-success")
             self._build_log.del_logged_timestamp(identifier=f"function-add_bt_layer-success")
             self._build_log.del_logged_timestamp(identifier=f"function-add_users-success")

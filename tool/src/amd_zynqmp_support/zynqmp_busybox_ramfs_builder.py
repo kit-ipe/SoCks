@@ -35,9 +35,6 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             model_class=model_class,
         )
 
-        # Project directories
-        self._resources_dir = self._block_src_dir / "resources"
-
         # Project files
         # File for version & build info tracking
         self._build_info_file = self._work_dir / "fs_build_info"

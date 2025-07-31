@@ -102,6 +102,7 @@ class Builder(ABC):
         self._block_src_dir = self._project_src_dir / self.block_id
         self._block_temp_dir = self._project_temp_dir / self.block_id
         self._patch_dir = self._block_src_dir / "patches"
+        self._resources_dir = self._block_src_dir / "resources"
         self._download_dir = self._block_temp_dir / "download"
         self._work_dir = self._block_temp_dir / "work"
         self._output_dir = self._block_temp_dir / "output"

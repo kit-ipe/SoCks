@@ -40,9 +40,6 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(File_System_Builder):
             model_class=model_class,
         )
 
-        # Project directories
-        self._resources_dir = self._block_src_dir / "resources"
-
         # Project files
         # Repo tool
         self._repo_script = self._repo_dir / "repo"

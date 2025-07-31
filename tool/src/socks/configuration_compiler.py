@@ -67,7 +67,7 @@ class Configuration_Compiler:
                 target[key] = Configuration_Compiler._merge_dicts(target[key], value)
             elif key in target and isinstance(target[key], list) and isinstance(value, list):
                 # If both values are lists, merge them without duplicating elements
-                target[key] = list(set(target[key] + value))
+                target[key] = target[key] + [item for item in value if item not in target[key]]
             else:
                 # If the value is not a dict or a list or if the key is not yet in the result, simply assign the value
                 target[key] = value

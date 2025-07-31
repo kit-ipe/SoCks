@@ -344,7 +344,7 @@ class Build_Validator:
             return True
 
         for key_list in keys:
-            # Iterate over all keys in the list to find the units to be compared
+            # Iterate over all keys in the list to find the units to be compared (follow the path through the structure)
             to_compare_current = current_cfg_dict
             to_compare_previous = previous_cfg_dict
             for key in key_list:

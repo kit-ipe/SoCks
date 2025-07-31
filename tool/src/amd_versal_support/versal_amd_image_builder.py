@@ -45,7 +45,6 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         self._vivado_pdi_file_path = None  # Must be initialized outside the constructor, as the file needs to be extracted and the name of the file it not fixed.
 
         # Project directories
-        self._resources_dir = self._block_src_dir / "resources"
         self._xsa_extracted_dir = self._xsa_dir / "extracted"
 
     @property

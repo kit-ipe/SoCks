@@ -120,6 +120,93 @@ class File_System_Builder(Builder):
 
         pass
 
+    def _run_mod_script(self, mod_script: pathlib.Path):
+        """
+        Runs a user-defined shell script to modify the root file system.
+
+        Args:
+            mod_script_path:
+                Path of the script to be used.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if not mod_script.is_file():
+            pretty_print.print_info(f"No user-defined file '{mod_script.name}' found. The file system is not modified.")
+            return
+
+        # Check whether the file system needs to be modified
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=[mod_script],
+            out_timestamp=self._build_log.get_logged_timestamp(
+                identifier=f"function-{inspect.getouterframes(inspect.currentframe(), 2)[1][3]}-success"
+            ),
+        ):
+            pretty_print.print_build(f"No need to execute {mod_script.name}. No altered source files detected...")
+            return
+
+        with self._build_log.timestamp(
+            identifier=f"function-{inspect.getouterframes(inspect.currentframe(), 2)[1][3]}-success"
+        ):
+            pretty_print.print_build(f"Executing {mod_script.name}...")
+
+            run_mo_script_commands = [
+                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                f"    mkdir -p {self._build_dir}/usr/bin && "
+                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"fi",
+                # Call user-defined script
+                f"chmod a+x {mod_script}",
+                f"{mod_script} {self._target_arch} {self.block_cfg.project.release} {self._build_dir}",
+                # The QEMU binary if only required during build, so delete it if it exists
+                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+            ]
+
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.container_executor.exec_sh_commands(
+                commands=run_mo_script_commands,
+                dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                print_commands=True,
+                run_as_root=True,
+            )
+
+    def run_base_install_mod_script(self):
+        """
+        Runs a user-defined shell script to make changes to the base installation.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._run_mod_script(mod_script=self._resources_dir / "mod_base_install.sh")
+
+    def run_concluding_mod_script(self):
+        """
+        Runs a user-defined shell script to finalize the creation of the file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._run_mod_script(mod_script=self._resources_dir / "conclude_install.sh")
+
     def add_pd_layers(self):
         """
         Adds predefined file system layers to the file system.
