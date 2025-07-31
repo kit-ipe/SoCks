@@ -98,7 +98,7 @@ project_dir = pathlib.Path.cwd()
 
 # Set root project configuration file
 project_cfg_root_file = project_dir / "project.yml"
-project_cfg_user_file = project_dir / "project_user.yml"
+project_cfg_user_file = project_dir / "project-user.yml"
 
 # Check if we are in a SoCks project
 if not project_cfg_root_file.exists():
