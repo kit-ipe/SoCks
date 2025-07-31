@@ -98,6 +98,7 @@ project_dir = pathlib.Path.cwd()
 
 # Set root project configuration file
 project_cfg_root_file = project_dir / "project.yml"
+project_cfg_user_file = project_dir / "project_user.yml"
 
 # Check if we are in a SoCks project
 if not project_cfg_root_file.exists():
@@ -108,7 +109,10 @@ if not project_cfg_root_file.exists():
 
 # Get project configuration
 project_cfg, _ = Configuration_Compiler.compile(
-    root_cfg_file=project_cfg_root_file, socks_dir=socks_dir, project_dir=project_dir
+    root_cfg_file=project_cfg_root_file,
+    user_cfg_file=project_cfg_user_file,
+    socks_dir=socks_dir,
+    project_dir=project_dir,
 )
 
 # Check project type and find respective module

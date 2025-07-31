@@ -181,13 +181,18 @@ class Configuration_Compiler:
         return search_object
 
     @staticmethod
-    def compile(root_cfg_file: pathlib.Path, socks_dir: pathlib.Path, project_dir: pathlib.Path) -> tuple[dict, list]:
+    def compile(
+        root_cfg_file: pathlib.Path, user_cfg_file: pathlib.Path, socks_dir: pathlib.Path, project_dir: pathlib.Path
+    ) -> tuple[dict, list]:
         """
         Compile the project configuration.
 
         Args:
             root_cfg_file:
                 Path of the top level project configuration file.
+            user_cfg_file:
+                Path of the user project configuration file that is applied on top of the regular project configuration
+                to enable user or host system specific adaptations.
             socks_dir:
                 Path of the SoCks tool.
             project_dir:
@@ -204,6 +209,12 @@ class Configuration_Compiler:
         project_cfg, read_cfg_files = Configuration_Compiler._merge_cfg_files(
             config_file_name=root_cfg_file.name, socks_dir=socks_dir, project_dir=project_dir
         )
+
+        # Apply user configuration file on top, if it exists
+        if user_cfg_file.is_file():
+            with user_cfg_file.open("r") as f:
+                user_layer = yaml.safe_load(f)
+            project_cfg = Configuration_Compiler._merge_dicts(target=project_cfg, source=user_layer)
 
         # Resolve placeholders
         project_cfg = Configuration_Compiler._resolve_placeholders(project_cfg=project_cfg, search_object=project_cfg)

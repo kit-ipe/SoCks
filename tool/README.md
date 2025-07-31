@@ -63,6 +63,8 @@ The SoCks framework provides a base configuration files for every architecture t
 - `project-zynqmp-default.yml`
 - `project-versal-default.yml`
 
+Sometimes it is necessary to adapt the project configuration to the user's specific host system. For example, by changing the containerization tool to be used or by adding additional packages to the SoC's file system for debugging purposes. For this purpose, one can create a file `project_user.yml` in the same directory as `project.yml`. The file `project_user.yml` is applied on top of the main project configuration described in `project.yml`. It is recommended that `project.yml` always contains a complete, buildable project configuration and `project_user.yml` is only used to overwrite already existing settings. It is therefore also not possible to import other YAML files into `project_user.yml`. The file `project_user.yml` should be listed in the `.gitignore` file so that it is excluded from version control.
+
 SoCks can print the full project configuration with all includes resolved to the standard output:
 ```
 $ socks --show-configuration
