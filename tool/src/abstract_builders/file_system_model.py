@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, StringConstraints
 from typing import Optional
+from typing_extensions import Annotated
 
 
 class File_System_Installable_Build_Time_Item_Model(BaseModel):
@@ -30,3 +31,7 @@ class File_System_User_Model(BaseModel):
     name: str = Field(default=..., description="Username")
     pw_hash: str = Field(default=..., description="Password hash generated with 'openssl passwd -1'")
     groups: Optional[list[str]] = Field(default=[], description="Groups to which the user is to be added")
+    ssh_key: Optional[Annotated[str, StringConstraints(pattern=r"^.*.pub$")]] = Field(
+        default=None,
+        description="A public SSH key on the host system that is copied to the file system to enable SSH access without using a password.",
+    )

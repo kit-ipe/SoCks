@@ -927,6 +927,7 @@ rootfs:
       - name: "kria"
         pw_hash: "$6$G5Sswo/P0ILiqfS1$zqLYE2HP22Eg2WeTAQNJCrItEbs1utYN6TLF6nKbaoRHuyEUd8peeWPQ59Jx4jVpAto6brgV9FxA3veBYUg8.1" # regular.user
         groups: ["sudo", "dialout"]
+        ssh_key: "id_ed25519.pub"
     import_src: "https://serenity.web.cern.ch/.../debian_rootfs.tar.gz"
     add_build_info: false
     dependencies:
@@ -961,6 +962,7 @@ Key:
 - **project -> users -> [N] -> name**: The name of the user.
 - **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -6`.
 - **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
+- **project -> users -> [N] -> ssh_key**: A public SSH key on the host system that is copied to the file system to enable SSH access without using a password.
 - **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
   - The URL to a file online. In this case the string must start with `https://` or `http://`.
   - The file URI of a local file. In this case the string must start with `file://`.
