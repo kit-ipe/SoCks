@@ -203,6 +203,54 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             self._build_log.del_logged_timestamp(identifier=f"function-add_bt_layer-success")
             self._build_log.del_logged_timestamp(identifier=f"function-add_users-success")
 
+    def run_base_install_mod_script(self):
+        """
+        Runs a user-defined shell script to make changes to the base installation.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._run_mod_script(
+            mod_script=self._resources_dir / "mod_base_install.sh",
+            mod_script_params=[
+                self._target_arch,
+                self.block_cfg.project.release,
+                str(self._dnf_conf_file),
+                str(self._build_dir),
+            ],
+        )
+
+    def run_concluding_mod_script(self):
+        """
+        Runs a user-defined shell script to finalize the creation of the file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._run_mod_script(
+            mod_script=self._resources_dir / "conclude_install.sh",
+            mod_script_params=[
+                self._target_arch,
+                self.block_cfg.project.release,
+                str(self._dnf_conf_file),
+                str(self._build_dir),
+            ],
+        )
+
     def add_addl_packages(self):
         """
         Installs additional user defined rpm packages.
@@ -417,26 +465,66 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
             pretty_print.print_build("Adding users...")
 
+            # Collect SSH keys
+            ssh_keys_temp_dir = self._work_dir / "ssh_keys_temp"
+            for user in self.block_cfg.project.users:
+                if user.ssh_key:
+                    ssh_key_src_file = pathlib.Path("~/.ssh").expanduser() / user.ssh_key
+                    # Check if the key exists on the host system
+                    if not ssh_key_src_file.is_file():
+                        pretty_print.print_error(
+                            f"The ssh key '{user.ssh_key}' does not exist in '{ssh_key_src_file.parent}'"
+                        )
+                        sys.exit(1)
+
+                    # Make SSH key from the host system available in the container
+                    if not (ssh_keys_temp_dir / user.ssh_key).is_file():
+                        ssh_keys_temp_dir.mkdir(exist_ok=True)
+                        shutil.copy(ssh_key_src_file, ssh_keys_temp_dir / user.ssh_key)
+
             add_users_commands = [
                 # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"fi; "
+                # Make SSH keys from the host system available in the chroot environment
+                f"if [ -e {ssh_keys_temp_dir} ]; then "
+                f"    rm -rf {self._build_dir}/tmp/{ssh_keys_temp_dir.parts[-1]}; "
+                f"    mv {ssh_keys_temp_dir} {self._build_dir}/tmp/; "
                 f"fi"
             ]
 
             for user in self.block_cfg.project.users:
                 add_user_str = ""
                 if user.name != "root":
-                    add_user_str = add_user_str + f"useradd -m {user.name}; "
+                    add_user_str = (
+                        add_user_str + f"if id {user.name} &>/dev/null; then userdel -r {user.name}; fi && "
+                    )  # Delete user account if it already exists
+                    add_user_str = add_user_str + f"useradd -m {user.name} && "
                 for group in user.groups:
                     add_user_str = add_user_str + f"usermod -a -G {group} {user.name} && "
                 # Escape all $ symbols in the hash. I know this is ugly, but this is the only way I have found
                 # to make it work through all the layers of Python, docker, sh and chroot.
                 escaped_pw_hash = user.pw_hash.replace("$", "\\\\\\$")
-                add_user_str = add_user_str + f"usermod -p {escaped_pw_hash} {user.name}"
+                add_user_str = add_user_str + f"usermod -p {escaped_pw_hash} {user.name} && "
+                if user.ssh_key:
+                    add_user_str = (
+                        add_user_str + f"HOME_OF_{user.name.upper()}=\$(getent passwd {user.name} | cut -d: -f6) && "
+                    )  # Get user home directory in chroot environment
+                    add_user_str = add_user_str + f"mkdir -p \${{HOME_OF_{user.name.upper()}}}/.ssh && "
+                    add_user_str = (
+                        add_user_str
+                        + f"cat /tmp/{ssh_keys_temp_dir.parts[-1]}/{user.ssh_key} >> \${{HOME_OF_{user.name.upper()}}}/.ssh/authorized_keys && "
+                    )
+                # The string should not end with &&
+                add_user_str = add_user_str.rstrip(" && ")
 
+                # Execute command string in chroot environment
                 add_users_commands.append(f'chroot {self._build_dir} /bin/bash -c "{add_user_str}"')
+
+            # Delete temporary directory with SSH keys
+            add_users_commands.append(f"rm -rf {self._build_dir}/tmp/{ssh_keys_temp_dir.parts[-1]}")
 
             # The QEMU binary if only required during build, so delete it if it exists
             add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")

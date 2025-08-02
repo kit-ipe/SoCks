@@ -120,7 +120,7 @@ class File_System_Builder(Builder):
 
         pass
 
-    def _run_mod_script(self, mod_script: pathlib.Path):
+    def _run_mod_script(self, mod_script: pathlib.Path, mod_script_params: list[str]):
         """
         Runs a user-defined shell script to modify the root file system.
 
@@ -162,7 +162,7 @@ class File_System_Builder(Builder):
                 f"fi",
                 # Call user-defined script
                 f"chmod a+x {mod_script}",
-                f"{mod_script} {self._target_arch} {self.block_cfg.project.release} {self._build_dir}",
+                f"{mod_script} {' '.join(mod_script_params)}",
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
@@ -174,38 +174,6 @@ class File_System_Builder(Builder):
                 print_commands=True,
                 run_as_root=True,
             )
-
-    def run_base_install_mod_script(self):
-        """
-        Runs a user-defined shell script to make changes to the base installation.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        self._run_mod_script(mod_script=self._resources_dir / "mod_base_install.sh")
-
-    def run_concluding_mod_script(self):
-        """
-        Runs a user-defined shell script to finalize the creation of the file system.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        self._run_mod_script(mod_script=self._resources_dir / "conclude_install.sh")
 
     def add_pd_layers(self):
         """

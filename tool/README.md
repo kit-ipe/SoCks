@@ -2,6 +2,61 @@
 
 SoCks (short for SoC blocks) is a lightweight and modular framework to build complete embedded Linux images for SoC devices. Currently, the framework focuses on AMD Xilinx ZynqMP devices, but also offers experimental support for AMD Xilinx Versal devices.
 
+## Table of Contents
+- [Quick start](#quick-start)
+  - [Installation](#installation)
+  - [Building an image](#building-an-image)
+- [Development flow](#development-flow)
+  - [Project Configuration](#project-configuration)
+  - [Creating patch files](#creating-patch-files)
+- [Available Builders (ZynqMP)](#available-builders-(zynqmp))
+  - [ZynqMP_AlmaLinux_RootFS_Builder](#zynqmp_almalinux_rootfs_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_ATF_Builder](#zynqmp_amd_atf_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_Devicetree_Builder](#zynqmp_amd_devicetree_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_FSBL_Builder](#zynqmp_amd_fsbl_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_Image_Builder](#zynqmp_amd_image_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_Kernel_Builder](#zynqmp_amd_kernel_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_PetaLinux_RAMFS_Builder](#zynqmp_amd_petalinux_ramfs_builder)
+  - [ZynqMP_AMD_PetaLinux_RootFS_Builder](#zynqmp_amd_petalinux_rootfs_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_PMUFW_Builder](#zynqmp_amd_pmufw_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_UBoot_SSBL_Builder](#zynqmp_amd_uboot_ssbl_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_Vivado_Hog_Builder](#zynqmp_amd_vivado_hog_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_Vivado_IPBB_Builder](#zynqmp_amd_vivado_ipbb_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_AMD_Vivado_logicc_Builder](#zynqmp_amd_vivado_logicc_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_BusyBox_RAMFS_Builder](#zynqmp_busybox_ramfs_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+  - [ZynqMP_Debian_RootFS_Builder](#zynqmp_debian_rootfs_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
+- [Background](#background)
+  - [Basics](#basics)
+  - [Builders](#builders)
+
 ## Quick start
 
 ### Installation
@@ -139,6 +194,7 @@ rootfs:
       - name: "kria"
         pw_hash: "$1$DaewGWW3$9Qauc9z14L7B9PbF5SuE8." # regular.user
         groups: ["wheel", "dialout"]
+        ssh_key: "id_ed25519.pub"
     import_src: "https://serenity.web.cern.ch/.../almalinux9_rootfs.tar.gz"
     add_build_info: false
     dependencies:
@@ -173,6 +229,7 @@ Key:
 - **project -> users -> [N] -> name**: The name of the user.
 - **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -1`.
 - **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
+- **project -> users -> [N] -> ssh_key**: A public SSH key on the host system that is copied to the file system to enable SSH access without using a password.
 - **project -> import_src [optional]**: The pre-built block package to be imported for this block, specified in URI format. This information is only used if the value of *source* is *import*. Options are:
   - The URL to a file online. In this case the string must start with `https://` or `http://`.
   - The file URI of a local file. In this case the string must start with `file://`.
@@ -185,7 +242,7 @@ Key:
 #### External Source Files
 
 SoCks requires external files in order to build this block. The following template packages are available:
-- **AlmaLinux8**: Contains template files to build an AlmaLinux 8 root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer. The file `dnf_build_time.conf` is the dnf configuration used at build time. This file must contain all repositories that are required to build the root file system including all package specified.
+- **AlmaLinux8**: Contains template files to build an AlmaLinux 8 root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional file `conclude_install.sh` allows to finalize the creation of the root file system. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer. The file `dnf_build_time.conf` is the dnf configuration used at build time. This file must contain all repositories that are required to build the root file system including all package specified.
 - **AlmaLinux9**: Contains template files to build an AlmaLinux 9 root file system. The files and folders in this package are equivalent to the ones in the *AlmaLinux8* package.
 
 ### ZynqMP_AMD_ATF_Builder
@@ -975,7 +1032,7 @@ Key:
 #### External Source Files
 
 SoCks requires external files in order to build this block. The following template packages are available:
-- **universal**: Contains universal template files to build a Debian root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer.
+- **universal**: Contains universal template files to build a Debian root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional file `conclude_install.sh` allows to finalize the creation of the root file system. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer.
 
 ## Background
 

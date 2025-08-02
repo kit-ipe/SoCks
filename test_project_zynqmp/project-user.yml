@@ -1,0 +1,9 @@
+---
+blocks:
+  rootfs:
+    project:
+      users:
+        - name: "marvin"
+          pw_hash: "$1$X6DWcY5/$GQ3ZFNgCGxOSgOZMT6Bkc1" # cms.higgs
+          groups: ["wheel", "dialout"]
+          ssh_key: "id_ed25519_dev.pub"

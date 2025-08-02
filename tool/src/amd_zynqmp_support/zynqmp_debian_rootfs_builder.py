@@ -193,6 +193,44 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
             self._build_log.del_logged_timestamp(identifier=f"function-add_bt_layer-success")
             self._build_log.del_logged_timestamp(identifier=f"function-add_users-success")
 
+    def run_base_install_mod_script(self):
+        """
+        Runs a user-defined shell script to make changes to the base installation.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._run_mod_script(
+            mod_script=self._resources_dir / "mod_base_install.sh",
+            mod_script_params=[self._target_arch, self.block_cfg.project.release, str(self._build_dir)],
+        )
+
+    def run_concluding_mod_script(self):
+        """
+        Runs a user-defined shell script to finalize the creation of the file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._run_mod_script(
+            mod_script=self._resources_dir / "conclude_install.sh",
+            mod_script_params=[self._target_arch, self.block_cfg.project.release, str(self._build_dir)],
+        )
+
     def add_addl_packages(self):
         """
         Installs additional user defined deb packages.
@@ -425,6 +463,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
                 f"fi; "
                 # Make SSH keys from the host system available in the chroot environment
                 f"if [ -e {ssh_keys_temp_dir} ]; then "
+                f"    rm -rf {self._build_dir}/tmp/{ssh_keys_temp_dir.parts[-1]}; "
                 f"    mv {ssh_keys_temp_dir} {self._build_dir}/tmp/; "
                 f"fi"
             ]
