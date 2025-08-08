@@ -88,7 +88,10 @@ class Versal_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
             f"SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa)",
             'printf "hsi open_hw_design ${SOURCE_XSA_PATH}'
             f"    \r\nhsi set_repo_path {self._source_repo_dir} "
-            "    \r\nhsi create_sw_design device-tree -os device_tree -proc versal_cips_0_pspmc_0_psv_cortexa72_0 "
+            "    \r\nset procs [hsi get_cells -hier -filter {IP_TYPE==PROCESSOR}]"
+            "    \r\nset target_proc [lsearch -inline -glob \$procs *psv_cortexa72_0*]"
+            '    \r\nputs \\"List of processors found in XSA is \[\$procs\]\\\\\\nWe will use \$target_proc...\\"'
+            "    \r\nhsi create_sw_design device-tree -os device_tree -proc \$target_proc "
             f"    \r\nhsi generate_target -dir {self._base_work_dir} "
             f'    \r\nhsi close_hw_design [hsi current_hw_design]" > {self._base_work_dir}/generate_dts_prj.tcl',
             f"xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl",

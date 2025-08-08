@@ -22,7 +22,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "rootfs",
-        block_description: str = "Build an Debian root file system",
+        block_description: str = "Build a Debian root file system",
         model_class: type[object] = ZynqMP_Debian_RootFS_Model,
     ):
 
