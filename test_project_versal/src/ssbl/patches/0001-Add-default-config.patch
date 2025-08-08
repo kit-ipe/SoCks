@@ -1,6 +1,6 @@
-From 23c4baef54e6c749f794a1ca5bf72c0ecf4b9be4 Mon Sep 17 00:00:00 2001
-From: "marvin.fuchs" <marvin.fuchs@cern.ch>
-Date: Sun, 29 Dec 2024 15:48:25 +0100
+From 74ff661ab3aadd20a479e6b2bfaf262d069007e0 Mon Sep 17 00:00:00 2001
+From: Marvin Fuchs <marvin.fuchs@kit.edu>
+Date: Tue, 5 Aug 2025 17:51:43 +0200
 Subject: [PATCH] Add default config
 
 ---
