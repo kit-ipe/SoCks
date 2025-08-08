@@ -396,4 +396,6 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
                 commands=export_modules_commands,
                 dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z"), (self._output_dir, "Z")],
                 print_commands=True,
+                logfile=self._block_temp_dir / "export_external_modules.log",
+                output_scrolling=True,
             )

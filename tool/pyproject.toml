@@ -26,6 +26,7 @@ dependencies = [
 socks = ["container/*.containerfile", "container/*.sh", "templates/**/*"]
 amd_zynqmp_support = ["templates/**/*"]
 amd_versal_support = ["templates/**/*"]
+raspberrypi_support = ["templates/**/*"]
 
 [tool.black]
 line-length = 120

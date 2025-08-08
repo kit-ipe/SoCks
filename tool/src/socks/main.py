@@ -116,7 +116,7 @@ project_cfg, _ = Configuration_Compiler.compile(
 )
 
 # Check project type and find respective module
-arch_supp_pkgs = ["amd_zynqmp_support", "amd_versal_support"]
+arch_supp_pkgs = ["amd_zynqmp_support", "amd_versal_support", "raspberrypi_support"]
 project_model_suffix = "_Base_Model"
 project_model_class_name = project_cfg["project"]["type"] + project_model_suffix
 project_model_module = None
@@ -150,9 +150,10 @@ if project_model_module is None:
     ]
 
     pretty_print.print_error(
-        f"Project type '{project_cfg['project']['type']}' is not supported (No project model class '{project_model_class_name}' available)."
+        f"Project type '{project_cfg['project']['type']}' is not supported "
+        f"(No project model class '{project_model_class_name}' available).\n"
+        "Available options are: " + ", ".join(supported_prj_types)
     )
-    pretty_print.print_error("Available options are: " + ", ".join(supported_prj_types))
     sys.exit(1)
 
 # Get access to the project model class

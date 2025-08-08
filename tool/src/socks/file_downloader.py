@@ -1,8 +1,10 @@
 import sys
 import pathlib
 import urllib
+from dateutil import parser
 import requests
 import tqdm
+import hashlib
 
 import socks.pretty_print as pretty_print
 
@@ -75,7 +77,7 @@ class File_Downloader:
         return parser.parse(last_mod_online).timestamp()
 
     @staticmethod
-    def get_file(url: str, output_dir: pathlib.Path) -> dict:
+    def get_file(url: str, output_dir: pathlib.Path) -> pathlib.Path:
         """
         Downloads a single file.
 
@@ -128,3 +130,32 @@ class File_Downloader:
 
         # Return path of the downloaded file
         return download_location
+
+    @staticmethod
+    def get_checksum(url: str, hash_function: str) -> str:
+        """
+        Downloads a single file.
+
+        Args:
+            url:
+                File URL.
+            hash_function:
+                The hash function to be used.
+
+        Returns:
+            Hash value of the file.
+
+        Raises:
+            RuntimeError:
+                If it is not possible to retrieve the file name.
+        """
+
+        # Open the URL and read the entire file into memory
+        with urllib.request.urlopen(url) as response:
+            file_data = response.read()
+
+        # Calculate hash value
+        hash_obj = hashlib.new(hash_function)
+        hash_obj.update(file_data)
+
+        return hash_obj.hexdigest()
