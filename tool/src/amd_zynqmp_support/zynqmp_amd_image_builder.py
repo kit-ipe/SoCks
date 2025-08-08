@@ -407,21 +407,25 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             sys.exit(1)
 
         # Check whether the sd card image needs to be built
-        if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[
-                self._output_dir / "BOOT.BIN",
-                self._output_dir / "boot.scr",
-                self._output_dir / "image.ub",
-                self._dependencies_dir / "rootfs",
-            ],
-            out_timestamp=self._build_log.get_logged_timestamp(
-                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
-            ),
-        ) and not self._build_validator.check_rebuild_bc_config(
-            keys=[
-                ["blocks", self.block_id, "project", "size_boot_partition"],
-                ["blocks", self.block_id, "project", "size_rootfs_partition"],
-            ]
+        if (
+            not Build_Validator.check_rebuild_bc_timestamp(
+                src_search_list=[
+                    self._output_dir / "BOOT.BIN",
+                    self._output_dir / "boot.scr",
+                    self._output_dir / "image.ub",
+                    self._dependencies_dir / "rootfs",
+                ],
+                out_timestamp=self._build_log.get_logged_timestamp(
+                    identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+                ),
+            )
+            and not self._build_validator.check_rebuild_bc_config(
+                keys=[
+                    ["blocks", self.block_id, "project", "size_boot_partition"],
+                    ["blocks", self.block_id, "project", "size_rootfs_partition"],
+                ]
+            )
+            and (self._output_dir / self._sdc_image_name).is_file()
         ):
             pretty_print.print_build("No need to rebuild the SD card image. No altered source files detected...")
             return

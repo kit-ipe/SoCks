@@ -5,7 +5,6 @@ import importlib.resources
 import shutil
 import sys
 from datetime import datetime
-from dateutil import parser
 import urllib
 import validators
 import tarfile
