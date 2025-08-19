@@ -3,6 +3,7 @@ import:
   - project-raspberrypi-default.yml
 project:
   name: "test-project"
+  socks_version: "0.0.post1.dev266"
   rpi_model: "RPi_5"
 external_tools:
   container_tool: "docker"

@@ -3,6 +3,7 @@ import:
   - project-versal-default.yml
 project:
   name: "test-project"
+  socks_version: "0.0.post1.dev266"
 external_tools:
   xilinx:
     version: "2024.2"

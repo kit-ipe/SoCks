@@ -1,6 +1,7 @@
 import sys
 import pathlib
 import importlib.resources
+import importlib.metadata
 import importlib
 import pkgutil
 import inspect
@@ -152,7 +153,7 @@ if project_model_module is None:
     pretty_print.print_error(
         f"Project type '{project_cfg['project']['type']}' is not supported "
         f"(No project model class '{project_model_class_name}' available).\n"
-        "Available options are: " + ", ".join(supported_prj_types)
+        "\tAvailable options are: " + ", ".join(supported_prj_types)
     )
     sys.exit(1)
 
@@ -176,6 +177,15 @@ except pydantic.ValidationError as e:
             f"The following error occured while analyzing node '{' -> '.join(keys)}' "
             f"of the project configuration: {err['msg']}"
         )
+    sys.exit(1)
+
+# Check project version
+if project_cfg_model.project.socks_version not in (importlib.metadata.version("socks").split("+", 1)[0], "any"):
+    pretty_print.print_error(
+        "This project is not compatible with the version of SoCks used:\n"
+        f"\tSoCks version: '{importlib.metadata.version('socks').split('+', 1)[0]}'\n"
+        f"\tSoCks version required by the project: '{project_cfg_model.project.socks_version}'"
+    )
     sys.exit(1)
 
 # Create builder objects
@@ -229,7 +239,13 @@ group_cmds = ["build", "prepare", "clean"]
 cli = argparse.ArgumentParser(description="SoCks - SoC image builder")
 cli_blocks = cli.add_subparsers(title="blocks", dest="block")
 
-# Add argument to print project configuration to the standard output
+# Add arguments
+cli.add_argument(
+    "-v",
+    "--version",
+    action="store_true",
+    help="Print the version of SoCKs and exit",
+)
 cli.add_argument(
     "-s",
     "--show-configuration",
@@ -296,10 +312,14 @@ def main():
     # Initialize argument parser
     args = vars(cli.parse_args())
 
-    # Check whether all required arguments are available
+    # Check for arguments that can be processed directly here
+    if "version" in args and args["version"] == True:
+        print(f"SoCks {importlib.metadata.version('socks')}")
+        cli.exit()
     if "show_configuration" in args and args["show_configuration"] == True:
         print(yaml.dump(project_cfg))
         cli.exit()
+    # Check whether all required arguments are available
     if "block" not in args or not args["block"] or "command" not in args or not args["command"]:
         cli.print_usage()
         pretty_print.print_error("The following arguments are required: block command.")
@@ -355,7 +375,7 @@ def main():
             pretty_print.print_warning(warning)
         print(f"\nPlease read the warnings above carefully. Do you really want to continue? (y/n) ", end="")
         answer = input("")
-        if answer.lower() not in ["y", "Y", "yes", "Yes"]:
+        if answer.lower() not in ("y", "Y", "yes", "Yes"):
             pretty_print.print_clean("Abborted...")
             sys.exit(1)
 

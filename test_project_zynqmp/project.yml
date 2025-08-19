@@ -3,6 +3,7 @@ import:
   - project-zynqmp-default.yml
 project:
   name: "test-project"
+  socks_version: "0.0.post1.dev266"
 external_tools:
   container_tool: "docker"
   xilinx:
