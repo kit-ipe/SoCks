@@ -1344,7 +1344,7 @@ class Builder(ABC):
                     end="",
                 )
                 answer = input("")
-                if answer.lower() not in ("y", "Y", "yes", "Yes"):
+                if answer.lower() not in ("y", "yes"):
                     pretty_print.print_clean("Cleaning abborted...")
                     sys.exit(1)
 

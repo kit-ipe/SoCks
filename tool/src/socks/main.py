@@ -375,7 +375,7 @@ def main():
             pretty_print.print_warning(warning)
         print(f"\nPlease read the warnings above carefully. Do you really want to continue? (y/n) ", end="")
         answer = input("")
-        if answer.lower() not in ("y", "Y", "yes", "Yes"):
+        if answer.lower() not in ("y", "yes"):
             pretty_print.print_clean("Abborted...")
             sys.exit(1)
 
