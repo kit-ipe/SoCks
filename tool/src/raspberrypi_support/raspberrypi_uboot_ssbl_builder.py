@@ -4,6 +4,7 @@ import inspect
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
+from abstract_builders.builder import Builder
 from amd_zynqmp_support.zynqmp_amd_uboot_ssbl_builder import ZynqMP_AMD_UBoot_SSBL_Builder
 from raspberrypi_support.raspberrypi_uboot_ssbl_model import RaspberryPi_UBoot_SSBL_Model
 
@@ -36,7 +37,7 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
 
         # Project files
         # File for version & build info tracking
-        self._rpi_model_file = self._block_src_dir / "rpi_model.txt"
+        self._rpi_model_file = self._block_temp_dir / "rpi_model.txt"
 
     @property
     def _block_deps(self):
@@ -57,9 +58,9 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
             "build": [],
             "clean": [],
             "create-patches": [],
+            "create-cfg-snippet": [],
             "start-container": [],
             "menucfg": [],
-            "prep-clean-srcs": [],
         }
         block_cmds["clean"].extend(
             [
@@ -78,7 +79,7 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
                     self.container_executor.build_container_image,
                     self.init_repo,
                     self.apply_patches,
-                    self.create_proj_cfg_patch,
+                    self.attach_config_snippets,
                     self._build_validator.save_project_cfg_prepare,
                 ]
             )
@@ -87,12 +88,9 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
                 [self.build_uboot, self.export_block_package, self._build_validator.save_project_cfg_build]
             )
             block_cmds["create-patches"].extend([self.create_patches])
+            block_cmds["create-cfg-snippet"].extend([self.create_config_snippet])
             block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
             block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
-            block_cmds["prep-clean-srcs"].extend(block_cmds["clean"])
-            block_cmds["prep-clean-srcs"].extend(
-                [self.container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
-            )
         elif self.block_cfg.source == "import":
             block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
         return block_cmds
@@ -122,15 +120,15 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
                 pretty_print.print_error(
                     f"Configuration missmatch. Block '{self.block_id}' is configured for '{config_rpi_mode}', "
                     f"but the project cofiguration is for '{self.project_cfg.project.rpi_model}'.\n"
-                    f"Please clean this block and delete the following directory manually: '{self._block_src_dir}'"
+                    f"This is an unexpected state. Please clean and rebuild block '{self.block_id}'."
                 )
                 sys.exit(1)
         except FileNotFoundError:
             pass  # It is okay if the file does not exist
 
-    def prep_clean_srcs(self):
+    def init_repo(self):
         """
-        This function is intended to create a new, clean Linux kernel or U-Boot project. After the creation of the project you should create a patch that includes .gitignore and .config.
+        Clones and initializes the git repo.
 
         Args:
             None
@@ -142,24 +140,26 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
             None
         """
 
-        prep_srcs_commands = [
+        Builder.init_repo(self)  # Skip init function of the direct parent (zynqmp builder)
+
+        create_defconfig_commands = [
             f"cd {self._source_repo_dir}",
             "export CROSS_COMPILE=aarch64-linux-gnu-",
             "export ARCH=aarch64",
         ]
 
         if self.project_cfg.project.rpi_model == "RPi_4B":
-            prep_srcs_commands.append("make rpi_4_defconfig")
+            create_defconfig_commands.append("make rpi_4_defconfig")
         elif self.project_cfg.project.rpi_model == "RPi_5":
-            prep_srcs_commands.append("make rpi_arm64_defconfig")  # Maybe there will be an update with newer releases
+            create_defconfig_commands.append(
+                "make rpi_arm64_defconfig"
+            )  # Maybe there will be an update with newer releases
         else:
             raise ValueError(
                 f"The following Raspberry Pi Model is not supported: '{self.project_cfg.project.rpi_model}'"
             )
 
-        prep_srcs_commands.append('printf "\n# Do not ignore the config file\n!.config\n" >> .gitignore')
-
-        super()._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
+        self._prep_clean_cfg(prep_srcs_commands=create_defconfig_commands)
 
         # Save the Raspberry Pi model for which the block is now configured to a file
         self._rpi_model_file.parent.mkdir(parents=True, exist_ok=True)
@@ -168,6 +168,49 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
                 "# This file is autogenerated to validate the block configuration, "
                 f"do not edit!\n{self.project_cfg.project.rpi_model}"
             )
+
+    def create_config_snippet(self):
+        """
+        Creates snippets from changes in .config.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if self.project_cfg.project.rpi_model == "RPi_4B":
+            self._create_config_snippet(
+                cross_comp_prefix="aarch64-linux-gnu-", arch="arm64", defconfig_target="rpi_4_defconfig"
+            )
+        elif self.project_cfg.project.rpi_model == "RPi_5":
+            self._create_config_snippet(
+                cross_comp_prefix="aarch64-linux-gnu-", arch="arm64", defconfig_target="rpi_arm64_defconfig"
+            )  # Maybe there will be an update with newer releases
+        else:
+            raise ValueError(
+                f"The following Raspberry Pi Model is not supported: '{self.project_cfg.project.rpi_model}'"
+            )
+
+    def attach_config_snippets(self):
+        """
+        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._attach_config_snippets(cross_comp_prefix="aarch64-linux-gnu-", arch="arm64")
 
     def build_uboot(self):
         """
@@ -217,9 +260,7 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
                 "export CROSS_COMPILE=aarch64-linux-gnu-",
                 "export ARCH=aarch64",
                 "make olddefconfig",
-                "git update-index --assume-unchanged .config",  # Normally .config is in the gitignore file, so U-Boot should not be dirty because of this. .config is sometimes changed automatically due to the container used.
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
-                "git update-index --no-assume-unchanged .config",  # Stop hiding .config
             ]
 
             self.container_executor.exec_sh_commands(

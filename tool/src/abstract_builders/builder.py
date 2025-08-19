@@ -101,6 +101,7 @@ class Builder(ABC):
         self._block_src_dir = self._project_src_dir / self.block_id
         self._block_temp_dir = self._project_temp_dir / self.block_id
         self._patch_dir = self._block_src_dir / "patches"
+        self._config_snippet_dir = self._block_src_dir / "config"
         self._resources_dir = self._block_src_dir / "resources"
         self._download_dir = self._block_temp_dir / "download"
         self._work_dir = self._block_temp_dir / "work"
@@ -277,21 +278,55 @@ class Builder(ABC):
             None
         """
 
-        # Check whether the user has modified the patches since they were applied
+        # Check whether the user has modified the section containing the patch files in the project configuration
+        # file or the patch files themselves since they were applied.
         patches_already_added = (
             self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success") != 0.0
         )
         if (
             self._patch_dir.exists()
             and patches_already_added
-            and Build_Validator.check_rebuild_bc_timestamp(
-                src_search_list=[self._patch_dir],
-                out_timestamp=self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success"),
+            and (
+                self._build_validator.check_rebuild_bc_config(
+                    keys=[["blocks", self.block_id, "project", "patches"]], accept_prep=True
+                )
+                or Build_Validator.check_rebuild_bc_timestamp(
+                    src_search_list=[self._patch_dir],
+                    out_timestamp=self._build_log.get_logged_timestamp(identifier=f"function-apply_patches-success"),
+                )
             )
         ):
             pretty_print.print_error(
-                f"It seems that the patches for block '{self.block_id}' have changed since "
-                f"they were applied. This is an unexpected state. Please clean and rebuild block '{self.block_id}'."
+                "It seems that the section containing the patch files in the project configuration file or "
+                f"the patch files themselves for block '{self.block_id}' have changed since they were applied. "
+                f"This is an unexpected state. Please clean and rebuild block '{self.block_id}'."
+            )
+            sys.exit(1)
+
+        # Check whether the user has modified the section containing the configuration snippets in the project
+        # configuration file or the configuration snippets themselves since they were attached.
+        snippets_already_attached = (
+            self._build_log.get_logged_timestamp(identifier=f"function-attach_config_snippets-success") != 0.0
+        )
+        if (
+            self._config_snippet_dir.exists()
+            and snippets_already_attached
+            and (
+                self._build_validator.check_rebuild_bc_config(
+                    keys=[["blocks", self.block_id, "project", "config_snippets"]], accept_prep=True
+                )
+                or Build_Validator.check_rebuild_bc_timestamp(
+                    src_search_list=[self._config_snippet_dir],
+                    out_timestamp=self._build_log.get_logged_timestamp(
+                        identifier=f"function-attach_config_snippets-success"
+                    ),
+                )
+            )
+        ):
+            pretty_print.print_error(
+                "It seems that the section containing the configuration snippets in the project configuration file "
+                f"or the configuration snippets themselves for block '{self.block_id}' have changed since they were "
+                f"applied. This is an unexpected state. Please clean and rebuild block '{self.block_id}'."
             )
             sys.exit(1)
 
@@ -546,7 +581,7 @@ class Builder(ABC):
             for patch in self.block_cfg.project.patches:
                 if not (self._patch_dir / patch).is_file():
                     pretty_print.print_error(
-                        f"Patch '{patch}' specified in 'blocks -> {self.block_id} -> project -> patches' does not exist in {self._patch_dir}"
+                        f"Patch '{patch}' specified in 'blocks -> {self.block_id} -> project -> patches' does not exist in {self._patch_dir}/"
                     )
                     sys.exit(1)
 
@@ -564,6 +599,203 @@ class Builder(ABC):
             )
             self.shell_executor.exec_sh_command(
                 ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
+            )
+
+    def _create_config_snippet(self, defconfig_target: str, cross_comp_prefix: str = None, arch: str = None):
+        """
+        Creates snippets from changes in .config.
+
+        Args:
+            defconfig_target:
+                The Makefile target to create the desired default configuration.
+            cross_comp_prefix:
+                Prefix of the cross compilation toolchain to be used. Used to set the CROSS_COMPILE environment variable.
+            arch:
+                Architecture of the target processor. Used to set the ARCH environment variable.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        config_diff_file = self._source_repo_dir / ".config_diff_socks"
+
+        # Download diff script if it is not already available
+        diffconfig_url = "https://raw.githubusercontent.com/torvalds/linux/master/scripts/diffconfig"
+        diffconfig_local = self._work_dir / diffconfig_url.split("/")[-1]
+
+        diffconfig_online_md5 = File_Downloader.get_checksum(url=diffconfig_url, hash_function="md5")
+
+        if diffconfig_local.is_file():
+            diffconfig_local_md5 = hashlib.md5(diffconfig_local.read_bytes()).hexdigest()
+        else:
+            diffconfig_local_md5 = 0
+
+        # Check whether the script actually needs to be downloaded
+        if diffconfig_online_md5 != diffconfig_local_md5:
+            self._work_dir.mkdir(parents=True, exist_ok=True)
+
+            # Remove old file, if any
+            diffconfig_local.unlink(missing_ok=True)
+
+            # Download the file
+            File_Downloader.get_file(url=diffconfig_url, output_dir=self._work_dir)
+
+            # Make the file executable
+            diffconfig_local.chmod(diffconfig_local.stat().st_mode | 0o111)
+
+        create_config_snippet_commands = [
+            f"cd {self._source_repo_dir}",
+            "mv .config .config_temp_socks",  # Move new configuration file to make room for recreating the previous configuration
+        ]
+        if cross_comp_prefix is not None:
+            create_config_snippet_commands.append(f"export CROSS_COMPILE={cross_comp_prefix}")
+        if arch is not None:
+            create_config_snippet_commands.append(f"export ARCH={arch}")
+        create_config_snippet_commands.append(f"make {defconfig_target}")
+
+        if self.block_cfg.project.config_snippets is not None:
+            # Check whether all specified snippets are available
+            for snippet in self.block_cfg.project.config_snippets:
+                if not (self._config_snippet_dir / snippet).is_file():
+                    pretty_print.print_error(
+                        f"Snippet '{snippet}' specified in 'blocks -> {self.block_id} -> project -> config_snippets' does not exist in {self._config_snippet_dir}/"
+                    )
+                    sys.exit(1)
+
+            # Make snippets available in the container and add commands to attach snippets to config
+            temp_snippet_dir = self._work_dir / "config_snippets_temp"
+            temp_snippet_dir.mkdir(parents=True, exist_ok=True)
+            for snippet in self.block_cfg.project.config_snippets:
+                shutil.copy(self._config_snippet_dir / snippet, temp_snippet_dir / snippet)
+                create_config_snippet_commands.append(f'echo "Attaching configuration snippet {snippet}..."')
+                create_config_snippet_commands.append(f"cat {temp_snippet_dir / snippet} >> .config")
+
+            create_config_snippet_commands.extend(
+                [
+                    "make olddefconfig",
+                    f"rm -rf {temp_snippet_dir}",
+                ]
+            )
+
+        create_config_snippet_commands.extend(
+            [
+                "if ! cmp -s .config_temp_socks .config; then "
+                f"    {diffconfig_local} -m .config .config_temp_socks > {config_diff_file.name}; "
+                # Delete file if it is empty. Sometimes cmp detects a change, but diffconfig does not, for example if a comment has changed.
+                f"    if [ -f {config_diff_file.name} ] && [ ! -s {config_diff_file.name} ]; then "
+                f"        rm {config_diff_file.name}; "
+                "     fi; "
+                "fi",
+                "mv .config_temp_socks .config",  # Replace previous configuration file with new configuration
+            ]
+        )
+
+        self.container_executor.exec_sh_commands(
+            commands=create_config_snippet_commands,
+            dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+            print_commands=True,
+        )
+
+        if config_diff_file.exists():
+            try:
+                snippet_name = input("\nPlease enter a name for the configuration snippet: ")
+                snippet_name = "-".join(snippet_name.split())  # Replace white spaces
+                while self._config_snippet_dir / f"{snippet_name}.cfg" in self._config_snippet_dir.glob("*.cfg"):
+                    snippet_name = input(
+                        f"\nFile '{snippet_name}.cfg' does already exist in '{self._config_snippet_dir}'. Please provide a different name: "
+                    )
+            except KeyboardInterrupt:
+                print()
+                snippet_index = 1
+                snippet_name = f"snippet_{snippet_index}"
+                while self._config_snippet_dir / f"{snippet_name}.cfg" in self._config_snippet_dir.glob("*.cfg"):
+                    snippet_index += 1
+                    snippet_name = f"snippet_{snippet_index}"
+                print(f"Using default snippet name '{snippet_name}'")
+
+            self._config_snippet_dir.mkdir(parents=True, exist_ok=True)
+            shutil.move(config_diff_file, self._config_snippet_dir / f"{snippet_name}.cfg")
+            # Add snippet to project configuration file
+            # ToDo: Maybe the main project configuration file should not be hard coded here
+            YAML_Editor.append_list_entry(
+                file=self._project_dir / "project.yml",
+                keys=["blocks", self.block_id, "project", "config_snippets"],
+                data=f"{snippet_name}.cfg",
+            )
+        else:
+            pretty_print.print_warning("No changes detected in .config.")
+
+    def _attach_config_snippets(self, cross_comp_prefix: str = None, arch: str = None):
+        """
+        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+
+        Args:
+            cross_comp_prefix:
+                Prefix of the cross compilation toolchain to be used. Used to set the CROSS_COMPILE environment variable.
+            arch:
+                Architecture of the target processor. Used to set the ARCH environment variable.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check whether snippets need to be attached
+        if (
+            not Build_Validator.check_rebuild_bc_timestamp(
+                src_search_list=[self._config_snippet_dir],
+                out_timestamp=self._build_log.get_logged_timestamp(
+                    identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+                ),
+            )
+            and not self._build_validator.check_rebuild_bc_config(
+                keys=[["blocks", self.block_id, "project", "config_snippets"]]
+            )
+        ) or self.block_cfg.project.config_snippets == None:
+            pretty_print.print_build("No need to attach configuration snippets...")
+            return
+
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            pretty_print.print_build("Attaching configuration snippets...")
+
+            # Check whether all specified snippets are available
+            for snippet in self.block_cfg.project.config_snippets:
+                if not (self._config_snippet_dir / snippet).is_file():
+                    pretty_print.print_error(
+                        f"Snippet '{snippet}' specified in 'blocks -> {self.block_id} -> project -> config_snippets' does not exist in {self._config_snippet_dir}/"
+                    )
+                    sys.exit(1)
+
+            attach_snippet_commands = [f"cd {self._source_repo_dir}"]
+            if cross_comp_prefix is not None:
+                attach_snippet_commands.append(f"export CROSS_COMPILE={cross_comp_prefix}")
+            if arch is not None:
+                attach_snippet_commands.append(f"export ARCH={arch}")
+
+            # Make snippets available in the container and add commands to attach snippets to config
+            temp_snippet_dir = self._work_dir / "config_snippets_temp"
+            temp_snippet_dir.mkdir(parents=True, exist_ok=True)
+            for snippet in self.block_cfg.project.config_snippets:
+                shutil.copy(self._config_snippet_dir / snippet, temp_snippet_dir / snippet)
+                attach_snippet_commands.append(f'echo "Attaching configuration snippet {snippet}..."')
+                attach_snippet_commands.append(f"cat {temp_snippet_dir / snippet} >> .config")
+
+            attach_snippet_commands.extend(
+                [
+                    "make olddefconfig",
+                    f"rm -rf {temp_snippet_dir}",
+                ]
+            )
+
+            self.container_executor.exec_sh_commands(
+                commands=attach_snippet_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z")],
+                print_commands=True,
             )
 
     def _download_prebuilt(self):
@@ -591,7 +823,7 @@ class Builder(ABC):
                 last_mod_local_timestamp = items[0].stat().st_mtime
             elif len(items) != 0:
                 pretty_print.print_error(
-                    f"There is more than one item in {self._download_dir}\nPlease empty the directory"
+                    f"There is more than one item in {self._download_dir}/\nPlease empty the directory"
                 )
                 sys.exit(1)
 
@@ -637,7 +869,7 @@ class Builder(ABC):
             downloads = list(self._download_dir.glob("*"))
             # Check if there is more than one file in the download directory
             if len(downloads) != 1:
-                pretty_print.print_error(f"Not exactly one file in {self._download_dir}")
+                pretty_print.print_error(f"Not exactly one file in {self._download_dir}/")
                 sys.exit(1)
             prebuilt_block_package = downloads[0]
         else:
@@ -873,21 +1105,20 @@ class Builder(ABC):
         """
 
         if not self._source_repo_dir.is_dir():
-            pretty_print.print_error(f"No local sources found in {self._source_repo_dir}")
+            pretty_print.print_error(f"No local sources found in {self._source_repo_dir}/")
             sys.exit(1)
 
         pretty_print.print_build("Opening configuration menu...")
 
         self.container_executor.exec_sh_commands(commands=menuconfig_commands, dirs_to_mount=[(self._repo_dir, "Z")])
 
-    def _prep_clean_srcs(self, prep_srcs_commands: list[str]):
+    def _prep_clean_cfg(self, prep_srcs_commands: list[str]):
         """
-        This function is intended to create a new, clean Linux kernel or U-Boot project.
-        After the creation of the project you should create a patch that includes .gitignore and .config.
+        This function is intended to create a new, clean Linux kernel or U-Boot project configuration.
 
         Args:
             menuconfig_commands:
-                The commands to be executed in a container to prepare a clean project.
+                The commands to be executed in a container to prepare a clean project configuration.
 
         Returns:
             None
@@ -897,65 +1128,20 @@ class Builder(ABC):
         """
 
         if not self._source_repo_dir.is_dir():
-            pretty_print.print_error(f"No local sources found in {self._source_repo_dir}")
+            pretty_print.print_error(f"No local sources found in {self._source_repo_dir}/")
             sys.exit(1)
 
         if (self._source_repo_dir / ".config").is_file():
-            pretty_print.print_error(f'Configuration file already exists in {self._source_repo_dir / ".config"}')
-            sys.exit(1)
+            pretty_print.print_build(f"No need to create a clean config file. The repo already has a '.config' file...")
+            return
 
-        pretty_print.print_build(f"Preparing clean sources...")
+        pretty_print.print_build(f"Preparing a clean project configuration...")
 
         self.container_executor.exec_sh_commands(
             commands=prep_srcs_commands,
             dirs_to_mount=[(self._repo_dir, "Z")],
             print_commands=True,
         )
-
-    def create_proj_cfg_patch(self):
-        """
-        This function checks whether there are already git patches for this block and,
-        if not, generates an architecture specific configuration patch. This is only possible
-        for blocks that have a definition of the function prep_clean_srcs.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            AttributeError:
-                If the object does not have the method 'prep_clean_srcs'
-        """
-
-        if not hasattr(self, "prep_clean_srcs"):
-            raise AttributeError(
-                f"Object of type {self.__class__.__name__} does not have the expected method 'prep_clean_srcs'"
-            )
-
-        # If there are already patches, there is nothing to do
-        if self._patch_dir.is_dir():
-            return
-
-        # Check if there are uncommited changes in the git repo
-        results = self.shell_executor.get_sh_results(["git", "-C", str(self._source_repo_dir), "status", "--porcelain"])
-        if results.stdout:
-            pretty_print.print_error(
-                f"Unable to create architecture specific configuration patch, "
-                f"because there are uncommited changes in {self._source_repo_dir}. "
-                f"Please commit the changes or clean this block ({self.block_id})."
-            )
-            sys.exit(1)
-
-        # Prepare clean sources and create patch
-        self.prep_clean_srcs()
-        pretty_print.print_build("Creating a commit with the clean sources...")
-        self.shell_executor.exec_sh_command(["git", "-C", str(self._source_repo_dir), "add", "."])
-        self.shell_executor.exec_sh_command(
-            ["git", "-C", str(self._source_repo_dir), "commit", "-m", "'Add default config'"]
-        )
-        self.create_patches()
 
     def _import_src_tpl(self, template: pathlib.Path):
         """
@@ -1154,7 +1340,7 @@ class Builder(ABC):
             )
             if results.stdout:
                 pretty_print.print_warning(
-                    f"There are uncommited changes in {self._source_repo_dir}. Do you really want to clean this repo? (y/n) ",
+                    f"There are uncommited changes in {self._source_repo_dir}/. Do you really want to clean this repo? (y/n) ",
                     end="",
                 )
                 answer = input("")

@@ -216,11 +216,11 @@ supported_block_commands = {
     "prebuild": "Builds a project-independent preliminary version of this block that can later be completed with project-dependent components.",
     "build-sd-card": "Creates a complete image that can be written directly to an SD card.",
     "clean": "Deletes all generated files of this block.",
-    "create-patches": "Uses the commited changes in the repo of this block to create patch files.",
+    "create-patches": "Uses the commited changes in this block's repo to create patch files.",
+    "create-cfg-snippet": "Creates a configuration snippet from the changes in the .config file in this block's repo.",
     "menucfg": "Opens the menuconfig tool to enable interactive configuration of the project in this block.",
     "start-container": "Starts the container image of this block in an interactive session.",
     "start-vivado-gui": "Starts the container image and opens the Vivado GUI in an interactive session.",
-    "prep-clean-srcs": "Cleans this block and creates a new, clean Linux kernel or U-Boot project. After the creation of the project you should create a patch that includes .gitignore and .config.",
 }
 # A list of all commands that can be applied to a group of blocks
 group_cmds = ["build", "prepare", "clean"]
@@ -336,7 +336,7 @@ def main():
     else:
         active_blocks = [target_block]
 
-    if block_cmd not in ["clean", "start-container", "start-vivado-gui", "prep-clean-srcs"]:
+    if block_cmd not in ["clean", "start-container", "start-vivado-gui"]:
         # Validate sources of all active blocks
         for block in active_blocks:
             builder_name = project_cfg["blocks"][block]["builder"]

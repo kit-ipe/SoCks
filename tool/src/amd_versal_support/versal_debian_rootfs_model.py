@@ -8,4 +8,3 @@ class Versal_Debian_RootFS_Model(Versal_Base_Model):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     blocks: ZynqMP_Debian_RootFS_Blocks_Model
-

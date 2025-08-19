@@ -39,6 +39,7 @@ class Block_Project_Model_Default_Fields:
     )
     build_srcs = Field(default=..., description="A single source object")
     patches = Field(default=None, description="A list of patches to be applied to the source files")
+    config_snippets = Field(default=None, description="A list of configuration snippets to be applied to .config")
     add_build_info = Field(
         default=..., description="Switch to specify whether or not build information should be included in the block"
     )

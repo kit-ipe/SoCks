@@ -134,7 +134,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
 
         # Check if there is more than one XSA file in the xsa directory
         if len(xsa_files) != 1:
-            pretty_print.print_error(f"Not exactly one XSA archive in {self._xsa_dir}")
+            pretty_print.print_error(f"Not exactly one XSA archive in {self._xsa_dir}/")
             sys.exit(1)
 
         # Calculate md5 of the provided file
@@ -253,7 +253,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
                 for dt_incl in self.block_cfg.project.dt_includes:
                     if not (self._dt_incl_dir / dt_incl).is_file():
                         pretty_print.print_error(
-                            f"File '{dt_incl}' specified in 'blocks -> {self.block_id} -> project -> dt_includes' does not exist in {self._dt_incl_dir}"
+                            f"File '{dt_incl}' specified in 'blocks -> {self.block_id} -> project -> dt_includes' does not exist in {self._dt_incl_dir}/"
                         )
                         sys.exit(1)
 

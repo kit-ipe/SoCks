@@ -11,22 +11,20 @@ blocks:
     project:
       build_srcs:
         branch: "rpi-6.12.y"
-      patches:
-        - 0001-Add-default-config.patch
-  # ssbl:
-  #   source: "build"
-  #   builder: "RaspberryPi_UBoot_SSBL_Builder"
-  #   project:
-  #     build_srcs:
-  #       source: "https://source.denx.de/u-boot/u-boot.git"
-  #       branch: "v2025.07"
-  #     # If no 'import_src' property is specified, the block must be built locally
-  #     add_build_info: false
-  #     patches:
-  #       - 0001-Add-default-config.patch
-  #   container:
-  #     image: "kernel-builder-alma9"
-  #     tag: "socks"
+  ssbl:
+    source: "build"
+    builder: "RaspberryPi_UBoot_SSBL_Builder"
+    project:
+      build_srcs:
+        source: "https://source.denx.de/u-boot/u-boot.git"
+        branch: "v2025.07"
+      # If no 'import_src' property is specified, the block must be built locally
+      add_build_info: false
+      config_snippets:
+        - Disable-efimkcapsule-command-to-circumvent-missing-dependencies.cfg
+    container:
+      image: "kernel-builder-alma9"
+      tag: "socks"
   # rootfs:
   #   source: "build"
   #   builder: "RaspberryPi_Debian_RootFS_Builder"
