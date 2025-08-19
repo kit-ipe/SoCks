@@ -170,23 +170,20 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
 
         # If an evaluation card is used, include card specific devicetree section
         if self.block_cfg.project.board != "custom":
-            # Dict is derived from https://github.com/Xilinx/meta-xilinx-tools/blob/rel-v2020.2/recipes-bsp/device-tree/device-tree.bbappend
-            eval_boards = {
-                "ultra96": "BOARD avnet-ultra96-rev1",
-                "zcu102": "BOARD zcu102-rev1.0",
-                "zcu104": "BOARD zcu104-revc",
-                "zcu106": "BOARD zcu106-reva",
-                "zc1254": "BOARD zc1254-reva",
-                "zcu1275": "BOARD zcu1275-revb",
-                "zcu1285": "BOARD zcu1285-reva",
-                "zcu111": "BOARD zcu111-reva",
-                "zcu208": "BOARD zcu208-reva",
-                "zcu216": "BOARD zcu216-reva",
-                "sm-k26": "BOARD sm-k26-reva",
-            }
+            # Check if board file exists in device tree repo
+            board_name = self.block_cfg.project.board
+            xilinx_version = self.project_cfg.external_tools.xilinx.version
+            dt_file = self._source_repo_dir / f"device_tree/data/kernel_dtsi/{xilinx_version}/BOARD/{board_name}.dtsi"
+            if not dt_file.is_file():
+                pretty_print.print_error(
+                    f"Pre-defined devicetree section for board '{board_name}' specified in "
+                    f"'blocks -> {self.block_id} -> project -> board' not found. "
+                    f"It is expected that the file is at this location: {dt_file}."
+                )
+                sys.exit(1)
             prep_dt_srcs_commands[-1] = (
                 prep_dt_srcs_commands[-1]
-                + f'    \r\nhsi set_property CONFIG.periph_type_overrides \\"{{{eval_boards[self.block_cfg.project.board]}}}\\" [hsi get_os]'
+                + f'    \r\nhsi set_property CONFIG.periph_type_overrides \\"{{BOARD {self.block_cfg.project.board}}}\\" [hsi get_os]'
             )
 
         prep_dt_srcs_commands[-1] = (
