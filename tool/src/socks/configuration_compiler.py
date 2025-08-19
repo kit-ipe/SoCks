@@ -12,13 +12,14 @@ class Configuration_Compiler:
     """
 
     @staticmethod
-    def _find_file(file_name: str, search_list: list[pathlib.Path]) -> pathlib.Path:
+    def _find_file(rel_file_path: str, search_list: list[pathlib.Path]) -> pathlib.Path:
         """
         Find file in search paths. Subdirectories are not searched.
 
         Args:
-            file_name:
-                Name of file to find.
+            rel_file_path:
+                Relative path of the file to be found. Can also be just the file name if the file is located
+                directly in one of the directories in the search list.
             search_list:
                 List of paths to be searched.
 
@@ -29,19 +30,26 @@ class Configuration_Compiler:
             FileNotFoundError: If the file could not be found.
         """
 
+        file_path_parts = rel_file_path.rsplit("/", 1)
+
         for path in search_list:
             # Check if the provided path exists
             if not path.is_dir():
                 pretty_print.print_error(f"The following path does not exist: {path}")
                 sys.exit(1)
+            # Add relative subpath to the path, if specified
+            if len(file_path_parts) > 1:
+                path = path / file_path_parts[0]
+                if not path.is_dir():
+                    continue
             # Iterate over all items in the path
             for item in path.iterdir():
-                if item.is_file() and item.name == file_name:
+                if item.is_file() and item.name == file_path_parts[-1]:
                     # Return found file
                     return item
 
         # Raise an exception if the file could not be found
-        raise FileNotFoundError(f"Unable to find {file_name}")
+        raise FileNotFoundError(f"Unable to find: {rel_file_path}")
 
     @staticmethod
     def _merge_dicts(target: dict, source: dict) -> dict:
@@ -75,15 +83,14 @@ class Configuration_Compiler:
         return target
 
     @staticmethod
-    def _merge_cfg_files(
-        config_file_name: str, socks_dir: pathlib.Path, project_dir: pathlib.Path
-    ) -> tuple[dict, list]:
+    def _merge_cfg_files(config_file: str, socks_dir: pathlib.Path, project_dir: pathlib.Path) -> tuple[dict, list]:
         """
         Recursively merge project configuration YAML files by tracing the import keys.
 
         Args:
-            config_file_name:
-                Name of the project configuration file to operate on.
+            config_file:
+                Relative path of the project configuration file to operate on. Relative to the directories in which
+                configuration files are searched for.
             socks_dir:
                 Path of the SoCks tool.
             project_dir:
@@ -96,13 +103,9 @@ class Configuration_Compiler:
             None
         """
 
-        try:
-            config_file = Configuration_Compiler._find_file(
-                file_name=config_file_name, search_list=[socks_dir / "templates" / "project_configuration", project_dir]
-            )  # ToDo: I think these paths should not be hard coded here
-        except FileNotFoundError as e:
-            print(repr(e))
-            sys.exit(1)
+        config_file = Configuration_Compiler._find_file(
+            rel_file_path=config_file, search_list=[socks_dir / "templates" / "project_configuration", project_dir]
+        )  # ToDo: I think these paths should not be hard coded here
 
         with config_file.open("r") as f:
             cfg_layer = yaml.safe_load(f)
@@ -115,10 +118,10 @@ class Configuration_Compiler:
 
         if "import" in cfg_layer:
             # Iterate through the list in reverse order to give the last element the highest priority
-            for file_name in reversed(cfg_layer["import"]):
+            for rel_file_path in reversed(cfg_layer["import"]):
                 # Recursively merge the so far composed return value with the file to be imported
                 cfg_buffer, files_buffer = Configuration_Compiler._merge_cfg_files(
-                    config_file_name=file_name, socks_dir=socks_dir, project_dir=project_dir
+                    config_file=rel_file_path, socks_dir=socks_dir, project_dir=project_dir
                 )
                 gathered_cfg = Configuration_Compiler._merge_dicts(target=cfg_buffer, source=gathered_cfg)
                 read_files = read_files + files_buffer
@@ -207,7 +210,7 @@ class Configuration_Compiler:
 
         # Merge config files
         project_cfg, read_cfg_files = Configuration_Compiler._merge_cfg_files(
-            config_file_name=root_cfg_file.name, socks_dir=socks_dir, project_dir=project_dir
+            config_file=root_cfg_file.name, socks_dir=socks_dir, project_dir=project_dir
         )
 
         # Apply user configuration file on top, if it exists
