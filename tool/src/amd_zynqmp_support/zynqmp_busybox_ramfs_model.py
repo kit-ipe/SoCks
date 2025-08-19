@@ -40,6 +40,7 @@ class ZynqMP_BusyBox_RAMFS_Block_Project_Model(Block_Project_Model):
 
     build_srcs: Build_Srcs_Model = Block_Project_Model_Default_Fields.build_srcs
     patches: Optional[list[str]] = Block_Project_Model_Default_Fields.patches
+    config_snippets: Optional[list[str]] = Block_Project_Model_Default_Fields.config_snippets
     source_repo_fs_layer: Optional[list[File_System_Installable_Source_Repo_Item_Model]] = Field(
         default=None, description="List of files and directories to be installed from the source repo"
     )

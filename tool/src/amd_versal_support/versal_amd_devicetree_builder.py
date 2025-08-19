@@ -57,7 +57,7 @@ class Versal_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
 
         # Check if there is more than one XSA file in the xsa directory
         if len(xsa_files) != 1:
-            pretty_print.print_error(f"Not exactly one XSA archive in {self._xsa_dir}")
+            pretty_print.print_error(f"Not exactly one XSA archive in {self._xsa_dir}/")
             sys.exit(1)
 
         # Calculate md5 of the provided file

@@ -163,7 +163,7 @@ class AMD_Builder(Builder):
 
         # Check if there is more than one XSA file in the Vivado block package
         if len(xsa_files) != 1:
-            pretty_print.print_error(f'Not exactly one XSA archive in {self._dependencies_dir / "vivado"}')
+            pretty_print.print_error(f'Not exactly one XSA archive in {self._dependencies_dir / "vivado"}/')
             sys.exit(1)
 
         # Check whether the xsa archive needs to be imported

@@ -21,6 +21,7 @@ class AMD_UBoot_SSBL_Block_Project_Model(Block_Project_Model):
 
     build_srcs: Build_Srcs_Model = Block_Project_Model_Default_Fields.build_srcs
     patches: Optional[list[str]] = Block_Project_Model_Default_Fields.patches
+    config_snippets: Optional[list[str]] = Block_Project_Model_Default_Fields.config_snippets
     add_build_info: bool = Block_Project_Model_Default_Fields.add_build_info
     dependencies: AMD_UBoot_SSBL_Dependencies_Model = Block_Project_Model_Default_Fields.dependencies
 

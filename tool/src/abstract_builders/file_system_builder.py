@@ -80,7 +80,7 @@ class File_System_Builder(Builder):
 
         xsafiles = list((self._dependencies_dir / "vivado").glob("*.xsa"))
         if len(xsafiles) != 1:
-            pretty_print.print_error(f'Not exactly one *.xsa file in {self._dependencies_dir / "vivado"}.')
+            pretty_print.print_error(f'Not exactly one *.xsa file in {self._dependencies_dir / "vivado"}/.')
             sys.exit(1)
 
         # Extract the *.bit file only if it was not already extracted. This folder is deleted by the implementation
@@ -95,7 +95,7 @@ class File_System_Builder(Builder):
             bitfiles = [file for file in archive.namelist() if file.endswith(".bit")]
             # Stop if there is more than one bit file
             if len(bitfiles) > 1:
-                pretty_print.print_error(f"More than one *.bit file in {xsafiles[0]}.")
+                pretty_print.print_error(f"More than one *.bit file in {xsafiles[0]}/.")
                 sys.exit(1)
             elif len(bitfiles) == 1:
                 # Create a folder with the name of the XSA
@@ -560,7 +560,7 @@ class File_System_Builder(Builder):
             downloads = list(self._download_dir.glob("*"))
             # Check if there is more than one file in the download directory
             if len(downloads) != 1:
-                pretty_print.print_error(f"Not exactly one file in {self._download_dir}")
+                pretty_print.print_error(f"Not exactly one file in {self._download_dir}/")
                 sys.exit(1)
             prebuilt_block_package = downloads[0]
         else:

@@ -368,7 +368,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(File_System_Builder):
                 if not (self._patch_dir / patch).is_file():
                     pretty_print.print_error(
                         f"Patch '{patch}' specified in 'blocks -> {self.block_id} -> project -> patches' "
-                        f"does not exist in {self._patch_dir}"
+                        f"does not exist in {self._patch_dir}/"
                     )
                     sys.exit(1)
 
@@ -549,7 +549,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(File_System_Builder):
             )
             if results.stdout:
                 pretty_print.print_warning(
-                    f"There are uncommited changes in {self._source_repo_dir / path}. Do you really want to clean this repo? (y/n) ",
+                    f"There are uncommited changes in {self._source_repo_dir / path}/. Do you really want to clean this repo? (y/n) ",
                     end="",
                 )
                 answer = input("")

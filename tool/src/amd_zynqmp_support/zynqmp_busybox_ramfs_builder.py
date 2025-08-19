@@ -61,9 +61,9 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             "prebuild": [],
             "clean": [],
             "create-patches": [],
+            "create-cfg-snippet": [],
             "start-container": [],
             "menucfg": [],
-            "prep-clean-srcs": [],
         }
         block_cmds["prepare"].extend(
             [
@@ -90,7 +90,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             ] + [
                 self.init_repo,
                 self.apply_patches,
-                self.create_proj_cfg_patch,
+                self.attach_config_snippets,
                 self._build_validator.save_project_cfg_prepare,
             ]
             block_cmds["build"].extend(block_cmds["prepare"])
@@ -116,12 +116,9 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
                 ]
             )
             block_cmds["create-patches"].extend([self.create_patches])
+            block_cmds["create-cfg-snippet"].extend([self.create_config_snippet])
             block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
             block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
-            block_cmds["prep-clean-srcs"].extend(block_cmds["clean"])
-            block_cmds["prep-clean-srcs"].extend(
-                [self.container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
-            )
         elif self.block_cfg.source == "import":
             block_cmds["build"].extend(block_cmds["prepare"])
             block_cmds["build"].extend(
@@ -157,15 +154,6 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
         super().validate_srcs()
         self.import_req_src_tpl()
 
-        if not self._patch_dir.is_dir():
-            self.pre_action_warnings.append(
-                "This block requires a configuration file in the source repo to be initialized, "
-                "but no patches were found. If you proceed, SoCks will automatically initialize the "
-                "configuration file, create a patch and add it to your project."
-            )
-            # Function 'create_proj_cfg_patch' is called with block command 'prepare' at a suitable stage.
-            # Calling it here would not make sense, because the repo might not be ready yet.
-
     def run_menuconfig(self):
         """
         Opens the menuconfig tool to enable interactive configuration of the project.
@@ -182,15 +170,15 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
 
         menuconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "make CROSS_COMPILE=aarch64-unknown-linux-uclibc- menuconfig",
+            "export CROSS_COMPILE=aarch64-unknown-linux-uclibc-",
+            "make menuconfig",
         ]
 
-        super()._run_menuconfig(menuconfig_commands=menuconfig_commands)
+        self._run_menuconfig(menuconfig_commands=menuconfig_commands)
 
-    def prep_clean_srcs(self):
+    def init_repo(self):
         """
-        This function is intended to create a new, clean project. After the creation
-        of the project one should create a patch that includes .gitignore and .config.
+        Clones and initializes the git repo.
 
         Args:
             None
@@ -202,14 +190,48 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             None
         """
 
-        prep_srcs_commands = [
+        super().init_repo()
+
+        create_defconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "make CROSS_COMPILE=aarch64-unknown-linux-uclibc- defconfig",
+            "export CROSS_COMPILE=aarch64-unknown-linux-uclibc-",
+            "make defconfig",
             'sed -i "s%^# CONFIG_STATIC is not set$%CONFIG_STATIC=y%" .config',
-            'printf "\n# Do not ignore the config file\n!.config\n" >> .gitignore',
         ]
 
-        super()._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
+        self._prep_clean_cfg(prep_srcs_commands=create_defconfig_commands)
+
+    def create_config_snippet(self):
+        """
+        Creates snippets from changes in .config.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._create_config_snippet(cross_comp_prefix="aarch64-unknown-linux-uclibc-", defconfig_target="defconfig")
+
+    def attach_config_snippets(self):
+        """
+        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._attach_config_snippets(cross_comp_prefix="aarch64-unknown-linux-uclibc-")
 
     def build_base_file_system(self):
         """
@@ -248,8 +270,9 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
 
             base_ramfs_build_commands = [
                 f"cd {self._source_repo_dir}",
+                "export CROSS_COMPILE=aarch64-unknown-linux-uclibc-",
                 f'sed -i "s%^CONFIG_PREFIX=.*$%CONFIG_PREFIX=\\"{self._build_dir}\\"%" .config',
-                f"make -j{self.project_cfg.external_tools.make.max_build_threads} CROSS_COMPILE=aarch64-unknown-linux-uclibc-",
+                f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
                 f"mkdir -p {self._build_dir}",
                 f"cd {self._build_dir}",
                 "mkdir -p {bin,dev,etc,lib64,proc,sbin,sys,tmp,usr,var}",
@@ -257,7 +280,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
                 "mkdir -p var/log",
                 "ln -sf lib64 lib",
                 f"cd {self._source_repo_dir}",
-                "make CROSS_COMPILE=aarch64-unknown-linux-uclibc- install",
+                "make install",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RAMFS image.

@@ -65,9 +65,9 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             "build": [],
             "clean": [],
             "create-patches": [],
+            "create-cfg-snippet": [],
             "start-container": [],
             "menucfg": [],
-            "prep-clean-srcs": [],
         }
         block_cmds["clean"].extend(
             [
@@ -86,7 +86,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
                     self.container_executor.build_container_image,
                     self.init_repo,
                     self.apply_patches,
-                    self.create_proj_cfg_patch,
+                    self.attach_config_snippets,
                     self._build_validator.save_project_cfg_prepare,
                 ]
             )
@@ -101,12 +101,9 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
                 ]
             )
             block_cmds["create-patches"].extend([self.create_patches])
+            block_cmds["create-cfg-snippet"].extend([self.create_config_snippet])
             block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
             block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
-            block_cmds["prep-clean-srcs"].extend(block_cmds["clean"])
-            block_cmds["prep-clean-srcs"].extend(
-                [self.container_executor.build_container_image, self.init_repo, self.prep_clean_srcs]
-            )
         elif self.block_cfg.source == "import":
             block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
         return block_cmds
@@ -128,15 +125,6 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
         super().validate_srcs()
         self.import_opt_src_tpl()
 
-        if not self._patch_dir.is_dir():
-            self.pre_action_warnings.append(
-                "This block requires the source repo to be initialized with an architecture specific configuration, "
-                "but no patches were found. If you proceed, SoCks will automatically generate the architecture "
-                "specific configuration patch and add it to your project."
-            )
-            # Function 'create_proj_cfg_patch' is called with block command 'prepare' at a suitable stage.
-            # Calling it here would not make sense, because the  repo might not be ready yet.
-
     def run_menuconfig(self):
         """
         Opens the menuconfig tool to enable interactive configuration of the project.
@@ -154,14 +142,15 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
         menuconfig_commands = [
             f"cd {self._source_repo_dir}",
             "export CROSS_COMPILE=aarch64-linux-gnu-",
-            "make ARCH=arm64 menuconfig",
+            "export ARCH=arm64",
+            "make menuconfig",
         ]
 
-        super()._run_menuconfig(menuconfig_commands=menuconfig_commands)
+        self._run_menuconfig(menuconfig_commands=menuconfig_commands)
 
-    def prep_clean_srcs(self):
+    def init_repo(self):
         """
-        This function is intended to create a new, clean Linux kernel or U-Boot project. After the creation of the project you should create a patch that includes .gitignore and .config.
+        Clones and initializes the git repo.
 
         Args:
             None
@@ -173,14 +162,50 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             None
         """
 
-        prep_srcs_commands = [
+        super().init_repo()
+
+        create_defconfig_commands = [
             f"cd {self._source_repo_dir}",
             "export CROSS_COMPILE=aarch64-linux-gnu-",
-            "make ARCH=arm64 xilinx_zynqmp_defconfig",
-            'printf "\n# Do not ignore the config file\n!.config\n" >> .gitignore',
+            "export ARCH=arm64",
+            "make xilinx_zynqmp_defconfig",
         ]
 
-        super()._prep_clean_srcs(prep_srcs_commands=prep_srcs_commands)
+        self._prep_clean_cfg(prep_srcs_commands=create_defconfig_commands)
+
+    def create_config_snippet(self):
+        """
+        Creates snippets from changes in .config.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._create_config_snippet(
+            cross_comp_prefix="aarch64-linux-gnu-", arch="arm64", defconfig_target="xilinx_zynqmp_defconfig"
+        )
+
+    def attach_config_snippets(self):
+        """
+        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._attach_config_snippets(cross_comp_prefix="aarch64-linux-gnu-", arch="arm64")
 
     def build_kernel(self):
         """
@@ -229,10 +254,9 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             kernel_build_commands = [
                 f"cd {self._source_repo_dir}",
                 "export CROSS_COMPILE=aarch64-linux-gnu-",
-                "make ARCH=arm64 olddefconfig",
-                "git update-index --assume-unchanged .config",  # Normally .config is in the gitignore file, so the kernel should not be dirty because of this. .config is sometimes changed automatically due to the container used.
-                f"make ARCH=arm64 -j{self.project_cfg.external_tools.make.max_build_threads}",
-                "git update-index --no-assume-unchanged .config",  # Stop hiding .config
+                "export ARCH=arm64",
+                "make olddefconfig",
+                f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
             ]
 
             self.container_executor.exec_sh_commands(
@@ -311,7 +335,8 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             ext_mod_build_commands = [
                 f"cd {self._ext_modules_build_dir}",
                 "export CROSS_COMPILE=aarch64-linux-gnu-",
-                f"make ARCH=arm64 MAKE=make KERNEL_SRC={self._source_repo_dir}",
+                "export ARCH=arm64",
+                f"make MAKE=make KERNEL_SRC={self._source_repo_dir}",
             ]
 
             self.container_executor.exec_sh_commands(
@@ -372,7 +397,8 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
             export_modules_commands = [
                 f"cd {self._source_repo_dir}",
                 "export CROSS_COMPILE=aarch64-linux-gnu-",
-                f"make ARCH=arm64 modules_install INSTALL_MOD_PATH={self._output_dir}",
+                "export ARCH=arm64",
+                f"make modules_install INSTALL_MOD_PATH={self._output_dir}",
             ]
 
             # Add commands to export external modules, if any
@@ -380,7 +406,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
                 export_modules_commands.extend(
                     [
                         f"cd {self._ext_modules_build_dir}",
-                        f"make ARCH=arm64 MAKE=make KERNEL_SRC={self._source_repo_dir} modules_install INSTALL_MOD_PATH={self._output_dir}",
+                        f"make MAKE=make KERNEL_SRC={self._source_repo_dir} modules_install INSTALL_MOD_PATH={self._output_dir}",
                     ]
                 )
 

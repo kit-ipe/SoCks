@@ -65,8 +65,9 @@ class Versal_AMD_ATF_Builder(ZynqMP_AMD_ATF_Builder):
 
             atf_build_commands = [
                 f"cd {self._source_repo_dir}",
+                "export CROSS_COMPILE=aarch64-none-elf-",
                 "make distclean",
-                "make CROSS_COMPILE=aarch64-none-elf- PLAT=versal RESET_TO_BL31=1 ZYNQMP_CONSOLE=pl011_0",
+                "make PLAT=versal RESET_TO_BL31=1 ZYNQMP_CONSOLE=pl011_0",
             ]
 
             self.container_executor.exec_sh_commands(

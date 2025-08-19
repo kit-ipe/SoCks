@@ -9,6 +9,7 @@ SoCks (short for SoC blocks) is a lightweight and modular framework to build com
 - [Development flow](#development-flow)
   - [Project Configuration](#project-configuration)
   - [Creating patch files](#creating-patch-files)
+  - [Using menuconfig and creating configuration snippets](#using-menuconfig-and-creating-configuration-snippets)
 - [Available Builders (ZynqMP)](#available-builders-(zynqmp))
   - [ZynqMP_AlmaLinux_RootFS_Builder](#zynqmp_almalinux_rootfs_builder)
     - [Block Configuration](#block-configuration)
@@ -151,6 +152,25 @@ In some case one needs to modify source files for a block without having access 
     $ socks fsbl create-patches
     ```
 
+### Using menuconfig and creating configuration snippets
+
+The project sources of some blocks can be configured using menuconfig. Examples are the Linux Kernel, U-Boot and Busybox. SoCks provides methods for configuring the project sources before building with menuconfig and then saving the changes in so-called configuration snippets. If the project sources of the block are downloaded again in the future, existing configuration snippets will be automatically applied to the project sources in the respective repository.
+
+1. Fetch the source repo of the block, if it does not already exist:
+    ```
+    $ socks kernel prepare
+    ```
+
+2. Adjust the project sources with menuconfig:
+    ```
+    $ socks kernel menucfg
+    ```
+
+4. Create a configuration snippet that contains all changes made to the configuration:
+    ```
+    $ socks kernel create-cfg-snippet
+    ```
+
 ## Available Builders (ZynqMP)
 
 ### ZynqMP_AlmaLinux_RootFS_Builder
@@ -210,7 +230,7 @@ Key:
 - **source**: The source of the block. Options are:
   - **build**: Build the block locally
   - **import**: Import an already built block package
-- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Kernel_Builder`.
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AlmaLinux_RootFS_Builder`.
 - **project -> release**: The release version of AlmaLinux to be built. Options are:
   - 8
   - 9
@@ -276,7 +296,7 @@ Key:
 - **source**: The source of the block. Options are:
   - **build**: Build the block locally
   - **import**: Import an already built block package
-- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Kernel_Builder`.
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_ATF_Builder`.
 - **project -> build_srcs -> source**: The source to be used to build this block in URI format. Options are:
   - The URL of a git repository. In this case the string must start with `https://` or `ssh://`.
   - The path to a local folder, e.g. if the repo was checked out manually. In this case the string must start with `file://`.
@@ -330,7 +350,7 @@ Key:
 - **source**: The source of the block. Options are:
   - **build**: Build the block locally
   - **import**: Import an already built block package
-- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Kernel_Builder`.
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Devicetree_Builder`.
 - **project -> build_srcs -> source**: The source to be used to build this block in URI format. Options are:
   - The URL of a git repository. In this case the string must start with `https://` or `ssh://`.
   - The path to a local folder, e.g. if the repo was checked out manually. In this case the string must start with `file://`.
@@ -446,7 +466,7 @@ Key:
 - **source**: The source of the block. Options are:
   - **build**: Build the block locally
   - **import**: Import an already built block package
-- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Kernel_Builder`.
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Image_Builder`.
 - **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
   - The URL to a file online. In this case the string must start with `https://` or `http://`.
   - The file URI of a local file. In this case the string must start with `file://`.
@@ -490,7 +510,9 @@ kernel:
     import_src: "https://serenity.web.cern.ch/.../kernel.tar.gz"
     add_build_info: false
     patches:
-      - 0001-Add-default-config.patch
+      - 0001-Add-build-information-to-proc.patch
+    config_snippets:
+      - disable-building-with-debug-info-to-reduce-size.cfg
   container:
     image: "kernel-builder-alma9"
     tag: "socks"
@@ -510,6 +532,7 @@ Key:
   - The file URI of a local file. In this case the string must start with `file://`.
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the Kernel. If it is set to `true`, SoCks creates a file with build related information encoded in a C-array in the source repo under `include/build_info.h`. This file can then be used to add this information to the `/proc` filesystem of the Kernel.
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/kernel/patches`.
+- **project -> config_snippets**: A list of configuration snippet files that are automatically attached to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add a new configuration snippets here if you create it with the command `create-cfg-snippet`. Configuration snippet files must be located in `src/ramfs/config`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
   - `kernel-builder-alma8`
   - `kernel-builder-alma9`
@@ -556,7 +579,7 @@ Key:
 - **source**: The source of the block. Options are:
   - **build**: Build the block locally
   - **import**: Import an already built block package
-- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_Kernel_Builder`.
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AMD_PetaLinux_RootFS_Builder`.
 - **project -> build_srcs -> source**: The source to be used to build this block in URI format. Options are:
   - The URL of a git repository. In this case the string must start with `https://` or `ssh://`.
   - The path to a local folder, e.g. if the repo was checked out manually. In this case the string must start with `file://`.
@@ -652,7 +675,9 @@ ssbl:
     dependencies:
       atf: "temp/atf/output/bp_atf_*.tar.gz"
     patches:
-      - 0001-Add-default-config.patch
+      - 0001-Add-build_info-command.patch
+    config_snippets:
+      - set-MAC-address-offset-for-Kria-EEPROM.cfg
   container:
     image: "kernel-builder-alma9"
     tag: "socks"
@@ -672,6 +697,7 @@ Key:
   - The file URI of a local file. In this case the string must start with `file://`.
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into das U-Boot. If it is set to `true`, SoCks creates a file with build related information encoded in a C-array in the source repo under `include/build_info.h`. This file can then be used e.g. to create a custom U-Boot command that shows this information.
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/ssbl/patches`.
+- **project -> config_snippets**: A list of configuration snippet files that are automatically attached to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add a new configuration snippets here if you create it with the command `create-cfg-snippet`. Configuration snippet files must be located in `src/ramfs/config`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
   - `kernel-builder-alma8`
   - `kernel-builder-alma9`
@@ -904,7 +930,9 @@ ramfs:
     dependencies:
       kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
     patches:
-      - 0001-Add-default-config.patch
+      - 0001-patch-1.patch
+    config_snippets:
+      - configuration-snippet-1.cfg
   container:
     image: "busybox-ramfs-builder-alma9"
     tag: "socks"
@@ -931,6 +959,7 @@ Key:
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the RAM file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the RAM file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/ramfs/patches`.
+- **project -> config_snippets**: A list of configuration snippet files that are automatically attached to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add a new configuration snippets here if you create it with the command `create-cfg-snippet`. Configuration snippet files must be located in `src/ramfs/config`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
   - `busybox-ramfs-builder-alma8`
   - `busybox-ramfs-builder-alma9`

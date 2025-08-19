@@ -210,7 +210,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
 
         # Check if there is more than one XSA file in the xsa directory
         if len(xsa_files) != 1:
-            pretty_print.print_error(f"Not exactly one XSA archive in {self._xsa_dir}")
+            pretty_print.print_error(f"Not exactly one XSA archive in {self._xsa_dir}/")
             sys.exit(1)
 
         if not self._xsa_extracted_dir.is_dir():
@@ -224,7 +224,7 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         pdi_files = list(self._xsa_extracted_dir.glob("*.pdi"))
 
         if len(pdi_files) != 1:
-            pretty_print.print_error(f"Not exactly one *.pdi file in {self._xsa_extracted_dir}")
+            pretty_print.print_error(f"Not exactly one *.pdi file in {self._xsa_extracted_dir}/")
             sys.exit(1)
 
         self._vivado_pdi_file_path = pdi_files[0]

@@ -319,7 +319,7 @@ class RaspberryPi_Image_Builder(Builder):
 
         # Check if there is more than one archive in the dependencie directory
         if len(rootfs_archives) > 1:
-            pretty_print.print_error(f'More than one .tar.xz archive in {self._dependencies_dir / "rootfs"}.')
+            pretty_print.print_error(f'More than one .tar.xz archive in {self._dependencies_dir / "rootfs"}/.')
             sys.exit(1)
 
         # Check whether the sd card image needs to be built

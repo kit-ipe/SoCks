@@ -177,14 +177,14 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
 
         # Check if there is more than one archive in the dependencie directory
         if len(ramfs_archives) > 1:
-            pretty_print.print_error(f'More than one .cpio.gz archive in {self._dependencies_dir / "ramfs"}.')
+            pretty_print.print_error(f'More than one .cpio.gz archive in {self._dependencies_dir / "ramfs"}/.')
             sys.exit(1)
         elif not ramfs_archives:
             # Check if a ramfs archive is needed
             with open(self._resources_dir / "image.its.tpl", "r") as file:
                 if "<RAMFS_IMG_PATH>" in file.read():
                     pretty_print.print_error(
-                        f'Block \'{self.block_id}\' needs input from block \'ramfs\', but it was not found in {self._dependencies_dir / "ramfs"}.'
+                        f'Block \'{self.block_id}\' needs input from block \'ramfs\', but it was not found in {self._dependencies_dir / "ramfs"}/.'
                     )
                     sys.exit(1)
 
@@ -294,7 +294,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
 
         # Check if there is more than one XSA file in the xsa directory
         if len(xsa_files) != 1:
-            pretty_print.print_error(f"Not exactly one XSA archive in {self._xsa_dir}")
+            pretty_print.print_error(f"Not exactly one XSA archive in {self._xsa_dir}/")
             sys.exit(1)
 
         if not self._xsa_extracted_dir.is_dir():
@@ -307,7 +307,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         # Use the *.bit file from the XSA if it contains one
         bitfiles = list(self._xsa_extracted_dir.glob("*.bit"))
         if len(bitfiles) > 1:
-            pretty_print.print_error(f"More than one *.bit file in {self._xsa_extracted_dir}.")
+            pretty_print.print_error(f"More than one *.bit file in {self._xsa_extracted_dir}/.")
             sys.exit(1)
         self._vivado_bitfile_path = bitfiles[0]
         pretty_print.print_info(f"Using *.bit file from the XSA")
@@ -317,8 +317,8 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             bitfiles = list((self._dependencies_dir / "vivado").glob("*.bit"))
             if len(bitfiles) != 1:
                 pretty_print.print_error(
-                    f"No *.bit file in {self._xsa_extracted_dir} "
-                    f"and also not exactly one *.bit file in {self._dependencies_dir / 'vivado'}"
+                    f"No *.bit file in {self._xsa_extracted_dir}/ "
+                    f"and also not exactly one *.bit file in {self._dependencies_dir / 'vivado'}/"
                 )
                 sys.exit(1)
             self._vivado_bitfile_path = bitfiles[0]
@@ -403,7 +403,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
 
         # Check if there is more than one archive in the dependencie directory
         if len(rootfs_archives) > 1:
-            pretty_print.print_error(f'More than one .tar.xz archive in {self._dependencies_dir / "rootfs"}.')
+            pretty_print.print_error(f'More than one .tar.xz archive in {self._dependencies_dir / "rootfs"}/.')
             sys.exit(1)
 
         # Check whether the sd card image needs to be built
