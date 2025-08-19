@@ -8,8 +8,11 @@ import multiprocessing
 class Project_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
+    socks_version: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9.]+$")] = Field(
+        default=..., description="The appropriate SoCks version for this project"
+    )
     type: Literal["RaspberryPi"] = Field(default=..., description="The unique identifier of the project type")
-    name: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9-]*$")] = Field(
+    name: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9-]+$")] = Field(
         default=..., description="The name of the project"
     )
     rpi_model: Literal["RPi_4B", "RPi_5"] = Field(

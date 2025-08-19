@@ -27,7 +27,7 @@ class Container_Executor:
         enforce_command_printing: bool = False,
     ):
 
-        if container_tool not in ["docker", "podman", "none"]:
+        if container_tool not in ("docker", "podman", "none"):
             pretty_print.print_error(f"Containerization tool {self._container_tool} is not supported.")
             sys.exit(1)
 
