@@ -24,22 +24,10 @@ class AMD_Devicetree_Block_Project_Model(Block_Project_Model):
     dt_includes: Optional[list[str]] = Field(
         default=None, description="A list of dtsi files to be included into the devicetree (system-top.dts)"
     )
-    board: Literal[
-        "custom",
-        "ultra96",
-        "zcu102",
-        "zcu104",
-        "zcu106",
-        "zc1254",
-        "zcu1275",
-        "zcu1285",
-        "zcu111",
-        "zcu208",
-        "zcu216",
-        "sm-k26",
-    ] = Field(
+    board: str = Field(
+        default=...,
         description="AMD offers pre-defined devicetree sections for widely used evaluation cards. "
-        "To include such a section, the evaluation card must be specified here."
+        "To include such a section, the evaluation card must be specified here.",
     )
     dependencies: AMD_Devicetree_Dependencies_Model = Block_Project_Model_Default_Fields.dependencies
 
