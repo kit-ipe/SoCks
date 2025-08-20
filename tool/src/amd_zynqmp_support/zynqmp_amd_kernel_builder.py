@@ -336,7 +336,7 @@ class ZynqMP_AMD_Kernel_Builder(Builder):
                 f"cd {self._ext_modules_build_dir}",
                 "export CROSS_COMPILE=aarch64-linux-gnu-",
                 "export ARCH=arm64",
-                f"make MAKE=make KERNEL_SRC={self._source_repo_dir}",
+                f"make -j{self.project_cfg.external_tools.make.max_build_threads} MAKE=make KERNEL_SRC={self._source_repo_dir}",
             ]
 
             self.container_executor.exec_sh_commands(
