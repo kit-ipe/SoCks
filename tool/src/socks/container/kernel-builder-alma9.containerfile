@@ -13,7 +13,7 @@ RUN dnf -y install 'dnf-command(config-manager)' && \
 RUN dnf -y install dtc
 
 # Install packages officially required to build the kernel
-RUN dnf -y install gcc make bash binutils flex bison dwarves util-linux kmod e2fsprogs xfsprogs squashfs-tools nfs-utils procps-ng mcelog iptables openssl bc cpio tar && \
+RUN dnf -y install gcc make bash binutils flex bison dwarves util-linux kmod e2fsprogs xfsprogs squashfs-tools nfs-utils procps-ng iptables openssl bc cpio tar && \
 # Install additionally required packages
     dnf -y install ncurses-devel openssl-devel && \
 # Install cross compiler
