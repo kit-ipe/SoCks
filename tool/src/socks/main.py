@@ -93,6 +93,9 @@ def sort_blocks(blocks: list[str], project_cfg: dict):
     return tmp_block_list
 
 
+# Create list to collect warnings from the coordinating instance
+coordinating_instance_warnings = []
+
 # Set tool and project directory
 socks_dir = pathlib.Path(importlib.resources.files(socks))
 project_dir = pathlib.Path.cwd()
@@ -180,7 +183,12 @@ except pydantic.ValidationError as e:
     sys.exit(1)
 
 # Check project version
-if project_cfg_model.project.socks_version not in (importlib.metadata.version("socks").split("+", 1)[0], "any"):
+if project_cfg_model.project.socks_version == "any":
+    coordinating_instance_warnings.append(
+        "The check that validates whether the project is compatible with the version of SoCks being used is "
+        "disabled because 'project -> socks_version' is set to 'any'."
+    )
+elif project_cfg_model.project.socks_version != importlib.metadata.version("socks").split("+", 1)[0]:
     pretty_print.print_error(
         "This project is not compatible with the version of SoCks used:\n"
         f"\tSoCks version: '{importlib.metadata.version('socks').split('+', 1)[0]}'\n"
@@ -365,6 +373,8 @@ def main():
 
     # If necessary, issue warnings before building and ask the user for permission
     pre_action_warnings = []
+    for warning in coordinating_instance_warnings:
+        pre_action_warnings.append("Coordinating instance: " + warning)
     for block in active_blocks:
         builder_name = project_cfg["blocks"][block]["builder"]
         builder = builders[builder_name]
