@@ -21,7 +21,7 @@ class ZynqMP_Debian_RootFS_Block_Project_Model(Block_Project_Model):
     release: Annotated[str, StringConstraints(pattern=r"^[a-z]+$")] = Field(
         default=..., description="Release version of the OS to be built"
     )
-    mirror: Annotated[str, StringConstraints(pattern=r"^http:\/\/.*debian.*")] = Field(
+    mirror: str = Field(
         default="http://ftp.de.debian.org/debian/", description="Debian mirror to be used"
     )
     addl_pkgs: Optional[list[str]] = Field(default=None, description="List of additional deb packages to be installed")

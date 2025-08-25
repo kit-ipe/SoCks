@@ -233,16 +233,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
 
     def add_addl_packages(self):
         """
-        Installs additional user defined deb packages.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
+            Installs additional user defined deb packages.
         """
 
         # Check whether a RootFS is present
@@ -271,18 +262,73 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
             pretty_print.print_build("Installing additional packages...")
 
-            addl_pkgs_str = f"apt update && apt install -y " + " ".join(self.block_cfg.project.addl_pkgs)
+            # Build apt command (noninteractive + keep existing conffiles + no recommends)
+            pkgs = " ".join(self.block_cfg.project.addl_pkgs)
+
             add_packages_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
+                # enable qemu in chroot so ARM64 postinsts can run on x86 builders
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
-                # Installing user defined packages
-                f'chroot {self._build_dir} /bin/bash -c "{addl_pkgs_str}"',
-                # The QEMU binary if only required during build, so delete it if it exists
+
+                # known-good Debian Bookworm sources.list
+                f'printf "%s\\n" '
+                f'"deb http://deb.debian.org/debian bookworm main contrib non-free-firmware" '
+                f'"deb http://security.debian.org/debian-security bookworm-security main contrib non-free-firmware" '
+                f'"deb http://deb.debian.org/debian bookworm-updates main contrib non-free-firmware" '
+                f'> {self._build_dir}/etc/apt/sources.list',
+
+                # DNS inside chroot
+                f"mkdir -p {self._build_dir}/etc && cp -f /etc/resolv.conf {self._build_dir}/etc/resolv.conf",
+
+                # small apt config: noninteractive, no recommends, retries, IPv4
+                f'printf "%s\\n" '
+                f'"Dpkg::Options {{ \\"--force-confdef\\"; \\"--force-confold\\"; }};" '
+                f'"APT::Install-Recommends \\"false\\";" '
+                f'"Acquire::Retries \\"5\\";" '
+                f'"Acquire::ForceIPv4 \\"true\\";" '
+                f'> {self._build_dir}/etc/apt/apt.conf.d/99socks',
+
+                # mount runtime fs (helps some maintainer scripts)
+                f"mount -t proc proc {self._build_dir}/proc || true",
+                f"mount --rbind /sys {self._build_dir}/sys || true",
+                f"mount --rbind /dev {self._build_dir}/dev || true",
+                f"mount --rbind /dev/pts {self._build_dir}/dev/pts || true",
+
+                # block service starts to avoid hangs
+                f"mkdir -p {self._build_dir}/usr/sbin {self._build_dir}/bin",
+                f"printf '#!/bin/sh\\nexit 101\\n' > {self._build_dir}/usr/sbin/policy-rc.d && chmod +x {self._build_dir}/usr/sbin/policy-rc.d",
+                f"printf '#!/bin/sh\\nexit 0\\n' > {self._build_dir}/bin/systemctl && chmod +x {self._build_dir}/bin/systemctl",
+
+                # update (retry once after installing keyring if needed)
+                f"chroot {self._build_dir} /bin/bash -lc 'env DEBIAN_FRONTEND=noninteractive apt-get -y update' "
+                f"|| ( chroot {self._build_dir} /bin/bash -lc 'apt-get -y install debian-archive-keyring || true'; "
+                f"     chroot {self._build_dir} /bin/bash -lc 'env DEBIAN_FRONTEND=noninteractive apt-get -y update' )",
+
+                # install requested packages
+                f'chroot {self._build_dir} /bin/bash -lc "env DEBIAN_FRONTEND=noninteractive '
+                f'apt-get -y install --no-install-recommends '
+                f'-o Dpkg::Options::=\\\'--force-confdef\\\' '
+                f'-o Dpkg::Options::=\\\'--force-confold\\\' {pkgs}"',
+
+                # clean apt cache
+                f"chroot {self._build_dir} apt-get -y clean || true",
+
+                # remove blockers
+                f"rm -f {self._build_dir}/usr/sbin/policy-rc.d {self._build_dir}/bin/systemctl || true",
+
+                # unmount runtime fs (reverse order)
+                f"umount -R {self._build_dir}/dev/pts 2>/dev/null || true",
+                f"umount -R {self._build_dir}/dev     2>/dev/null || true",
+                f"umount -R {self._build_dir}/sys     2>/dev/null || true",
+                f"umount    {self._build_dir}/proc    2>/dev/null || true",
+
+                # remove qemu helper
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
+
+
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
@@ -293,6 +339,7 @@ class ZynqMP_Debian_RootFS_Builder(File_System_Builder):
                 logfile=self._block_temp_dir / "install_additional_packages.log",
                 output_scrolling=True,
             )
+
 
     def add_addl_ext_packages(self):
         """
