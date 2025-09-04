@@ -192,9 +192,9 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[
                 self._resources_dir / "image.its.tpl",
-                self._dependencies_dir / "kernel",
-                self._dependencies_dir / "devicetree",
-                self._dependencies_dir / "ramfs",
+                self._dependencies_dir / "block_pkg_kernel.md5",
+                self._dependencies_dir / "block_pkg_devicetree.md5",
+                self._dependencies_dir / "block_pkg_ramfs.md5",
             ],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -328,12 +328,12 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[
                 self._resources_dir / "bootgen.bif.tpl",
-                self._fsbl_img_path,
-                self._pmufw_img_path,
-                self._vivado_bitfile_path,
-                self._atf_img_path,
-                self._dt_img_path,
-                self._ssbl_img_path,
+                self._dependencies_dir / "block_pkg_fsbl.md5",
+                self._dependencies_dir / "block_pkg_pmu_fw.md5",
+                self._dependencies_dir / "block_pkg_vivado.md5",
+                self._dependencies_dir / "block_pkg_atf.md5",
+                self._dependencies_dir / "block_pkg_devicetree.md5",
+                self._dependencies_dir / "block_pkg_ssbl.md5",
                 self._output_dir / "image.ub",
                 self._output_dir / "boot.scr",
             ],
@@ -413,7 +413,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                     self._output_dir / "BOOT.BIN",
                     self._output_dir / "boot.scr",
                     self._output_dir / "image.ub",
-                    self._dependencies_dir / "rootfs",
+                    self._dependencies_dir / "block_pkg_rootfs.md5",
                 ],
                 out_timestamp=self._build_log.get_logged_timestamp(
                     identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
