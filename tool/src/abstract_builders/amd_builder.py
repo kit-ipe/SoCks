@@ -169,9 +169,9 @@ class AMD_Builder(Builder):
         md5_new_file = hashlib.md5(new_xsa_files[0].read_bytes()).hexdigest()
 
         imported_xsa_files = list(self._xsa_dir.glob("*.xsa"))
-        # Check if there is more than one XSA file in the directory to which the xsa is extracted
+        # Check if there is more than one XSA file in the target directory
         if len(imported_xsa_files) > 1:
-            pretty_print.print_error(f'More than one XSA archive in {self._xsa_dir}/')
+            pretty_print.print_error(f"More than one XSA archive in {self._xsa_dir}/")
             sys.exit(1)
         # Calculate md5 of the file that has already been imported, if any
         md5_imported_file = 0
