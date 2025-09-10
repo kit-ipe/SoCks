@@ -71,13 +71,13 @@ $ python3.10 -m venv ~/py_envs/socks
 
 In the python environment run:
 ```
-$ cd <THIS REPO>/tool
+$ cd <THIS REPO>
 $ pip install -U .
 ```
 
 For a development installation use the following commands instead:
 ```
-$ cd <THIS REPO>/tool
+$ cd <THIS REPO>
 $ pip install -e .
 ```
 
@@ -1075,7 +1075,7 @@ The main downside of full controll is that setting up a new SoCks project from s
 
 SoCks uses a modular approach to build SoC images. To achieve this, the image is partitioned into sections, called blocks. The following image shows the partitioning of an AMD ZynqMP image:
 
-![Complete ZynqMP Image](../doc/diagrams/Complete_ZynqMP_image.drawio.png)
+![Complete ZynqMP Image](doc/diagrams/Complete_ZynqMP_image.drawio.png)
 
 The blocks `RAM File System` and `RAM File System` are slightly grayed out, because they are optional. An image can utilize only a RAMFS, only a RootFS or both. But at least one of the two components is always required.
 
@@ -1083,7 +1083,7 @@ Each block represents a separate sub-project that can be regarded as largely ind
 
 To unlock the full potential of the modular approach of SoCks, it must be possible to exchange how each block is build. For this purpose, SoCks uses so calles builders. A builder is implemented as a python class and defines how a block is build, which tools are used in the process, which sources are utilized, and which output products are generated. At build time, exactly one builder must be assigned to each block. The following image shows the selection of a builder for the RootFS block:
 
-![Complete ZynqMP Image](../doc/diagrams/Block_plus_builder.drawio.png)
+![Complete ZynqMP Image](doc/diagrams/Block_plus_builder.drawio.png)
 
 The AlmaLinux builder that is selected in the image uses qemu and dnf to build the file system for the target platform. Furthermore, it expects a certain set of configuration files that specify for instance which repos should be used, which additional packages should be installed on top of the base installation, which additional files should be add, which systemd services should be enabled, etc.. If one wants to use a Yocto or PetaLinux file system instead, there is the yocto builder that can be used instead. This builder requires a entirely different set of repos, build tools and configuration files, but the output of both builders will the exchangable. Both of them generate an archive that contains the compressed root file system, so they are both valid root file system builders.
 
@@ -1091,7 +1091,7 @@ The pictograms of the builds show which version of the block they build. The Alm
 
 The following image shows a full ZynqMP image with builders assigned to all blocks.
 
-![Complete ZynqMP Image](../doc/diagrams/Complete_ZynqMP_image_with_builders.drawio.png)
+![Complete ZynqMP Image](doc/diagrams/Complete_ZynqMP_image_with_builders.drawio.png)
 
 The configuration of a SoCks project is done in a single file: `project.yml`. This file contains global settings that apply to all blocks, like the version of the Vivado toolset or the containerization tool to be use, but it also contains a section for every block that is needed for the SoC image it describes. The section of a block contains for instance which builder is to be used to build this block.
 
@@ -1099,7 +1099,7 @@ The configuration of a SoCks project is done in a single file: `project.yml`. Th
 
 Builders are a core component of the SoCks framework. They bundle the mechanisms needed to build a specific version of a block in a python class and therefore allow to automate the process. All of them follow the same overarching pattern, which is presented below:
 
-![Complete ZynqMP Image](../doc/diagrams/SoCks_block_build.drawio.png )
+![Complete ZynqMP Image](doc/diagrams/SoCks_block_build.drawio.png )
 
 The builders of the blocks however have only access to the global information and to the information that is dedicated to the block they are building. 
 
