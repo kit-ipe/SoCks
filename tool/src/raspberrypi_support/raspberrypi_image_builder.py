@@ -332,8 +332,8 @@ class RaspberryPi_Image_Builder(Builder):
                     self._output_dir / "fixup4.dat",
                     self._output_dir / "uboot.bin",
                     self._output_dir / "boot.scr",
-                    self._dependencies_dir / "kernel",
-                    self._dependencies_dir / "rootfs",
+                    self._dependencies_dir / "block_pkg_kernel.md5",
+                    self._dependencies_dir / "block_pkg_rootfs.md5",
                 ],
                 out_timestamp=self._build_log.get_logged_timestamp(
                     identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
