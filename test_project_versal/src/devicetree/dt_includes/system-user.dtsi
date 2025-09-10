@@ -1,6 +1,0 @@
-/ {
-	chosen {
-		/* Bootargs for SD boot. The bootargs for PXE boot are fetched from the PXE config file on the TFTP server. */
-		bootargs = "console=ttyAMA0 earlycon=pl011,mmio32,0xFF000000,115200n8 root=/dev/mmcblk0p2 rw rootwait";
-	};
-};

@@ -1,8 +1,0 @@
-# locmap-testing.repo
-
-[locmap-testing]
-name=locmap [testing]
-baseurl=http://linuxsoft.cern.ch/internal/repos/potd8el-testing/$basearch/os
-enabled=0
-gpgcheck=True
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-kojiv2

@@ -1,7 +1,0 @@
-# smash.repo
-
-[smash]
-name=SMASH software repository (EL$releasever)
-baseurl=http://www.cern.ch/serenity/sw/release/smash/1.0/repos/el$releasever/$basearch/gcc
-enabled=1
-gpgcheck=0
