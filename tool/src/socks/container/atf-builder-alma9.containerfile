@@ -11,9 +11,9 @@ RUN dnf -y install 'dnf-command(config-manager)' && \
 
 # Install cross compiler
 RUN dnf -y install wget && \
-    wget -P /app/tools/ https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-aarch64-none-elf.tar.xz && \
-    tar -xJf /app/tools/gcc-arm-11.2-2022.02-x86_64-aarch64-none-elf.tar.xz -C /app/tools
-ENV PATH="$PATH:/app/tools/gcc-arm-11.2-2022.02-x86_64-aarch64-none-elf/bin"
+    wget -P /app/tools https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-aarch64-aarch64-none-elf.tar.xz && \
+    tar -xJf /app/tools/gcc-arm-11.2-2022.02-aarch64-aarch64-none-elf.tar.xz -C /app/tools
+ENV PATH="$PATH:/app/tools/gcc-arm-11.2-2022.02-aarch64-aarch64-none-elf/bin"
 
 # Install goso as shown here: https://github.com/tianon/gosu/blob/master/INSTALL.md
 COPY --from=gosu /gosu /usr/local/bin/
