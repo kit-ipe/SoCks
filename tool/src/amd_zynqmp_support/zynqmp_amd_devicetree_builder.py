@@ -224,7 +224,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
 
         # Check whether the devicetree needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._dt_incl_dir, self._base_work_dir, self._dependencies_dir / "vivado"],
+            src_search_list=[self._dt_incl_dir, self._base_work_dir, self._dependencies_dir / "block_pkg_vivado.md5"],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
