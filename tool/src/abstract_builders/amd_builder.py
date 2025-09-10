@@ -2,6 +2,7 @@ import os
 import pathlib
 import shutil
 import sys
+import hashlib
 import inspect
 
 import socks.pretty_print as pretty_print
@@ -159,32 +160,37 @@ class AMD_Builder(Builder):
             None
         """
 
-        xsa_files = list((self._dependencies_dir / "vivado").glob("*.xsa"))
-
+        new_xsa_files = list((self._dependencies_dir / "vivado").glob("*.xsa"))
         # Check if there is more than one XSA file in the Vivado block package
-        if len(xsa_files) != 1:
+        if len(new_xsa_files) != 1:
             pretty_print.print_error(f'Not exactly one XSA archive in {self._dependencies_dir / "vivado"}/')
             sys.exit(1)
+        # Calculate md5 of the file to be imported
+        md5_new_file = hashlib.md5(new_xsa_files[0].read_bytes()).hexdigest()
+
+        imported_xsa_files = list(self._xsa_dir.glob("*.xsa"))
+        # Check if there is more than one XSA file in the directory to which the xsa is extracted
+        if len(imported_xsa_files) > 1:
+            pretty_print.print_error(f'More than one XSA archive in {self._xsa_dir}/')
+            sys.exit(1)
+        # Calculate md5 of the file that has already been imported, if any
+        md5_imported_file = 0
+        if imported_xsa_files:
+            md5_imported_file = hashlib.md5(imported_xsa_files[0].read_bytes()).hexdigest()
 
         # Check whether the xsa archive needs to be imported
-        if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[xsa_files[0]],
-            out_timestamp=self._build_log.get_logged_timestamp(
-                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
-            ),
-        ):
+        if md5_new_file == md5_imported_file:
             pretty_print.print_build("No need to import XSA archive. No altered source files detected...")
             return
 
-        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
-            # Clean source xsa directory
-            self.clean_source_xsa()
-            self._xsa_dir.mkdir(parents=True)
+        # Clean source xsa directory
+        self.clean_source_xsa()
+        self._xsa_dir.mkdir(parents=True)
 
-            pretty_print.print_build("Importing XSA archive...")
+        pretty_print.print_build("Importing XSA archive...")
 
-            # Copy XSA archive
-            shutil.copy(xsa_files[0], self._xsa_dir / xsa_files[0].name)
+        # Copy XSA archive
+        shutil.copy(xsa_files[0], self._xsa_dir / xsa_files[0].name)
 
     def clean_source_xsa(self):
         """
