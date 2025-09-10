@@ -190,7 +190,7 @@ class AMD_Builder(Builder):
         pretty_print.print_build("Importing XSA archive...")
 
         # Copy XSA archive
-        shutil.copy(xsa_files[0], self._xsa_dir / xsa_files[0].name)
+        shutil.copy(new_xsa_files[0], self._xsa_dir / new_xsa_files[0].name)
 
     def clean_source_xsa(self):
         """
