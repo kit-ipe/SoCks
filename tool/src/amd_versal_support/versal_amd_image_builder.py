@@ -233,12 +233,12 @@ class Versal_AMD_Image_Builder(AMD_Builder):
         if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[
                 self._resources_dir / "bootgen.bif.tpl",
-                self._plm_img_path,
-                self._psmfw_img_path,
-                self._vivado_pdi_file_path,
-                self._atf_img_path,
-                self._dt_img_path,
-                self._ssbl_img_path,
+                self._dependencies_dir / "block_pkg_plm.md5",
+                self._dependencies_dir / "block_pkg_psm_fw.md5",
+                self._dependencies_dir / "block_pkg_vivado.md5",
+                self._dependencies_dir / "block_pkg_atf.md5",
+                self._dependencies_dir / "block_pkg_devicetree.md5",
+                self._dependencies_dir / "block_pkg_ssbl.md5",
                 self._output_dir / "image.ub",
                 self._output_dir / "boot.scr",
             ],
