@@ -31,8 +31,6 @@ raspberrypi_support = ["templates/**/*"]
 [tool.setuptools_scm]
 version_scheme = "no-guess-dev"
 local_scheme = "node-and-date"
-relative_to = "__file__"
-root = ".."
 
 [tool.black]
 line-length = 120

@@ -1,4 +1,4 @@
-# SoCks (SoC Blocks)
+# SoCks
 
 SoCks (short for SoC blocks) is a lightweight and modular framework to build complete embedded Linux images for SoC devices. Currently, the framework focuses on AMD Xilinx ZynqMP devices, but also offers experimental support for AMD Xilinx Versal and Raspberry Pi 4B and 5 devices.
 
