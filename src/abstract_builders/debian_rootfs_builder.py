@@ -8,12 +8,11 @@ import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
 from socks.file_downloader import File_Downloader
 from abstract_builders.file_system_builder import File_System_Builder
-from amd_zynqmp_support.zynqmp_almalinux_rootfs_model import ZynqMP_AlmaLinux_RootFS_Model
 
 
-class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
+class Debian_RootFS_Builder(File_System_Builder):
     """
-    AlmaLinux root file system builder class
+    Debian root file system builder class
     """
 
     def __init__(
@@ -21,9 +20,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
         project_cfg: dict,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
+        model_class: type[object],
         block_id: str = "rootfs",
-        block_description: str = "Build an AlmaLinux root file system",
-        model_class: type[object] = ZynqMP_AlmaLinux_RootFS_Model,
+        block_description: str = "Build a Debian root file system",
     ):
 
         super().__init__(
@@ -35,11 +34,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             model_class=model_class,
         )
 
-        self._target_arch = "aarch64"
-
-        # Project files
-        # dnf configuration file to be used to build the file system for the target architecture
-        self._dnf_conf_file = self._resources_dir / "dnf_build_time.conf"
+        self._target_arch = "arm64"
 
     @property
     def _block_deps(self):
@@ -127,10 +122,6 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             )
         return block_cmds
 
-    @property
-    def _file_system_name(self):
-        return f"almalinux{self.block_cfg.project.release}_zynqmp_{self.project_cfg.project.name}"
-
     def build_base_file_system(self):
         """
         Builds the base root file system.
@@ -146,13 +137,12 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
         """
 
         # Check whether the base root file system needs to be built
-        if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._dnf_conf_file],
-            out_timestamp=self._build_log.get_logged_timestamp(
-                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
-            ),
-        ) and not self._build_validator.check_rebuild_bc_config(
-            keys=[["blocks", self.block_id, "project", "release"], ["project", "name"]]
+        if not self._build_validator.check_rebuild_bc_config(
+            keys=[
+                ["blocks", self.block_id, "project", "release"],
+                ["blocks", self.block_id, "project", "mirror"],
+                ["project", "name"],
+            ]
         ):
             pretty_print.print_build(
                 "No need to rebuild the base root file system. No altered source files detected..."
@@ -160,28 +150,20 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self.clean_work()
             self._work_dir.mkdir(parents=True, exist_ok=True)
-
-            if not self._dnf_conf_file.is_file():
-                pretty_print.print_error(f"The following dnf configuration file is required: {self._dnf_conf_file}")
-                sys.exit(1)
 
             pretty_print.print_build("Building the base root file system...")
 
-            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
             base_rootfs_build_commands = [
                 # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
-                # Clean all cache files generated from repository metadata
-                dnf_base_command + "clean all",
-                # Update all the installed packages
-                dnf_base_command + "update",
-                'printf "\nInstall the base os via dnf group install...\n\n"',
+                'printf "\nInstall the base os via debootstrap...\n\n"',
                 # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
-                dnf_base_command + 'groupinstall --with-optional "Minimal Install"',
+                f"debootstrap --arch={self._target_arch} {self.block_cfg.project.release} {self._build_dir} {self.block_cfg.project.mirror}",
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
@@ -190,6 +172,9 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             self.container_executor.exec_sh_commands(
                 commands=base_rootfs_build_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                custom_params=(
+                    ["--cap-add=SYS_ADMIN"] if self.project_cfg.external_tools.container_tool == "podman" else []
+                ),  # Not sure why podman needs the SYS_ADMIN capability, but without it, debootstrap complains that the file system would be mounted with the 'noexec' option
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "build_base.log",
@@ -219,12 +204,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
 
         self._run_mod_script(
             mod_script=self._resources_dir / "mod_base_install.sh",
-            mod_script_params=[
-                self._target_arch,
-                self.block_cfg.project.release,
-                str(self._dnf_conf_file),
-                str(self._build_dir),
-            ],
+            mod_script_params=[self._target_arch, self.block_cfg.project.release, str(self._build_dir)],
         )
 
     def run_concluding_mod_script(self):
@@ -243,17 +223,12 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
 
         self._run_mod_script(
             mod_script=self._resources_dir / "conclude_install.sh",
-            mod_script_params=[
-                self._target_arch,
-                self.block_cfg.project.release,
-                str(self._dnf_conf_file),
-                str(self._build_dir),
-            ],
+            mod_script_params=[self._target_arch, self.block_cfg.project.release, str(self._build_dir)],
         )
 
     def add_addl_packages(self):
         """
-        Installs additional user defined rpm packages.
+        Installs additional user defined deb packages.
 
         Args:
             None
@@ -273,7 +248,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
         # Check whether extra packages are provided
         if not self.block_cfg.project.addl_pkgs:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> addl_pkgs' not specified. No additional rpm packages will be installed."
+                f"'{self.block_id} -> project -> addl_pkgs' not specified. No additional deb packages will be installed."
             )
             return
 
@@ -289,23 +264,17 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
-            if not self._dnf_conf_file.is_file():
-                pretty_print.print_error(f"The following dnf configuration file is required: {self._dnf_conf_file}")
-                sys.exit(1)
-
             pretty_print.print_build("Installing additional packages...")
 
-            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
+            addl_pkgs_str = f"apt update && apt install -y " + " ".join(self.block_cfg.project.addl_pkgs)
             add_packages_commands = [
                 # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
-                # Update all the installed packages
-                dnf_base_command + "update",
                 # Installing user defined packages
-                dnf_base_command + "install " + " ".join(self.block_cfg.project.addl_pkgs),
+                f'chroot {self._build_dir} /bin/bash -c "{addl_pkgs_str}"',
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
@@ -313,7 +282,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
-                dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                dirs_to_mount=[(self._work_dir, "Z")],
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_packages.log",
@@ -322,7 +291,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
 
     def add_addl_ext_packages(self):
         """
-        Installs additional user defined RPM packages from external *.rpm files.
+        Installs additional user defined deb packages from external *.deb files.
 
         Args:
             None
@@ -343,7 +312,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
         if not self.block_cfg.project.addl_ext_pkgs:
             pretty_print.print_info(
                 f"'{self.block_id} -> project -> addl_ext_pkgs' not specified. "
-                "No additional RPM packages will be installed from external *.rpm files."
+                "No additional deb packages will be installed from external *.deb files."
             )
             return
 
@@ -356,12 +325,12 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             keys=[["blocks", self.block_id, "project", "addl_ext_pkgs"]]
         ):
             pretty_print.print_build(
-                "No need to install additional packages from external *.rpm files. No altered source files detected..."
+                "No need to install additional packages from external *.deb files. No altered source files detected..."
             )
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
-            pretty_print.print_build("Installing additional packages from external *.rpm files...")
+            pretty_print.print_build("Installing additional packages from external *.deb files...")
 
             # Clean package directory
             ext_pkgs_dir = self._work_dir / "external_packages"
@@ -371,10 +340,10 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             # Collect package files
             ext_pkgs_to_install = []
             for uri in self.block_cfg.project.addl_ext_pkgs:
-                if uri.rpartition(".")[2] != "rpm":
-                    # The provided file is not an RPM package
+                if uri.rpartition(".")[2] != "deb":
+                    # The provided file is not a Debian package
                     pretty_print.print_error(
-                        f"The file specified in '{uri}' in '{self.block_id} -> project -> addl_ext_pkgs' is not an RPM package"
+                        f"The file specified in '{uri}' in '{self.block_id} -> project -> addl_ext_pkgs' is not a Debian package"
                     )
                     sys.exit(1)
                 if urllib.parse.urlparse(uri).scheme == "file":
@@ -395,7 +364,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                     local_pkg_file = local_pkg_path.name
                 else:
                     raise ValueError(
-                        "The following string is not a valid reference to an RPM package file: "
+                        "The following string is not a valid reference to a Debian package file: "
                         f"{uri}. Only URI schemes 'https', 'http', and 'file' are supported."
                     )
 
@@ -403,21 +372,20 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                 ext_pkgs_to_install.append(local_pkg_file)
 
             rel_pkg_paths = ["./" + pkg for pkg in ext_pkgs_to_install]
-            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
+            addl_pkgs_str = f"apt update && cd /tmp/{ext_pkgs_dir.stem} && apt install -y " + " ".join(rel_pkg_paths)
             add_packages_commands = [
                 # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
-                # Update all the installed packages
-                dnf_base_command + "update",
-                # Movo to directory with local packages
-                f"cd {ext_pkgs_dir}",
+                # Move external packages to the build dircetory to make them available in chroot
+                f"rm -rf {self._build_dir}/tmp/{ext_pkgs_dir.stem}",
+                f"mv {ext_pkgs_dir} {self._build_dir}/tmp/",
                 # Installing user defined external packages
-                dnf_base_command + "install " + " ".join(rel_pkg_paths),
-                # Movo back to the previous directory
-                "cd -",
+                f'chroot {self._build_dir} /bin/bash -c "{addl_pkgs_str}"',
+                # Remove external packages from tmp dir
+                f"rm -rf {self._build_dir}/tmp/{ext_pkgs_dir.stem}",
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
@@ -425,7 +393,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
-                dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                dirs_to_mount=[(self._work_dir, "Z")],
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_external_packages.log",
@@ -501,7 +469,7 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
                     add_user_str = (
                         add_user_str + f"if id {user.name} &>/dev/null; then userdel -r {user.name}; fi && "
                     )  # Delete user account if it already exists
-                    add_user_str = add_user_str + f"useradd -m {user.name} && "
+                    add_user_str = add_user_str + f"useradd -s /bin/bash -m {user.name} && "
                 for group in user.groups:
                     add_user_str = add_user_str + f"usermod -a -G {group} {user.name} && "
                 # Escape all $ symbols in the hash. I know this is ugly, but this is the only way I have found
@@ -558,4 +526,4 @@ class ZynqMP_AlmaLinux_RootFS_Builder(File_System_Builder):
         else:
             archive_name = self._file_system_name
 
-        self._build_archive(archive_name=archive_name, file_extension="tar.xz", tar_compress_param="-I pxz")
+        self._build_archive(archive_name=archive_name, file_extension="tar.xz", tar_compress_param="-I pixz")
