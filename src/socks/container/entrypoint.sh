@@ -43,6 +43,19 @@ elif [ "$ID" = "almalinux" ]; then
         # If the home directory does not yet exist, adduser can create it
         getent passwd $CONTAINER_USER || adduser --uid $CONTAINER_USER_ID --gid $CONTAINER_USER_ID --base-dir "/home" -G wheel $CONTAINER_USER
     fi
+elif [ "$ID" = "alpine" ]; then
+    # Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
+    getent group $CONTAINER_USER || addgroup -g $CONTAINER_USER_ID $CONTAINER_USER
+    if [ -d "/home/$CONTAINER_USER" ]; then
+        # If the home directory does already exist, e.g. because something is mounted here, it must be initialized manually
+        getent passwd $CONTAINER_USER || adduser -u $CONTAINER_USER_ID -G $CONTAINER_USER -H -D $CONTAINER_USER
+        addgroup $CONTAINER_USER wheel
+        chown $CONTAINER_USER:$CONTAINER_USER /home/$CONTAINER_USER
+    else
+        # If the home directory does not yet exist, adduser can create it
+        getent passwd $CONTAINER_USER || adduser -u $CONTAINER_USER_ID -G $CONTAINER_USER -D $CONTAINER_USER
+        addgroup $CONTAINER_USER wheel
+    fi
 else
     echo "Error in entrypoint.sh. This is neither a Debian nor an AlmaLinux system. It is $ID."
     exit 1
