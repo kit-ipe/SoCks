@@ -14,6 +14,9 @@ SoCks (short for SoC blocks) is a lightweight and modular framework to build com
   - [ZynqMP_AlmaLinux_RootFS_Builder](#zynqmp_almalinux_rootfs_builder)
     - [Block Configuration](#block-configuration)
     - [External Source Files](#external-source-files)
+  - [ZynqMP_AlpineLinux_RootFS_Builder](#zynqmp_alpinelinux_rootfs_builder)
+    - [Block Configuration](#block-configuration)
+    - [External Source Files](#external-source-files)
   - [ZynqMP_AMD_ATF_Builder](#zynqmp_amd_atf_builder)
     - [Block Configuration](#block-configuration)
     - [External Source Files](#external-source-files)
@@ -175,7 +178,7 @@ The project sources of some blocks can be configured using menuconfig. Examples 
 
 ### ZynqMP_AlmaLinux_RootFS_Builder
 
-This builder is designed to build an AlmaLinux 8 or 9 root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with a custom shell script.
+sThis builder is designed to build an AlmaLinux 8 or 9 root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
 
 #### Block Configuration
 
@@ -256,7 +259,8 @@ Key:
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of AlmaLinux to be built. The following images are available for this block:
-  - `petalinux-rootfs-builder-alma8`
+  - `alma8-rootfs-builder-alma8`
+  - `alma9-rootfs-builder-alma9`
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
 
 #### External Source Files
@@ -264,6 +268,97 @@ Key:
 SoCks requires external files in order to build this block. The following template packages are available:
 - **AlmaLinux8**: Contains template files to build an AlmaLinux 8 root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional file `conclude_install.sh` allows to finalize the creation of the root file system. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer. The file `dnf_build_time.conf` is the dnf configuration used at build time. This file must contain all repositories that are required to build the root file system including all package specified.
 - **AlmaLinux9**: Contains template files to build an AlmaLinux 9 root file system. The files and folders in this package are equivalent to the ones in the *AlmaLinux8* package.
+
+### ZynqMP_AlpineLinux_RootFS_Builder
+
+This builder is designed to build an Alpine Linux root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
+
+#### Block Configuration
+
+The default configuration `project-zynqmp-default` does not contain any configuration for this block. The entire configuration must be carried out in the project configuration file.
+
+Configuration example:
+```
+rootfs:
+  source: "build"
+  builder: "ZynqMP_AlpineLinux_RootFS_Builder"
+  project:
+    repositories:
+      - "https://dl-cdn.alpinelinux.org/alpine/v3.22/main"
+      - "https://dl-cdn.alpinelinux.org/alpine/v3.22/community"
+    addl_pkgs: ["sudo", "nano", "vim"]
+    addl_ext_pkgs:
+         - "http://dl-cdn.alpinelinux.org/alpine/v3.22/main/aarch64/openssh-10.0_p1-r7.apk"
+         - "file:///home/marvin/Projects/Build_System_Tests/SoCks/test_project_zynqmp/src/rootfs/resources/additional_packages/rsync-3.4.1-r0.apk"
+    build_time_fs_layer:
+      - src_block: "vivado"
+        src_name: "*.bit"
+        dest_path: "/lib/firmware"
+        dest_name: "serenity_s1_k26_pl.bit"
+        dest_owner_group: "root:root"
+        dest_permissions: "u=rw,go=r"
+      - src_block: "devicetree"
+        src_name: "*.dtbo"
+        dest_path: "/etc/dt-overlays"
+        dest_owner_group: "root:root"
+        dest_permissions: "u=rwX,go=rX"
+      - src_block: "vivado"
+        src_name: "addrtab"
+        dest_path: "/etc/serenity"
+        dest_name: "zynq-addrtab"
+    users:
+      - name: "root"
+        pw_hash: "$6$HpwMBfEUUhoCu6N6$VAioOZmFo4gKuoxm9EJaJAHrD7O65FzllVnspKMaDoMV0sEIiU2y22mlGVsbkOuxW5Tg3VPlqpF80jZ/c2WO6/" # alpine
+      - name: "kria"
+        pw_hash: "$6$G5Sswo/P0ILiqfS1$zqLYE2HP22Eg2WeTAQNJCrItEbs1utYN6TLF6nKbaoRHuyEUd8peeWPQ59Jx4jVpAto6brgV9FxA3veBYUg8.1" # regular.user
+        groups: ["wheel", "dialout"]
+        ssh_key: "id_ed25519.pub"
+    import_src: "https://serenity.web.cern.ch/.../alpine_linux_rootfs.tar.gz"
+    add_build_info: false
+    dependencies:
+      kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
+      devicetree: "temp/devicetree/output/bp_devicetree*.tar.gz"
+      vivado: "temp/vivado/output/bp_vivado*.tar.gz"
+  container:
+    image: "alpine-rootfs-builder-alpine3.22"
+    tag: "socks"
+```
+
+Key:
+- **source**: The source of the block. Options are:
+  - **build**: Build the block locally
+  - **import**: Import an already built block package
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_AlpineLinux_RootFS_Builder`.
+- **project -> repositories**: A list of repositories to be used by the apk package manager
+- **project -> addl_pkgs [optional]**: A list of additional apk packages to be installed from a repo into the root file system
+- **project -> addl_ext_pkgs [optional]**: A list of additional apk packages to be installed from external \*.apk files into the root file system. List entries must be strings in URI format. Supported are:
+  - The URL to a packages online. The string must start with `https://` or `http://`.
+  - The file URI of a local packages. The string must start with `file://`. Local packages should not be included in the Git repo of the SoCks project. It is recommended to use absolute paths.
+- **project -> build_time_fs_layer [optional]**: A list of dicts describing files and folders generated by other blocks that are to be added to the root file system.
+- **project -> build_time_fs_layer -> [N] -> src_block**: The ID of the block that generates this file or folder.
+- **project -> build_time_fs_layer -> [N] -> src_name**: The name of the file or folder in the block package of the source block.
+- **project -> build_time_fs_layer -> [N] -> dest_path**: The target path in the root file system where this file or folder is to be placed.
+- **project -> build_time_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
+- **project -> build_time_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
+- **project -> build_time_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
+- **project -> users**: A list of dicts describing users to be added to the root file system.
+- **project -> users -> [N] -> name**: The name of the user.
+- **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -6`.
+- **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
+- **project -> users -> [N] -> ssh_key**: A public SSH key on the host system that is copied to the file system to enable SSH access without using a password.
+- **project -> import_src [optional]**: The pre-built block package to be imported for this block, specified in URI format. This information is only used if the value of *source* is *import*. Options are:
+  - The URL to a file online. In this case the string must start with `https://` or `http://`.
+  - The file URI of a local file. In this case the string must start with `file://`.
+- **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
+- **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
+- **container -> image**: The container image to be used for building. The selection should be compatible with the version of Alpine Linux to be built. The following images are available for this block:
+  - `alpine-rootfs-builder-alpine3.22`
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+
+#### External Source Files
+
+SoCks requires external files in order to build this block. The following template packages are available:
+- **universal**: Contains universal template files to build an Alpine Linux root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional file `conclude_install.sh` allows to finalize the creation of the root file system. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer.
 
 ### ZynqMP_AMD_ATF_Builder
 
@@ -973,7 +1068,7 @@ SoCks requires external files in order to build this block. The following templa
 
 ### ZynqMP_Debian_RootFS_Builder
 
-This builder is designed to build a Debian root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with a custom shell script.
+This builder is designed to build a Debian root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
 
 #### Block Configuration
 
@@ -1055,6 +1150,7 @@ Key:
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of Debian to be built. The following images are available for this block:
+  - `debian-rootfs-builder-alma9`
   - `debian-rootfs-builder-debian12`
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
 
