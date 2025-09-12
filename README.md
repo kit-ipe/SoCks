@@ -178,7 +178,7 @@ The project sources of some blocks can be configured using menuconfig. Examples 
 
 ### ZynqMP_AlmaLinux_RootFS_Builder
 
-sThis builder is designed to build an AlmaLinux 8 or 9 root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
+This builder is designed to build an AlmaLinux 8 or 9 root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
 
 #### Block Configuration
 
