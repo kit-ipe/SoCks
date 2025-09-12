@@ -1058,6 +1058,7 @@ Key:
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of Debian to be built. The following images are available for this block:
+  - `debian-rootfs-builder-alma9`
   - `debian-rootfs-builder-debian12`
   - `debian-rootfs-builder-debian13`
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
@@ -1151,6 +1152,7 @@ Key:
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of Ubuntu to be built. The following images are available for this block:
+  - `debian-rootfs-builder-alma9`
   - `debian-rootfs-builder-debian12`
   - `debian-rootfs-builder-debian13`
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
