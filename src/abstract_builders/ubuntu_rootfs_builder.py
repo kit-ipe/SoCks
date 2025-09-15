@@ -1,12 +1,11 @@
 import pathlib
 
 from abstract_builders.debian_rootfs_builder import Debian_RootFS_Builder
-from amd_zynqmp_support.zynqmp_debian_rootfs_model import ZynqMP_Debian_RootFS_Model
 
 
-class ZynqMP_Debian_RootFS_Builder(Debian_RootFS_Builder):
+class Ubuntu_RootFS_Builder(Debian_RootFS_Builder):
     """
-    Debian root file system builder class
+    Ubuntu root file system builder class
     """
 
     def __init__(
@@ -14,9 +13,9 @@ class ZynqMP_Debian_RootFS_Builder(Debian_RootFS_Builder):
         project_cfg: dict,
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
+        model_class: type[object],
         block_id: str = "rootfs",
-        block_description: str = "Build a Debian root file system",
-        model_class: type[object] = ZynqMP_Debian_RootFS_Model,
+        block_description: str = "Build a Ubuntu root file system",
     ):
 
         super().__init__(
@@ -27,3 +26,7 @@ class ZynqMP_Debian_RootFS_Builder(Debian_RootFS_Builder):
             block_description=block_description,
             model_class=model_class,
         )
+
+    @property
+    def _file_system_name(self):
+        return f"ubuntu_{self.block_cfg.project.release}_{self.project_cfg.project.type.lower()}_{self.project_cfg.project.name}"

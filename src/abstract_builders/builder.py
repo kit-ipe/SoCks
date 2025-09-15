@@ -354,7 +354,20 @@ class Builder(ABC):
             == 0
         ):
             # The project directory is a git directory
-            results = self.shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "rev-parse", "HEAD"])
+            results = self.shell_executor.get_sh_results(
+                command=["git", "-C", str(self._project_dir), "rev-parse", "HEAD"], check=False
+            )
+            if results.returncode != 0:
+                if results.stdout:
+                    print(f"\n{results.stdout}")
+                if results.stderr:
+                    print(f"\n{results.stderr}")
+                pretty_print.print_error(
+                    "Unable to compose build information (see git output above). "
+                    "Ensure that the following repo contains at least one commit, or disable add_build_info "
+                    f"in the project configuration: {self._project_dir}/"
+                )
+                sys.exit(1)
             build_info = build_info + f"GIT_COMMIT_SHA: {results.stdout.splitlines()[0]}\n"
 
             results = self.shell_executor.get_sh_results(
