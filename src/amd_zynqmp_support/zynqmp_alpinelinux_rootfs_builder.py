@@ -125,7 +125,7 @@ class ZynqMP_AlpineLinux_RootFS_Builder(File_System_Builder):
 
     @property
     def _file_system_name(self):
-        return f"alpine_linux_zynqmp_{self.project_cfg.project.name}"
+        return f"alpine_linux_{self.project_cfg.project.type.lower()}_{self.project_cfg.project.name}"
 
     def build_base_file_system(self):
         """
