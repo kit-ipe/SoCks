@@ -1,11 +1,10 @@
 import pathlib
 
-import socks.pretty_print as pretty_print
-from amd_zynqmp_support.zynqmp_almalinux_rootfs_builder import ZynqMP_AlmaLinux_RootFS_Builder
+from abstract_builders.almalinux_rootfs_builder import AlmaLinux_RootFS_Builder
 from raspberrypi_support.raspberrypi_almalinux_rootfs_model import RaspberryPi_AlmaLinux_RootFS_Model
 
 
-class RaspberryPi_AlmaLinux_RootFS_Builder(ZynqMP_AlmaLinux_RootFS_Builder):
+class RaspberryPi_AlmaLinux_RootFS_Builder(AlmaLinux_RootFS_Builder):
     """
     AlmaLinux root file system builder class
     """
@@ -16,7 +15,7 @@ class RaspberryPi_AlmaLinux_RootFS_Builder(ZynqMP_AlmaLinux_RootFS_Builder):
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "rootfs",
-        block_description: str = "Build a AlmaLinux root file system",
+        block_description: str = "Build an AlmaLinux root file system",
         model_class: type[object] = RaspberryPi_AlmaLinux_RootFS_Model,
     ):
 
@@ -40,7 +39,3 @@ class RaspberryPi_AlmaLinux_RootFS_Builder(ZynqMP_AlmaLinux_RootFS_Builder):
         # they are not listed in the project configuration.
         block_deps = {"kernel": [".*"]}
         return block_deps
-
-    @property
-    def _file_system_name(self):
-        return f"almalinux{self.block_cfg.project.release}_raspberry_pi_{self.project_cfg.project.name}"
