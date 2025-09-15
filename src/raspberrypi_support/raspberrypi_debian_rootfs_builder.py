@@ -1,11 +1,10 @@
 import pathlib
 
-import socks.pretty_print as pretty_print
-from amd_zynqmp_support.zynqmp_debian_rootfs_builder import ZynqMP_Debian_RootFS_Builder
+from abstract_builders.debian_rootfs_builder import Debian_RootFS_Builder
 from raspberrypi_support.raspberrypi_debian_rootfs_model import RaspberryPi_Debian_RootFS_Model
 
 
-class RaspberryPi_Debian_RootFS_Builder(ZynqMP_Debian_RootFS_Builder):
+class RaspberryPi_Debian_RootFS_Builder(Debian_RootFS_Builder):
     """
     Debian root file system builder class
     """
@@ -40,7 +39,3 @@ class RaspberryPi_Debian_RootFS_Builder(ZynqMP_Debian_RootFS_Builder):
         # they are not listed in the project configuration.
         block_deps = {"kernel": [".*"]}
         return block_deps
-
-    @property
-    def _file_system_name(self):
-        return f"debian_{self.block_cfg.project.release}_raspberry_pi_{self.project_cfg.project.name}"
