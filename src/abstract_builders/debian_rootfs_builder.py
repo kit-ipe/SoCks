@@ -122,6 +122,10 @@ class Debian_RootFS_Builder(File_System_Builder):
             )
         return block_cmds
 
+    @property
+    def _file_system_name(self):
+        return f"debian_{self.block_cfg.project.release}_{self.project_cfg.project.type.lower()}_{self.project_cfg.project.name}"
+
     def build_base_file_system(self):
         """
         Builds the base root file system.

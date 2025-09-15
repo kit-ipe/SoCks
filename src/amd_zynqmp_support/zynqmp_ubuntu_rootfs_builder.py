@@ -27,7 +27,3 @@ class ZynqMP_Ubuntu_RootFS_Builder(Ubuntu_RootFS_Builder):
             block_description=block_description,
             model_class=model_class,
         )
-
-    @property
-    def _file_system_name(self):
-        return f"ubuntu_{self.block_cfg.project.release}_zynqmp_{self.project_cfg.project.name}"

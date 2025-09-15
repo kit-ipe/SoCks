@@ -26,3 +26,7 @@ class Ubuntu_RootFS_Builder(Debian_RootFS_Builder):
             block_description=block_description,
             model_class=model_class,
         )
+
+    @property
+    def _file_system_name(self):
+        return f"ubuntu_{self.block_cfg.project.release}_{self.project_cfg.project.type.lower()}_{self.project_cfg.project.name}"

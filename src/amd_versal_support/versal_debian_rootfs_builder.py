@@ -42,7 +42,3 @@ class Versal_Debian_RootFS_Builder(Debian_RootFS_Builder):
         # they are not listed in the project configuration.
         block_deps = {"kernel": [".*"]}
         return block_deps
-
-    @property
-    def _file_system_name(self):
-        return f"debian_{self.block_cfg.project.release}_versal_{self.project_cfg.project.name}"
