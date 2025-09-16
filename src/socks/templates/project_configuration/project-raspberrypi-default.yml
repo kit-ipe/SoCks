@@ -10,7 +10,7 @@ blocks:
     project:
       build_srcs:
         source: "https://github.com/raspberrypi/linux.git"
-        branch: "rpi-5.15.y"
+        branch: "rpi-6.12.y"
       # If no 'import_src' property is specified, the block must be built locally
       add_build_info: false
     container:

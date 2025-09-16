@@ -606,6 +606,7 @@ kernel:
       source: "https://github.com/Xilinx/linux-xlnx.git"
       branch: "xilinx-v{{external_tools/xilinx/version}}"
     import_src: "https://serenity.web.cern.ch/.../kernel.tar.gz"
+    defconfig_target: "xilinx_zynqmp_defconfig"
     add_build_info: false
     patches:
       - 0001-Add-build-information-to-proc.patch
@@ -628,6 +629,7 @@ Key:
 - **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
   - The URL to a file online. In this case the string must start with `https://` or `http://`.
   - The file URI of a local file. In this case the string must start with `file://`.
+- **project -> defconfig_target**: The default configuration of the Linux kernel to be used. This default configuration is the basis for any project-specific customizations.
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the Kernel. If it is set to `true`, SoCks creates a file with build related information encoded in a C-array in the source repo under `include/build_info.h`. This file can then be used to add this information to the `/proc` filesystem of the Kernel.
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/kernel/patches`.
 - **project -> config_snippets**: A list of configuration snippet files that are automatically attached to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add a new configuration snippets here if you create it with the command `create-cfg-snippet`. Configuration snippet files must be located in `src/ramfs/config`.

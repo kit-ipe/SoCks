@@ -1,0 +1,451 @@
+import sys
+import pathlib
+import shutil
+import urllib
+import inspect
+
+import socks.pretty_print as pretty_print
+from socks.build_validator import Build_Validator
+from abstract_builders.builder import Builder
+
+
+class Linux_Kernel_Builder(Builder):
+    """
+    Linux kernel builder class
+    """
+
+    def __init__(
+        self,
+        project_cfg: dict,
+        socks_dir: pathlib.Path,
+        project_dir: pathlib.Path,
+        model_class: type[object],
+        block_id: str = "kernel",
+        block_description: str = "Build the Linux kernel",
+    ):
+
+        super().__init__(
+            project_cfg=project_cfg,
+            socks_dir=socks_dir,
+            project_dir=project_dir,
+            block_id=block_id,
+            block_description=block_description,
+            model_class=model_class,
+        )
+
+        # Project directories
+        self._ext_modules_src_dir = self._block_src_dir / "external_modules"
+        self._ext_modules_build_dir = self._work_dir / "external_modules"
+
+        # Project files
+        # File for version & build info tracking
+        self._build_info_file = self._source_repo_dir / "include" / "build_info.h"
+        # Kernel configuration file
+        self._kernel_cfg_file = self._source_repo_dir / ".config"
+        # Kernel modules output file
+        self._modules_out_file = self._output_dir / "kernel_modules.tar.gz"
+        # File for saving the currently used defconfig
+        self._active_defconfig_file = self._block_temp_dir / "active_defconfig.txt"
+
+    @property
+    def _block_deps(self):
+        # Products of other blocks on which this block depends
+        # This dict is used to check whether the imported block packages contain
+        # all the required files. Regex can be used to describe the expected files.
+        # Optional dependencies can also be listed here. They will be ignored if
+        # they are not listed in the project configuration.
+        block_deps = None
+        return block_deps
+
+    @property
+    def block_cmds(self):
+        # The user can use block commands to interact with the block.
+        # Each command represents a list of member functions of the builder class.
+        block_cmds = {
+            "prepare": [],
+            "build": [],
+            "clean": [],
+            "create-patches": [],
+            "create-cfg-snippet": [],
+            "start-container": [],
+            "menucfg": [],
+        }
+        block_cmds["clean"].extend(
+            [
+                self.container_executor.build_container_image,
+                self.clean_download,
+                self.clean_work,
+                self.clean_repo,
+                self.clean_output,
+                self.clean_block_temp,
+            ]
+        )
+        if self.block_cfg.source == "build":
+            block_cmds["prepare"].extend(
+                [
+                    self._build_validator.del_project_cfg,
+                    self.container_executor.build_container_image,
+                    self.init_repo,
+                    self.apply_patches,
+                    self.attach_config_snippets,
+                    self._build_validator.save_project_cfg_prepare,
+                ]
+            )
+            block_cmds["build"].extend(block_cmds["prepare"])
+            block_cmds["build"].extend(
+                [
+                    self.build_kernel,
+                    self.build_ext_modules,
+                    self.export_modules,
+                    self.export_block_package,
+                    self._build_validator.save_project_cfg_build,
+                ]
+            )
+            block_cmds["create-patches"].extend([self.create_patches])
+            block_cmds["create-cfg-snippet"].extend([self.create_config_snippet])
+            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
+        elif self.block_cfg.source == "import":
+            block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
+        return block_cmds
+
+    def validate_srcs(self):
+        """
+        Check whether all sources required to build this block are present.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        super().validate_srcs()
+        self.import_opt_src_tpl()
+
+        # Check whether the defconfig in the project configuration matches the current configuration in the repo
+        try:
+            with open(self._active_defconfig_file, mode="r", newline="") as file:
+                active_defconfig = file.readlines()[1].strip()
+
+            if active_defconfig != self.block_cfg.project.defconfig_target:
+                pretty_print.print_error(
+                    f"Configuration missmatch. The Linux kernel repo is configured with defconfig '{active_defconfig}', "
+                    f"but the project configuration specifies '{self.block_cfg.project.defconfig_target}'.\n"
+                    f"This is an unexpected state. Please clean and rebuild block '{self.block_id}'."
+                )
+                sys.exit(1)
+        except FileNotFoundError:
+            pass  # It is okay if the file does not exist
+
+    def run_menuconfig(self):
+        """
+        Opens the menuconfig tool to enable interactive configuration of the project.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        menuconfig_commands = [
+            f"cd {self._source_repo_dir}",
+            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            "export ARCH=arm64",
+            "make menuconfig",
+        ]
+
+        self._run_menuconfig(menuconfig_commands=menuconfig_commands)
+
+    def init_repo(self):
+        """
+        Clones and initializes the git repo.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        super().init_repo()
+
+        create_defconfig_commands = [
+            f"cd {self._source_repo_dir}",
+            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            "export ARCH=arm64",
+            f"make {self.block_cfg.project.defconfig_target}",
+        ]
+
+        self._prep_clean_cfg(prep_srcs_commands=create_defconfig_commands)
+
+        # Save the defconfig which is now used for the kernel to a file
+        self._active_defconfig_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self._active_defconfig_file, mode="w", newline="") as file:
+            file.write(
+                "# This file is autogenerated to validate the block configuration, "
+                f"do not edit!\n{self.block_cfg.project.defconfig_target}"
+            )
+
+    def create_config_snippet(self):
+        """
+        Creates snippets from changes in .config.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._create_config_snippet(
+            cross_comp_prefix="aarch64-linux-gnu-", arch="arm64", defconfig_target=self.block_cfg.project.defconfig_target
+        )
+
+    def attach_config_snippets(self):
+        """
+        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._attach_config_snippets(cross_comp_prefix="aarch64-linux-gnu-", arch="arm64")
+
+    def build_kernel(self):
+        """
+        Builds the Linux Kernel.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check whether the Kernel needs to be built
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=[self._source_repo_dir],
+            src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
+            out_timestamp=self._build_log.get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
+        ) and not self._build_validator.check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "add_build_info"]]
+        ):
+            pretty_print.print_build("No need to rebuild the Linux Kernel. No altered source files detected...")
+            return
+
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Remove old build artifacts
+            (self._output_dir / "Image").unlink(missing_ok=True)
+            (self._output_dir / "Image.gz").unlink(missing_ok=True)
+
+            pretty_print.print_build("Building Linux Kernel...")
+
+            if self.block_cfg.project.add_build_info == True:
+                # Add build information file
+                with self._build_info_file.open("w") as f:
+                    print('const char *build_info = "', file=f, end="")
+                    print(self._compose_build_info().replace("\n", "\\n"), file=f, end="")
+                    print('";', file=f, end="")
+            else:
+                # Remove existing build information file
+                self._build_info_file.unlink(missing_ok=True)
+
+            kernel_build_commands = [
+                f"cd {self._source_repo_dir}",
+                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                "export ARCH=arm64",
+                "make olddefconfig",
+                f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
+            ]
+
+            self.container_executor.exec_sh_commands(
+                commands=kernel_build_commands,
+                dirs_to_mount=[(self._repo_dir, "Z")],
+                print_commands=True,
+                logfile=self._block_temp_dir / "build.log",
+                output_scrolling=True,
+            )
+
+            # Create symlink to the output files
+            (self._output_dir / "Image").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image")
+            (self._output_dir / "Image.gz").symlink_to(self._source_repo_dir / "arch/arm64/boot/Image.gz")
+
+    def build_ext_modules(self):
+        """
+        Builds external modules for the Linux Kernel.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check if sources for external Kernel modules exist
+        if not self._ext_modules_src_dir.is_dir():
+            pretty_print.print_info(
+                f"Source folder for external Kernel modules ({self._ext_modules_src_dir}) not found. No external modules will be built."
+            )
+            return
+
+        # Check if the sources for external Kernel modules contain a Makefile
+        if not (self._ext_modules_src_dir / "Makefile").is_file():
+            pretty_print.print_error(
+                f"Source folder for external Kernel modules ({self._ext_modules_src_dir}) does not contain 'Makefile'."
+            )
+            sys.exit(1)
+
+        # Check if Kernel sources are available
+        if not self._source_repo_dir.is_dir():
+            pretty_print.print_build("No Kernel sources for building external modules...")
+            return
+
+        # Check whether the external modules need to be built
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=[self._ext_modules_src_dir, self._source_repo_dir],
+            out_timestamp=self._build_log.get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
+        ):
+            pretty_print.print_build("No need to build external modules. No altered source files detected...")
+            return
+
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._ext_modules_build_dir.mkdir(parents=True, exist_ok=True)
+
+            # Copy sources for external modules to work dir
+            for item in self._ext_modules_src_dir.iterdir():
+                dst_item = self._ext_modules_build_dir / item.name
+
+                if item.is_dir():
+                    # Skip the .git directory
+                    if item.name == ".git":
+                        continue
+                    else:
+                        shutil.copytree(src=item, dst=dst_item, dirs_exist_ok=True)
+                else:
+                    shutil.copy(src=item, dst=dst_item)
+
+            pretty_print.print_build("Building external modules...")
+
+            ext_mod_build_commands = [
+                f"cd {self._ext_modules_build_dir}",
+                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                "export ARCH=arm64",
+                f"make -j{self.project_cfg.external_tools.make.max_build_threads} MAKE=make KERNEL_SRC={self._source_repo_dir}",
+            ]
+
+            self.container_executor.exec_sh_commands(
+                commands=ext_mod_build_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
+                logfile=self._block_temp_dir / "build_external_modules.log",
+                output_scrolling=True,
+            )
+
+    def export_modules(self):
+        """
+        Exports all built Kernel modules.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check if Kernel sources are available
+        if not self._source_repo_dir.is_dir():
+            pretty_print.print_build("No output files to extract Kernel modules...")
+            return
+
+        # Check if the Kernel was built with loadable module support
+        with self._kernel_cfg_file.open("r") as f:
+            kernel_cfg = f.readlines()
+        if "CONFIG_MODULES=y\n" not in kernel_cfg:
+            pretty_print.print_info(
+                "Support for loadable modules is not activated in the Kernel configuration. "
+                "Therefore, no Kernel modules are exported."
+            )
+            self._modules_out_file.unlink(missing_ok=True)
+            return
+
+        # Check whether the Kernel modules need to be exported
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=[self._source_repo_dir, self._ext_modules_build_dir],
+            src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
+            out_timestamp=self._build_log.get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
+        ):
+            pretty_print.print_build("No need to export Kernel modules. No altered source files detected...")
+            return
+
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Remove old build artifacts
+            self._modules_out_file.unlink(missing_ok=True)
+
+            pretty_print.print_build("Exporting Kernel modules...")
+
+            export_modules_commands = [
+                f"cd {self._source_repo_dir}",
+                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                "export ARCH=arm64",
+                f"make modules_install INSTALL_MOD_PATH={self._output_dir}",
+            ]
+
+            # Add commands to export external modules, if any
+            if self._ext_modules_build_dir.is_dir():
+                export_modules_commands.extend(
+                    [
+                        f"cd {self._ext_modules_build_dir}",
+                        f"make MAKE=make KERNEL_SRC={self._source_repo_dir} modules_install INSTALL_MOD_PATH={self._output_dir}",
+                    ]
+                )
+
+            export_modules_commands.extend(
+                [
+                    f"find {self._output_dir}/lib -type l -delete",
+                    f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._modules_out_file} {self._output_dir}/lib",
+                    f"rm -rf {self._output_dir}/lib",
+                ]
+            )
+
+            self.container_executor.exec_sh_commands(
+                commands=export_modules_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
+                logfile=self._block_temp_dir / "export_external_modules.log",
+                output_scrolling=True,
+            )
