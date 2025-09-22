@@ -19,7 +19,7 @@ class ZynqMP_AlpineLinux_RootFS_Block_Project_Model(Block_Project_Model):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     repositories: list[Annotated[str, StringConstraints(pattern=r"^http")]] = Field(
-        default=["https://dl-cdn.alpinelinux.org/alpine/v3.18/main"],
+        default=["https://dl-cdn.alpinelinux.org/alpine/v3.22/main"],
         description="List of URLs to Alpine Linux repositories",
     )
     addl_pkgs: Optional[list[str]] = Field(default=None, description="List of additional apk packages to be installed")

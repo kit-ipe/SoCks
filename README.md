@@ -14,6 +14,7 @@ SoCks (short for SoC blocks) is a lightweight and modular framework to build com
   - [ZynqMP_AlmaLinux_RootFS_Builder](#zynqmp_almalinux_rootfs_builder)
     - [Block Configuration](#block-configuration)
     - [External Source Files](#external-source-files)
+  - [ZynqMP_AlpineLinux_RAMFS_Builder](#zynqmp_alpinelinux_ramfs_builder)
   - [ZynqMP_AlpineLinux_RootFS_Builder](#zynqmp_alpinelinux_rootfs_builder)
     - [Block Configuration](#block-configuration)
     - [External Source Files](#external-source-files)
@@ -124,6 +125,7 @@ The imported files are imported in the order in which they are declared and befo
 The SoCks framework provides a base configuration files for every architecture that is supported. It is recommended to use one of these files in every SoCks project, to reduce the information in the project configuration file to project specific configurations. The following list gives an overview:
 - `project-zynqmp-default.yml`
 - `project-versal-default.yml`
+- `project-raspberrypi-default.yml`
 
 Sometimes it is necessary to adapt the project configuration to the user's specific host system. For example, by changing the containerization tool to be used or by adding additional packages to the SoC's file system for debugging purposes. For this purpose, one can create a file `project-user.yml` in the same directory as `project.yml`. The file `project-user.yml` is applied on top of the main project configuration described in `project.yml`. It is recommended that `project.yml` always contains a complete, buildable project configuration and `project-user.yml` is only used to overwrite already existing settings. It is therefore also not possible to import other YAML files into `project-user.yml`. The file `project-user.yml` should be listed in the `.gitignore` file so that it is excluded from version control.
 
@@ -181,7 +183,7 @@ The project sources of some blocks can be configured using menuconfig. Examples 
 
 ### ZynqMP_AlmaLinux_RootFS_Builder
 
-This builder is designed to build an AlmaLinux 8 or 9 root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
+This builder is designed to build an AlmaLinux 8 or 9 root file system. Furthermore, it allows to modify the base file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
 
 #### Block Configuration
 
@@ -272,9 +274,13 @@ SoCks requires external files in order to build this block. The following templa
 - **AlmaLinux8**: Contains template files to build an AlmaLinux 8 root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional file `conclude_install.sh` allows to finalize the creation of the root file system. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer. The file `dnf_build_time.conf` is the dnf configuration used at build time. This file must contain all repositories that are required to build the root file system including all package specified.
 - **AlmaLinux9**: Contains template files to build an AlmaLinux 9 root file system. The files and folders in this package are equivalent to the ones in the *AlmaLinux8* package.
 
+### ZynqMP_AlpineLinux_RAMFS_Builder
+
+This builder is designed to build an Alpine Linux RAM file system. Furthermore, it allows to modify the base file system by adding files built by other blocks like Kernel modules. This builder is a slightly adapted version of the `ZynqMP_AlpineLinux_RootFS_Builder`. Visit the section of `ZynqMP_AlpineLinux_RootFS_Builder` for details on how to use this builder.
+
 ### ZynqMP_AlpineLinux_RootFS_Builder
 
-This builder is designed to build an Alpine Linux root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
+This builder is designed to build an Alpine Linux root file system. Furthermore, it allows to modify the base file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
 
 #### Block Configuration
 
@@ -642,11 +648,11 @@ SoCks does not require any external files in order to build this block. However,
 
 ### ZynqMP_AMD_PetaLinux_RAMFS_Builder
 
-This builder is designed to build a Petalinux RAM file system with yocto. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. This builder is a slightly adapted version of the `ZynqMP_AMD_PetaLinux_RootFS_Builder`. Visit the section of `ZynqMP_AMD_PetaLinux_RootFS_Builder` for details on how to use this builder.
+This builder is designed to build a Petalinux RAM file system with yocto. Furthermore, it allows to modify the base file system by adding files built by other blocks like Kernel modules. This builder is a slightly adapted version of the `ZynqMP_AMD_PetaLinux_RootFS_Builder`. Visit the section of `ZynqMP_AMD_PetaLinux_RootFS_Builder` for details on how to use this builder.
 
 ### ZynqMP_AMD_PetaLinux_RootFS_Builder
 
-This builder is designed to build a Petalinux root file system with yocto. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams.
+This builder is designed to build a Petalinux root file system with yocto. Furthermore, it allows to modify the base file system by adding files built by other blocks like Kernel modules.
 
 #### Block Configuration
 
@@ -1071,7 +1077,7 @@ SoCks requires external files in order to build this block. The following templa
 
 ### ZynqMP_Debian_RootFS_Builder
 
-This builder is designed to build a Debian root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
+This builder is designed to build a Debian root file system. Furthermore, it allows to modify the base file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with two custom shell scripts.
 
 #### Block Configuration
 
@@ -1165,7 +1171,7 @@ SoCks requires external files in order to build this block. The following templa
 
 ### ZynqMP_Ubuntu_RootFS_Builder
 
-This builder is designed to build a Ubuntu root file system. Furthermore, it allows to modify the base root file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with a custom shell script. This builder is based on `ZynqMP_Debian_RootFS_Builder`.
+This builder is designed to build a Ubuntu root file system. Furthermore, it allows to modify the base file system by adding files built by other blocks like Kernel modules, device tree overlays and FPGA bitstreams. It is also possible to add external files to the root file system and to modify it in various ways with a custom shell script. This builder is based on `ZynqMP_Debian_RootFS_Builder`.
 
 #### Block Configuration
 
