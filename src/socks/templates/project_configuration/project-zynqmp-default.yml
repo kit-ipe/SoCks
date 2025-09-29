@@ -50,6 +50,7 @@ blocks:
         source: "https://github.com/Xilinx/linux-xlnx.git"
         branch: "xilinx-v{{external_tools/xilinx/version}}"
       # If no 'import_src' property is specified, the block must be built locally
+      defconfig_target: "xilinx_zynqmp_defconfig"
       add_build_info: false
     container:
       image: "kernel-builder-alma9"
