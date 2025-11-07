@@ -275,7 +275,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             # The *.dts file created by gcc is for humans difficult to read. Therefore, in the last step, it is replaced by one created with the devicetree compiler.
             dt_build_commands = [
                 f"cd {self._base_work_dir}",
-                "gcc -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -o system.dts system-top.dts",
+                "gcc -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -I include -o system.dts system-top.dts",
                 "dtc -I dts -O dtb -A -@ -o system.dtb system.dts",
                 "dtc -I dtb -O dts -o system.dts system.dtb",
             ]
