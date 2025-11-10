@@ -108,7 +108,8 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             f"source {self._amd_vivado_path}/settings64.sh",
             f"git config --global --add safe.directory {self._source_repo_dir}",
             f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
-            f"{self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}",
+            # LD_PRELOAD is sometimes required to use Vivado in a container (see https://adaptivesupport.amd.com/s/article/000034450?language=en_US)
+            f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}",
         ]
 
         self.container_executor.exec_sh_commands(
@@ -164,7 +165,8 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
                 f"source {self._amd_vivado_path}/settings64.sh",
                 f"git config --global --add safe.directory {self._source_repo_dir}",
                 f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
-                f"{self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}",
+                # LD_PRELOAD is sometimes required to use Vivado in a container (see https://adaptivesupport.amd.com/s/article/000034450?language=en_US)
+                f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do WORKFLOW {self.block_cfg.project.name}",
             ]
 
             self.container_executor.exec_sh_commands(
