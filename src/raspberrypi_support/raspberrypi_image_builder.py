@@ -39,8 +39,8 @@ class RaspberryPi_Image_Builder(Builder):
         self.pre_action_warnings.append(
             "At the moment there is somthing wrong with the boot images created with "
             "'build-sd-card'. To fix it manually you have to do the following. After writing the SD card, copy all "
-            "files from the bootfs partition to your PC, format the bootfs partition e.g. with grub to FAT16 or FAT32 "
-            "And after that copy the files back to the boot partition. Now it should be possible to boot from the SD "
+            "files from the bootfs partition to your PC, format the bootfs partition with gparted to FAT16 or FAT32, "
+            "and after that copy the files back to the boot partition. Now it should be possible to boot from the SD "
             "card. Additionally it must be noted that at the moment the boot process without U-Boot is more stable. "
             "Probably one has to tweak the settings a bit more."
         )
@@ -134,8 +134,6 @@ class RaspberryPi_Image_Builder(Builder):
         Raises:
             None
         """
-
-        self.check_amd_tools(required_tools=["vitis"])
 
         potential_mounts = [
             (self._resources_dir, "Z"),
