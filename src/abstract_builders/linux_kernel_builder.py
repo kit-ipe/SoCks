@@ -212,7 +212,9 @@ class Linux_Kernel_Builder(Builder):
         """
 
         self._create_config_snippet(
-            cross_comp_prefix="aarch64-linux-gnu-", arch="arm64", defconfig_target=self.block_cfg.project.defconfig_target
+            cross_comp_prefix="aarch64-linux-gnu-",
+            arch="arm64",
+            defconfig_target=self.block_cfg.project.defconfig_target,
         )
 
     def attach_config_snippets(self):

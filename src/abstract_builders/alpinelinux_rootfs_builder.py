@@ -155,7 +155,9 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             pretty_print.print_build("Building the base root file system...")
 
             repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
-            apk_base_command = f"apk --no-interactive --arch {self._target_arch} {repos_str} --update-cache --root {self._build_dir} "
+            apk_base_command = (
+                f"apk --no-interactive --arch {self._target_arch} {repos_str} --update-cache --root {self._build_dir} "
+            )
             base_rootfs_build_commands = [
                 # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
@@ -202,7 +204,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
         repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
         self._run_mod_script(
             mod_script=self._resources_dir / "mod_base_install.sh",
-            mod_script_params=[self._target_arch, f"\"{repos_str}\"", str(self._build_dir)],
+            mod_script_params=[self._target_arch, f'"{repos_str}"', str(self._build_dir)],
         )
 
     def run_concluding_mod_script(self):
@@ -222,7 +224,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
         repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
         self._run_mod_script(
             mod_script=self._resources_dir / "conclude_install.sh",
-            mod_script_params=[self._target_arch, f"\"{repos_str}\"", str(self._build_dir)],
+            mod_script_params=[self._target_arch, f'"{repos_str}"', str(self._build_dir)],
         )
 
     def add_addl_packages(self):
@@ -257,7 +259,10 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             != 0.0
         )
         if packages_already_added and not self._build_validator.check_rebuild_bc_config(
-            keys=[["blocks", self.block_id, "project", "addl_pkgs"], ["blocks", self.block_id, "project", "repositories"]]
+            keys=[
+                ["blocks", self.block_id, "project", "addl_pkgs"],
+                ["blocks", self.block_id, "project", "repositories"],
+            ]
         ):
             pretty_print.print_build("No need to install additional packages. No altered source files detected...")
             return
@@ -266,7 +271,9 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             pretty_print.print_build("Installing additional packages...")
 
             repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
-            apk_base_command = f"apk --no-interactive --arch {self._target_arch} {repos_str} --update-cache --root {self._build_dir} "
+            apk_base_command = (
+                f"apk --no-interactive --arch {self._target_arch} {repos_str} --update-cache --root {self._build_dir} "
+            )
             add_packages_commands = [
                 # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
@@ -324,7 +331,10 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             != 0.0
         )
         if packages_already_added and not self._build_validator.check_rebuild_bc_config(
-            keys=[["blocks", self.block_id, "project", "addl_ext_pkgs"], ["blocks", self.block_id, "project", "repositories"]]
+            keys=[
+                ["blocks", self.block_id, "project", "addl_ext_pkgs"],
+                ["blocks", self.block_id, "project", "repositories"],
+            ]
         ):
             pretty_print.print_build(
                 "No need to install additional packages from external *.apk files. No altered source files detected..."
@@ -375,7 +385,9 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
 
             rel_pkg_paths = ["./" + pkg for pkg in ext_pkgs_to_install]
             repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
-            apk_base_command = f"apk --no-interactive --arch {self._target_arch} {repos_str} --update-cache --root {self._build_dir} "
+            apk_base_command = (
+                f"apk --no-interactive --arch {self._target_arch} {repos_str} --update-cache --root {self._build_dir} "
+            )
             add_packages_commands = [
                 # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
@@ -479,7 +491,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
                 # Escape all $ symbols in the hash. I know this is ugly, but this is the only way I have found
                 # to make it work through all the layers of Python, docker, sh and chroot.
                 escaped_pw_hash = user.pw_hash.replace("$", "\\\\\\$")
-                add_user_str = add_user_str + f"echo \"{user.name}:{escaped_pw_hash}\" | chpasswd -e && "
+                add_user_str = add_user_str + f'echo "{user.name}:{escaped_pw_hash}" | chpasswd -e && '
                 if user.ssh_key:
                     add_user_str = (
                         add_user_str + f"HOME_OF_{user.name.upper()}=\$(getent passwd {user.name} | cut -d: -f6) && "

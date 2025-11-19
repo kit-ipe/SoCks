@@ -110,6 +110,10 @@ class Configuration_Compiler:
         with config_file.open("r") as f:
             cfg_layer = yaml.safe_load(f)
 
+            if cfg_layer is None:
+                pretty_print.print_error(f"Empty configuration file: {config_file}")
+                sys.exit(1)
+
         # Add file to list of read configuration files
         read_files = [config_file]
 
