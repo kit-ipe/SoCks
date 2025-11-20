@@ -581,10 +581,10 @@ Key:
 - **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
   - The URL to a file online. In this case the string must start with `https://` or `http://`.
   - The file URI of a local file. In this case the string must start with `file://`.
-- **project -> uboot_image_kernel**: Kernel image to be integrated into the U-Boot image image.ub. Options are:
+- **project -> uboot_image_kernel**: Kernel image to be integrated into the U-Boot image `image.ub`. Options are:
   - `Image`
   - `Image.gz`
-- **project -> boot_image_kernel**: Kernel image to be integrated into BOOT.BIN or copied to the SD card image. Only relevant if the kernel is to be integrated into BOOT.BIN or if an SD card image is to be created. Options are:
+- **project -> boot_image_kernel**: Kernel image to be integrated into `BOOT.BIN` or copied to the SD card image. Only relevant if the kernel is to be integrated into `BOOT.BIN` or if an SD card image is to be created. Options are:
   - `Image`
   - `Image.gz`
   - `image.ub`
