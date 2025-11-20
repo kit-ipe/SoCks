@@ -554,6 +554,8 @@ image:
   builder: "ZynqMP_AMD_Image_Builder"
   project:
     import_src: "https://serenity.web.cern.ch/.../image.tar.gz"
+    uboot_image_kernel: "Image.gz"
+    boot_image_kernel: "image.ub"
     size_boot_partition: 500
     size_rootfs_partition: 3500
     dependencies:
@@ -579,6 +581,13 @@ Key:
 - **project -> import_src [optional]**: The pre-built block package to be imported for this block. This information is only used if the value of *source* is *import*. Options are:
   - The URL to a file online. In this case the string must start with `https://` or `http://`.
   - The file URI of a local file. In this case the string must start with `file://`.
+- **project -> uboot_image_kernel**: Kernel image to be integrated into the U-Boot image `image.ub`. Options are:
+  - `Image`
+  - `Image.gz`
+- **project -> boot_image_kernel**: Kernel image to be integrated into `BOOT.BIN` or copied to the SD card image. Only relevant if the kernel is to be integrated into `BOOT.BIN` or if an SD card image is to be created. Options are:
+  - `Image`
+  - `Image.gz`
+  - `image.ub`
 - **project -> size_boot_partition**: Size of the boot partition in the SD card image in MiB. It is possible to extend the size of this partition after the image has been flashed to an SD card.
 - **project -> size_rootfs_partition**: Size of the root file system partition in the SD card image in MiB. It is possible to extend the size of this partition after the image has been flashed to an SD card.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
