@@ -1353,12 +1353,12 @@ class Builder(ABC):
             )
             if results.stdout:
                 pretty_print.print_warning(
-                    f"There are uncommited changes in {self._source_repo_dir}/. Do you really want to clean this repo? (y/n) ",
+                    f"There are uncommited changes in {self._source_repo_dir}/. Do you really want to clean this repo? (y/N) ",
                     end="",
                 )
-                answer = input("")
-                if answer.lower() not in ("y", "yes"):
-                    pretty_print.print_clean("Cleaning abborted...")
+                answer = input("").strip().lower()
+                if answer not in ("y", "yes"):
+                    pretty_print.print_clean("Cleaning aborted...")
                     sys.exit(1)
 
         if as_root:

@@ -383,10 +383,10 @@ def main():
     if pre_action_warnings:
         for warning in pre_action_warnings:
             pretty_print.print_warning(warning)
-        print(f"\nPlease read the warnings above carefully. Do you really want to continue? (y/n) ", end="")
-        answer = input("")
-        if answer.lower() not in ("y", "yes"):
-            pretty_print.print_clean("Abborted...")
+        print(f"\nPlease read the warnings above carefully. Do you really want to continue? (Y/n) ", end="")
+        answer = input("").strip().lower()
+        if answer not in ("", "y", "yes"):
+            pretty_print.print_clean("Aborted...")
             sys.exit(1)
 
     # Execute the command for all active blocks
