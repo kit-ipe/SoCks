@@ -15,38 +15,6 @@ class File_Downloader:
     """
 
     @staticmethod
-    def _check_status_code(url: str) -> str:
-        """
-        Stops the program execution if the status code is not 200 (OK).
-
-        Args:
-            url:
-                File URL.
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        # Send a HEAD request to get the HTTP headers
-        response = requests.head(url, allow_redirects=True)
-
-        if response.status_code == 404:
-            # File not found
-            pretty_print.print_error(
-                f"The following file is not available: {url}\nStatus code {response.status_code} (File not found)"
-            )
-            sys.exit(1)
-        elif response.status_code != 200:
-            # Unexpected status code
-            pretty_print.print_error(
-                f"The following file is not available: {url}\nUnexpected status code {response.status_code}"
-            )
-            sys.exit(1)
-
-    @staticmethod
     def get_last_modified(url: str) -> str:
         """
         Fetches the Last-Modified timestamp, if available.
@@ -59,20 +27,25 @@ class File_Downloader:
             The Last-Modified timestamp.
 
         Raises:
-            None
+            RuntimeError:
+                If it isn't possible to retrieve the HTTP header or if the header doesn't contain the required info.
         """
-
-        File_Downloader._check_status_code(url)
 
         # Send a HEAD request to get the HTTP headers
         response = requests.head(url, allow_redirects=True)
+
+        # Check if the header is valid
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"The HTTP headers for the following URL cannot be retrieved: {url}\n"
+                f"HTTP status code {response.status_code}"
+            )
 
         # Get timestamp of the file online
         last_mod_online = response.headers.get("Last-Modified")
 
         if not last_mod_online:
-            pretty_print.print_error(f"No 'Last-Modified' header found for {url}")
-            sys.exit(1)
+            raise RuntimeError(f"No 'Last-Modified' entry found in the header of {url}")
 
         return parser.parse(last_mod_online).timestamp()
 
@@ -102,13 +75,10 @@ class File_Downloader:
             downloaded = block_num * block_size
             download_progress.t.update(downloaded - download_progress.t.n)
 
-        File_Downloader._check_status_code(url)
-
-        # Retrieve name of the file
         # Send a HEAD request to get the HTTP headers
         response = requests.head(url, allow_redirects=True)
 
-        # Check the Content-Disposition header
+        # Retrieve name of the file
         content_disposition = response.headers.get("Content-Disposition")
         if content_disposition and "filename=" in content_disposition:
             # Extract the filename from the header
@@ -121,12 +91,16 @@ class File_Downloader:
             raise RuntimeError("Unable to retrieve file name")
 
         # Download the file
-        download_progress.t = None
-        print(f"Downloading {filename}...")
-        download_location = output_dir / filename
-        urllib.request.urlretrieve(url=url, filename=download_location, reporthook=download_progress)
-        if download_progress.t:
-            download_progress.t.close()
+        try:
+            download_progress.t = None
+            print(f"Downloading {filename}...")
+            download_location = output_dir / filename
+            urllib.request.urlretrieve(url=url, filename=download_location, reporthook=download_progress)
+            if download_progress.t:
+                download_progress.t.close()
+        except urllib.error.HTTPError as e:
+            pretty_print.print_error(f"Unable to download file from {url}\n{e}")
+            sys.exit(1)
 
         # Return path of the downloaded file
         return download_location
@@ -134,13 +108,13 @@ class File_Downloader:
     @staticmethod
     def get_checksum(url: str, hash_function: str) -> str:
         """
-        Downloads a single file.
+        Calculate checksum of a single file.
 
         Args:
             url:
                 File URL.
             hash_function:
-                The hash function to be used.
+                The hash function to be used. Must be supported by hashlib.
 
         Returns:
             Hash value of the file.
