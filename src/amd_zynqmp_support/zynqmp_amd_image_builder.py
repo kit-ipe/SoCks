@@ -39,10 +39,27 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
         self._atf_img_path = self._dependencies_dir / "atf/bl31.elf"
         self._dt_img_path = self._dependencies_dir / "devicetree/system.dtb"
         self._fsbl_img_path = self._dependencies_dir / "fsbl/fsbl.elf"
-        self._kernel_img_path = self._dependencies_dir / "kernel/Image.gz"
         self._pmufw_img_path = self._dependencies_dir / "pmu_fw/pmufw.elf"
         self._ssbl_img_path = self._dependencies_dir / "ssbl/u-boot.elf"
         self._vivado_bitfile_path = None  # Must be initialized outside the constructor, as the name is not fixed and it might be packed in an XSA.
+
+        # Find kernel image to be integrated into the uboot image
+        if "Image" == self.block_cfg.project.uboot_image_kernel:
+            self._uboot_image_kernel = self._dependencies_dir / "kernel/Image"
+        elif "Image.gz" == self.block_cfg.project.uboot_image_kernel:
+            self._uboot_image_kernel = self._dependencies_dir / "kernel/Image.gz"
+        else:
+            raise ValueError(f"Unsupported kernel for uboot image: {self.block_cfg.project.uboot_image_kernel}")
+
+        # Find kernel image to be integrated into the boot image
+        if "Image" == self.block_cfg.project.boot_image_kernel:
+            self._boot_image_kernel = self._dependencies_dir / "kernel/Image"
+        elif "Image.gz" == self.block_cfg.project.boot_image_kernel:
+            self._boot_image_kernel = self._dependencies_dir / "kernel/Image.gz"
+        elif "image.ub" == self.block_cfg.project.boot_image_kernel:
+            self._boot_image_kernel = self._output_dir / "image.ub"
+        else:
+            raise ValueError(f"Unsupported kernel for boot image: {self.block_cfg.project.boot_image_kernel}")
 
         self._sdc_image_name = f"{self.project_cfg.project.name}_sd_card.img"
 
@@ -60,7 +77,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             "atf": ["bl31.elf"],
             "devicetree": ["system.dtb"],
             "fsbl": ["fsbl.elf"],
-            "kernel": ["Image.gz"],
+            "kernel": ["Image", "Image.gz"],
             "pmu_fw": ["pmufw.elf"],
             "ramfs": [".*.cpio.gz"],
             "rootfs": [".*.tar.xz"],
@@ -199,6 +216,8 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
+        ) and not self._build_validator.check_rebuild_bc_config(
+            keys=[["blocks", self.block_id, "project", "uboot_image_kernel"]]
         ):
             pretty_print.print_build("No need to rebuild Linux Image. No altered source files detected...")
             return
@@ -214,7 +233,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
 
             linux_img_build_commands = [
                 f"cp {self._resources_dir}/image.its.tpl {self._work_dir}/image.its",
-                f'sed -i "s:<KERNEL_IMG_PATH>:{self._kernel_img_path}:g;" {self._work_dir}/image.its',
+                f'sed -i "s:<KERNEL_IMG_PATH>:{self._uboot_image_kernel}:g;" {self._work_dir}/image.its',
                 f'sed -i "s:<DT_IMG_PATH>:{self._dt_img_path}:g;" {self._work_dir}/image.its',
             ]
             if ramfs_archives:
@@ -334,13 +353,15 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                 self._dependencies_dir / "block_pkg_atf.md5",
                 self._dependencies_dir / "block_pkg_devicetree.md5",
                 self._dependencies_dir / "block_pkg_ssbl.md5",
-                self._output_dir / "image.ub",
+                self._boot_image_kernel,
                 self._output_dir / "boot.scr",
             ],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
-        ) and not self._build_validator.check_rebuild_bc_config(keys=[["external_tools", "xilinx"]]):
+        ) and not self._build_validator.check_rebuild_bc_config(
+            keys=[["external_tools", "xilinx"], ["blocks", self.block_id, "project", "boot_image_kernel"]]
+        ):
             pretty_print.print_build("No need to rebuild BOOT.BIN. No altered source files detected...")
             return
 
@@ -364,7 +385,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                 f'sed -i "s:<ATF_PATH>:{self._atf_img_path}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<DTB_PATH>:{self._dt_img_path}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<SSBL_PATH>:{self._ssbl_img_path}:g;" {self._work_dir}/bootgen.bif',
-                f'sed -i "s:<LINUX_PATH>:{self._output_dir / "image.ub"}:g;" {self._work_dir}/bootgen.bif',
+                f'sed -i "s:<LINUX_PATH>:{self._boot_image_kernel}:g;" {self._work_dir}/bootgen.bif',
                 f'sed -i "s:<BSCR_PATH>:{self._output_dir / "boot.scr"}:g;" {self._work_dir}/bootgen.bif',
                 f"bootgen -arch zynqmp -image {self._work_dir}/bootgen.bif -o {self._output_dir}/BOOT.BIN",
             ]
@@ -412,7 +433,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                 src_search_list=[
                     self._output_dir / "BOOT.BIN",
                     self._output_dir / "boot.scr",
-                    self._output_dir / "image.ub",
+                    self._boot_image_kernel,
                     self._dependencies_dir / "block_pkg_rootfs.md5",
                 ],
                 out_timestamp=self._build_log.get_logged_timestamp(
@@ -421,6 +442,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             )
             and not self._build_validator.check_rebuild_bc_config(
                 keys=[
+                    ["blocks", self.block_id, "project", "boot_image_kernel"],
                     ["blocks", self.block_id, "project", "size_boot_partition"],
                     ["blocks", self.block_id, "project", "size_rootfs_partition"],
                 ]
@@ -443,7 +465,7 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
                 f"    set-label /dev/sda2 ROOTFS : "
                 f"    mkmountpoint /p1 : "
                 f"    mount /dev/sda1 /p1 : "
-                f"    copy-in {self._output_dir}/image.ub {self._output_dir}/boot.scr {self._output_dir}/BOOT.BIN /p1/ : ",
+                f"    copy-in {self._boot_image_kernel} {self._output_dir}/boot.scr {self._output_dir}/BOOT.BIN /p1/ : ",
             ]
             if rootfs_archives:
                 sdc_img_build_commands[-1] = (

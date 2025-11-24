@@ -93,6 +93,8 @@ blocks:
     builder: "ZynqMP_AMD_Image_Builder"
     project:
       # If no 'import_src' property is specified, the block must be built locally
+      uboot_image_kernel: "Image.gz"
+      boot_image_kernel: "image.ub"
       size_boot_partition: 500
       size_rootfs_partition: 3500
       dependencies:
