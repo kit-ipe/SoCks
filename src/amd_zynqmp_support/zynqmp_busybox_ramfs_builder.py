@@ -97,9 +97,11 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             block_cmds["build"].extend(
                 [
                     self.build_base_file_system,
+                    self.run_base_install_mod_script,
                     self.add_kmodules,
                     self.add_sr_layer,
                     self.add_pd_layers,
+                    self.run_concluding_mod_script,
                     self.build_archive,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
@@ -109,6 +111,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             block_cmds["prebuild"].extend(
                 [
                     self.build_base_file_system,
+                    self.run_base_install_mod_script,
                     self.add_sr_layer,
                     self.build_archive_prebuilt,
                     self.export_block_package,
@@ -126,6 +129,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
                     self.import_prebuilt,
                     self.add_kmodules,
                     self.add_pd_layers,
+                    self.run_concluding_mod_script,
                     self.build_archive,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
@@ -292,6 +296,44 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
                 logfile=self._block_temp_dir / "build.log",
                 output_scrolling=True,
             )
+
+    def run_base_install_mod_script(self):
+        """
+        Runs a user-defined shell script to make changes to the base installation.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._run_mod_script(
+            mod_script=self._resources_dir / "mod_base_install.sh",
+            mod_script_params=[str(self._build_dir)],
+        )
+
+    def run_concluding_mod_script(self):
+        """
+        Runs a user-defined shell script to finalize the creation of the file system.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._run_mod_script(
+            mod_script=self._resources_dir / "conclude_install.sh",
+            mod_script_params=[str(self._build_dir)],
+        )
 
     def add_sr_layer(self):
         """
