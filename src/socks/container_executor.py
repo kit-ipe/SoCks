@@ -306,7 +306,17 @@ class Container_Executor:
 
         elif self._container_tool == "none":
             # Run commands without using a container
-            sudo_opt = "sudo" if run_as_root else ""
+
+            # Prepare usage of sudo, if necessary
+            sudo_opt = ""
+            if run_as_root:
+                sudo_opt = "sudo --preserve-env=PATH"
+                pretty_print.print_warning(
+                    "SoCks will use 'sudo --preserve-env=PATH' to execute build commands. "
+                    "Enable the containerization feature of SoCks to prevent this, "
+                    "or run SoCks entirely in a container to limit the risk."
+                )
+
             self._shell_executor.exec_sh_command(
                 command=[sudo_opt, "bash", "-c", comp_commands],
                 logfile=logfile,

@@ -64,7 +64,7 @@ ENV PATH="$PATH:/opt/crosstool-ng-toolchains/aarch64-unknown-linux-uclibc/bin/"
 
 # Install busybox dependencies
 RUN dnf -y install perl-Pod-Html ncurses-devel && \
-# Install required packages to modify the base RootFS
+# Install required packages to modify the base file system
     dnf -y install rsync && \
 # Install required packages to package the initramfs
     dnf -y install pigz pxz && \
