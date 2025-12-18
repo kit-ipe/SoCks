@@ -44,6 +44,8 @@ class Linux_Kernel_Builder(Builder):
         self._kernel_cfg_file = self._source_repo_dir / ".config"
         # Kernel modules output file
         self._modules_out_file = self._output_dir / "kernel_modules.tar.gz"
+        # Kernel headers output file
+        self._headers_out_file = self._output_dir / "kernel_headers.tar.gz"
         # File for saving the currently used defconfig
         self._active_defconfig_file = self._block_temp_dir / "active_defconfig.txt"
 
@@ -96,6 +98,7 @@ class Linux_Kernel_Builder(Builder):
                 [
                     self.build_kernel,
                     self.build_ext_modules,
+                    self.export_headers,
                     self.export_modules,
                     self.export_block_package,
                     self._build_validator.save_project_cfg_build,
@@ -250,7 +253,12 @@ class Linux_Kernel_Builder(Builder):
         # Check whether the Kernel needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._source_repo_dir],
-            src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
+            src_ignore_list=[
+                self._source_repo_dir / "arch/arm64/boot",  # Contains kernel output products
+                self._source_repo_dir / "usr/include",  # Used when exporting headers
+                self._source_repo_dir / "scripts/.unifdef.cmd",  # Used when exporting headers
+                self._source_repo_dir / "scripts/unifdef",  # Used when exporting headers
+            ],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
@@ -333,6 +341,12 @@ class Linux_Kernel_Builder(Builder):
         # Check whether the external modules need to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._ext_modules_src_dir, self._source_repo_dir],
+            src_ignore_list=[
+                self._source_repo_dir / "arch/arm64/boot",  # Contains kernel output products
+                self._source_repo_dir / "usr/include",  # Used when exporting headers
+                self._source_repo_dir / "scripts/.unifdef.cmd",  # Used when exporting headers
+                self._source_repo_dir / "scripts/unifdef",  # Used when exporting headers
+            ],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
@@ -406,7 +420,12 @@ class Linux_Kernel_Builder(Builder):
         # Check whether the Kernel modules need to be exported
         if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._source_repo_dir, self._ext_modules_build_dir],
-            src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],
+            src_ignore_list=[
+                self._source_repo_dir / "arch/arm64/boot",  # Contains kernel output products
+                self._source_repo_dir / "usr/include",  # Used when exporting headers
+                self._source_repo_dir / "scripts/.unifdef.cmd",  # Used when exporting headers
+                self._source_repo_dir / "scripts/unifdef",  # Used when exporting headers
+            ],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
@@ -448,6 +467,59 @@ class Linux_Kernel_Builder(Builder):
                 commands=export_modules_commands,
                 dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z"), (self._output_dir, "Z")],
                 print_commands=True,
-                logfile=self._block_temp_dir / "export_external_modules.log",
+                logfile=self._block_temp_dir / "export_modules.log",
+                output_scrolling=True,
+            )
+
+    def export_headers(self):
+        """
+        Exports Kernel headers.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Check if Kernel sources are available
+        if not self._source_repo_dir.is_dir():
+            pretty_print.print_build("No output files to extract Kernel headers...")
+            return
+
+        # Check whether the Kernel headers need to be exported
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=[self._source_repo_dir],
+            src_ignore_list=[self._source_repo_dir / "arch/arm64/boot"],  # Contains kernel output products
+            out_timestamp=self._build_log.get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
+        ):
+            pretty_print.print_build("No need to export Kernel headers. No altered source files detected...")
+            return
+
+        with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            # Remove old build artifacts
+            self._headers_out_file.unlink(missing_ok=True)
+
+            pretty_print.print_build("Exporting Kernel headers...")
+
+            export_headers_commands = [
+                f"cd {self._source_repo_dir}",
+                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                "export ARCH=arm64",
+                f"make headers_install INSTALL_HDR_PATH={self._output_dir}",
+                f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._headers_out_file} {self._output_dir}/include",
+                f"rm -rf {self._output_dir}/include",
+            ]
+
+            self.container_executor.exec_sh_commands(
+                commands=export_headers_commands,
+                dirs_to_mount=[(self._repo_dir, "Z"), (self._work_dir, "Z"), (self._output_dir, "Z")],
+                print_commands=True,
+                logfile=self._block_temp_dir / "export_headers.log",
                 output_scrolling=True,
             )
