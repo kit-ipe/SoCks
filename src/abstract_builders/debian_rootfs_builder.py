@@ -320,12 +320,26 @@ class Debian_RootFS_Builder(File_System_Builder):
             )
             return
 
+        # Create list of local packages
+        local_pkgs = []
+        for uri in self.block_cfg.project.addl_ext_pkgs:
+            if urllib.parse.urlparse(uri).scheme == "file":
+                # This package is provided locally
+                local_pkg_path = pathlib.Path(urllib.parse.urlparse(uri).path)
+                # Append file to list of local packages
+                local_pkgs.append(local_pkg_path)
+
         # Check whether the extra packages need to be added
         packages_already_added = (
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
         )
-        if packages_already_added and not self._build_validator.check_rebuild_bc_config(
+        if packages_already_added and not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=local_pkgs,
+            out_timestamp=self._build_log.get_logged_timestamp(
+                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+            ),
+        ) and not self._build_validator.check_rebuild_bc_config(
             keys=[["blocks", self.block_id, "project", "addl_ext_pkgs"]]
         ):
             pretty_print.print_build(
