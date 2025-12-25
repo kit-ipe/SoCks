@@ -157,6 +157,7 @@ class ZynqMP_AMD_PMUFW_Builder(AMD_Builder):
             f"git -C {self._source_repo_dir} config user.email 'container-user@example.com'",
             f"git -C {self._source_repo_dir} config user.name 'container-user'",
             f"git -C {self._source_repo_dir} add {self._source_repo_dir}/.",
+            f"git -C {self._source_repo_dir} reset -- {self._source_repo_dir}/zynqmp_pmufw_bsp/psu_pmu_0/libsrc/libmetal_*/build_libmetal/",  # If this directory exists, it changes during build time and should therefore not be tracked by Git. Libmetal is the only library with this behavior that I have discovered so far.
             f"git -C {self._source_repo_dir} commit --quiet -m 'Initial commit'",
         ]
 
