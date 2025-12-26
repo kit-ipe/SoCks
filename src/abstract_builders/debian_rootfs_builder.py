@@ -329,18 +329,27 @@ class Debian_RootFS_Builder(File_System_Builder):
                 # Append file to list of local packages
                 local_pkgs.append(local_pkg_path)
 
+        # Check whether a rebuild is necessary due to updated local packages
+        rebuild_bc_local_pkgs = False
+        if local_pkgs:
+            rebuild_bc_local_pkgs = Build_Validator.check_rebuild_bc_timestamp(
+                src_search_list=local_pkgs,
+                out_timestamp=self._build_log.get_logged_timestamp(
+                    identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
+                ),
+            )
+
         # Check whether the extra packages need to be added
         packages_already_added = (
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
             != 0.0
         )
-        if packages_already_added and not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=local_pkgs,
-            out_timestamp=self._build_log.get_logged_timestamp(
-                identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
-            ),
-        ) and not self._build_validator.check_rebuild_bc_config(
-            keys=[["blocks", self.block_id, "project", "addl_ext_pkgs"]]
+        if (
+            packages_already_added
+            and not rebuild_bc_local_pkgs
+            and not self._build_validator.check_rebuild_bc_config(
+                keys=[["blocks", self.block_id, "project", "addl_ext_pkgs"]]
+            )
         ):
             pretty_print.print_build(
                 "No need to install additional packages from external *.deb files. No altered source files detected..."
