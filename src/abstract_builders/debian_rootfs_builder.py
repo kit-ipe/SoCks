@@ -3,6 +3,7 @@ import pathlib
 import inspect
 import urllib
 import shutil
+import hashlib
 
 import socks.pretty_print as pretty_print
 from socks.build_validator import Build_Validator
@@ -35,6 +36,9 @@ class Debian_RootFS_Builder(File_System_Builder):
         )
 
         self._target_arch = "arm64"
+
+        # Project directories
+        self._ext_pkgs_dir = self._work_dir / "external_packages"
 
     @property
     def _block_deps(self):
@@ -334,11 +338,16 @@ class Debian_RootFS_Builder(File_System_Builder):
                 try:
                     online_pkg_timestamps.append(File_Downloader.get_last_modified(url=uri))
                 except RuntimeError:
-                    pretty_print.print_warning(
-                        "Updates to the following package cannot be detected because no 'Last-Modified' field "
-                        "could be retrieved from the header. Use a different server or trigger rebuilds "
-                        f"manually: {uri}"
-                    )
+                    try:
+                        self._ext_pkgs_dir.mkdir(parents=True, exist_ok=True)
+                        File_Downloader.get_file(url=f"{uri}.sha256", output_dir=self._ext_pkgs_dir)
+                    except RuntimeError:
+                        pretty_print.print_warning(
+                            "Updates to the following package cannot be detected because no 'Last-Modified' field "
+                            "could be retrieved from the header and no associated sha256 checksum file could be found. "
+                            "Add a sha256 checksum file with the name of the package and '.sha256' appended, use "
+                            f"a different server, or trigger rebuilds manually: {uri}"
+                        )
 
         # Check whether a rebuild is necessary due to updated local packages
         rebuild_bc_local_pkgs = False
@@ -356,6 +365,19 @@ class Debian_RootFS_Builder(File_System_Builder):
             rebuild_bc_online_pkgs = max(online_pkg_timestamps) > self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             )
+        if self._ext_pkgs_dir.is_dir:
+            for checksum_file in self._ext_pkgs_dir.glob(".sha256"):
+                if not checksum_file.removesuffix(".sha256").is_file():
+                    # If the package does not exist locally, a rebuild is required
+                    rebuild_bc_online_pkgs = True
+                    break
+                with checksum_file.open("r") as f:
+                    online_pkg_checksum = f.read()
+                local_pkg_checksum = hashlib.md5(checksum_file.removesuffix(".sha256").read_bytes()).hexdigest()
+                if online_pkg_checksum != local_pkg_checksum:
+                    # The checksums differ, a rebuild is required
+                    rebuild_bc_online_pkgs = True
+                    break
 
         # Check whether the extra packages need to be added
         packages_already_added = (
@@ -379,9 +401,8 @@ class Debian_RootFS_Builder(File_System_Builder):
             pretty_print.print_build("Installing additional packages from external *.deb files...")
 
             # Clean package directory
-            ext_pkgs_dir = self._work_dir / "external_packages"
-            shutil.rmtree(path=ext_pkgs_dir, ignore_errors=True)
-            ext_pkgs_dir.mkdir(parents=True)
+            shutil.rmtree(path=self._ext_pkgs_dir, ignore_errors=True)
+            self._ext_pkgs_dir.mkdir(parents=True)
 
             # Collect package files
             ext_pkgs_to_install = []
@@ -403,10 +424,10 @@ class Debian_RootFS_Builder(File_System_Builder):
                         )
                         sys.exit(1)
                     # Copy file to work dir
-                    shutil.copy(local_pkg_path, ext_pkgs_dir / local_pkg_file)
+                    shutil.copy(local_pkg_path, self._ext_pkgs_dir / local_pkg_file)
                 elif urllib.parse.urlparse(uri).scheme in ["http", "https"]:
                     # This package needs to be downloaded
-                    local_pkg_path = File_Downloader.get_file(url=uri, output_dir=ext_pkgs_dir)
+                    local_pkg_path = File_Downloader.get_file(url=uri, output_dir=self._ext_pkgs_dir)
                     local_pkg_file = local_pkg_path.name
                 else:
                     raise ValueError(
@@ -418,7 +439,7 @@ class Debian_RootFS_Builder(File_System_Builder):
                 ext_pkgs_to_install.append(local_pkg_file)
 
             rel_pkg_paths = ["./" + pkg for pkg in ext_pkgs_to_install]
-            addl_pkgs_str = f"apt update && cd /tmp/{ext_pkgs_dir.stem} && apt install -y " + " ".join(rel_pkg_paths)
+            addl_pkgs_str = f"apt update && cd /tmp/{self._ext_pkgs_dir.stem} && apt install -y " + " ".join(rel_pkg_paths)
             add_packages_commands = [
                 # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
                 f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
@@ -426,12 +447,12 @@ class Debian_RootFS_Builder(File_System_Builder):
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
                 # Move external packages to the build dircetory to make them available in chroot
-                f"rm -rf {self._build_dir}/tmp/{ext_pkgs_dir.stem}",
-                f"mv {ext_pkgs_dir} {self._build_dir}/tmp/",
+                f"rm -rf {self._build_dir}/tmp/{self._ext_pkgs_dir.stem}",
+                f"cp {self._ext_pkgs_dir} {self._build_dir}/tmp/",
                 # Installing user defined external packages
                 f'chroot {self._build_dir} /bin/bash -c "{addl_pkgs_str}"',
                 # Remove external packages from tmp dir
-                f"rm -rf {self._build_dir}/tmp/{ext_pkgs_dir.stem}",
+                f"rm -rf {self._build_dir}/tmp/{self._ext_pkgs_dir.stem}",
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
