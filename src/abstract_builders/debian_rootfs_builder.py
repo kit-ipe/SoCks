@@ -321,6 +321,7 @@ class Debian_RootFS_Builder(File_System_Builder):
             return
 
         # Create a list of local packages and a list of last modified timestamps of online packages
+        # ToDo: This entire collection process of packages should potentially be merged with the collection process when the packages are actually installed.
         local_pkgs = []
         online_pkg_timestamps = []
         for uri in self.block_cfg.project.addl_ext_pkgs:
