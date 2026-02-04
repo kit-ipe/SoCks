@@ -166,7 +166,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
                 f"fi",
                 # Install Meta package for minimal alpine base
                 apk_base_command + "--initdb --allow-untrusted add alpine-base",
-                # The QEMU binary if only required during build, so delete it if it exists
+                # The QEMU binary is only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
@@ -284,7 +284,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
                 apk_base_command + "upgrade",
                 # Installing user defined packages
                 apk_base_command + "add " + " ".join(self.block_cfg.project.addl_pkgs),
-                # The QEMU binary if only required during build, so delete it if it exists
+                # The QEMU binary is only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
@@ -445,7 +445,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
                 apk_base_command + "add --allow-untrusted " + " ".join(rel_pkg_paths),
                 # Movo back to the previous directory
                 "cd -",
-                # The QEMU binary if only required during build, so delete it if it exists
+                # The QEMU binary is only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
@@ -553,7 +553,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             # Delete temporary directory with SSH keys
             add_users_commands.append(f"rm -rf {self._build_dir}/tmp/{ssh_keys_temp_dir.parts[-1]}")
 
-            # The QEMU binary if only required during build, so delete it if it exists
+            # The QEMU binary is only required during build, so delete it if it exists
             add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.

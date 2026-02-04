@@ -181,7 +181,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 'printf "\nInstall the base os via dnf group install...\n\n"',
                 # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
                 dnf_base_command + 'groupinstall --with-optional "Minimal Install"',
-                # The QEMU binary if only required during build, so delete it if it exists
+                # The QEMU binary is only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
@@ -305,7 +305,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 dnf_base_command + "update",
                 # Installing user defined packages
                 dnf_base_command + "install " + " ".join(self.block_cfg.project.addl_pkgs),
-                # The QEMU binary if only required during build, so delete it if it exists
+                # The QEMU binary is only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
@@ -460,7 +460,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 dnf_base_command + "install " + " ".join(rel_pkg_paths),
                 # Movo back to the previous directory
                 "cd -",
-                # The QEMU binary if only required during build, so delete it if it exists
+                # The QEMU binary is only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
@@ -568,7 +568,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
             # Delete temporary directory with SSH keys
             add_users_commands.append(f"rm -rf {self._build_dir}/tmp/{ssh_keys_temp_dir.parts[-1]}")
 
-            # The QEMU binary if only required during build, so delete it if it exists
+            # The QEMU binary is only required during build, so delete it if it exists
             add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.

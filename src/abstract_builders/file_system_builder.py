@@ -163,7 +163,7 @@ class File_System_Builder(Builder):
                 # Call user-defined script
                 f"chmod a+x {mod_script}",
                 f"{mod_script} {' '.join(mod_script_params)}",
-                # The QEMU binary if only required during build, so delete it if it exists
+                # The QEMU binary is only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
