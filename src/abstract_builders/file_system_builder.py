@@ -257,8 +257,8 @@ class File_System_Builder(Builder):
         # Check whether the build time file system layer is specified
         if not self.block_cfg.project.build_time_fs_layer:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> build_time_fs_layer' not specified. "
-                "No files and directories created by other blocks at build time will be added."
+                "No files and directories created by other blocks at build time will be added. "
+                f"'{self.block_id} -> project -> build_time_fs_layer' not specified."
             )
             return
 
@@ -338,9 +338,19 @@ class File_System_Builder(Builder):
 
         kmods_archive = self._dependencies_dir / "kernel" / "kernel_modules.tar.gz"
 
+        # Skip module installation if specified
+        if (
+            hasattr(self.block_cfg.project, "static_kernel_modules")
+            and not self.block_cfg.project.static_kernel_modules
+        ):
+            pretty_print.print_info(
+                f"No kernel modules are added, as specified in '{self.block_id} -> project -> static_kernel_modules'."
+            )
+            return
+
         # Skip this function if no kernel modules are available
         if not kmods_archive.is_file():
-            pretty_print.print_info(f"File {kmods_archive} not found. No kernel modules are added.")
+            pretty_print.print_info(f"No kernel modules are added. File {kmods_archive} not found.")
             if any((self._build_dir / "lib" / "modules").iterdir()):
                 delete_old_kmodules_commands = [f"rm -rf {self._build_dir}/lib/modules/*"]
                 # The root user is used in this container. This is necessary in order to build a file system image.

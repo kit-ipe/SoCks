@@ -273,7 +273,7 @@ class Debian_RootFS_Builder(File_System_Builder):
         if (
             custom_pkgs_already_built
             and not Build_Validator.check_rebuild_bc_timestamp(
-                src_search_list=[self.custom_pkg_src_dir],
+                src_search_list=[self.custom_pkg_src_dir, self._dependencies_dir],
                 out_timestamp=self._build_log.get_logged_timestamp(
                     identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
                 ),
@@ -393,7 +393,8 @@ class Debian_RootFS_Builder(File_System_Builder):
         # Check whether extra packages are provided
         if not self.block_cfg.project.addl_pkgs:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> addl_pkgs' not specified. No additional deb packages will be installed."
+                "No additional deb packages will be installed. "
+                f"'{self.block_id} -> project -> addl_pkgs' not specified."
             )
             return
 
@@ -456,8 +457,8 @@ class Debian_RootFS_Builder(File_System_Builder):
         # Check whether extra packages are provided
         if not self.block_cfg.project.addl_ext_pkgs:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> addl_ext_pkgs' not specified. "
-                "No additional deb packages will be installed from external *.deb files."
+                "No additional deb packages will be installed from external *.deb files. "
+                f"'{self.block_id} -> project -> addl_ext_pkgs' not specified."
             )
             return
 
@@ -612,7 +613,20 @@ class Debian_RootFS_Builder(File_System_Builder):
         # Check whether custom packages are defined
         if not self.block_cfg.project.custom_pkgs:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> custom_pkgs' not specified. No custom packages will be installed."
+                "No custom packages will be installed. " f"'{self.block_id} -> project -> custom_pkgs' not specified."
+            )
+            return
+
+        # Compile list of packages to be installed
+        custom_pkgs_to_install = []
+        for package in self.block_cfg.project.custom_pkgs:
+            if package.install:
+                custom_pkgs_to_install.append(f"{package.name}.deb")
+
+        if not custom_pkgs_to_install:
+            pretty_print.print_info(
+                "No custom packages will be installed. "
+                f"No package in '{self.block_id} -> project -> custom_pkgs' marked for installation."
             )
             return
 
@@ -639,17 +653,13 @@ class Debian_RootFS_Builder(File_System_Builder):
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
             pretty_print.print_build("Installing custom packages...")
 
-            # Compile list of packages to be installed
-            custom_pkgs_to_install = []
-            for package in self.block_cfg.project.custom_pkgs:
-                if package.install:
-                    if (self.custom_pkg_build_dir / f"{package.name}.deb").is_file():
-                        custom_pkgs_to_install.append(f"{package.name}.deb")
-                    else:
-                        pretty_print.print_error(
-                            f"Package '{pkg_file.name}' is to be installed, but it is not available in '{self.custom_pkg_build_dir}'"
-                        )
-                        sys.exit(1)
+            # Check whether all packages are available
+            for package in custom_pkgs_to_install:
+                if not (self.custom_pkg_build_dir / package).is_file():
+                    pretty_print.print_error(
+                        f"Package '{package}' is to be installed, but it is not available in '{self.custom_pkg_build_dir}'"
+                    )
+                    sys.exit(1)
 
             rel_pkg_paths = ["./" + pkg for pkg in custom_pkgs_to_install]
             addl_pkgs_str = f"apt update && cd /tmp/custom_packages && apt install --reinstall -y " + " ".join(

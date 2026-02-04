@@ -41,6 +41,7 @@ class Debian_RootFS_Block_Project_Model(Block_Project_Model):
     )
     users: list[File_System_User_Model] = Field(default=None, description="List of users to be added")
     add_build_info: bool = Block_Project_Model_Default_Fields.add_build_info
+    static_kernel_modules: bool = Block_Project_Model_Default_Fields.static_kernel_modules
     dependencies: Debian_RootFS_Dependencies_Model = Block_Project_Model_Default_Fields.dependencies
 
 

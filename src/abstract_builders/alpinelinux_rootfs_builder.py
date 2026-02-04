@@ -249,7 +249,8 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
         # Check whether extra packages are provided
         if not self.block_cfg.project.addl_pkgs:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> addl_pkgs' not specified. No additional apk packages will be installed."
+                "No additional apk packages will be installed. "
+                f"'{self.block_id} -> project -> addl_pkgs' not specified."
             )
             return
 
@@ -320,8 +321,8 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
         # Check whether extra packages are provided
         if not self.block_cfg.project.addl_ext_pkgs:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> addl_ext_pkgs' not specified. "
-                "No additional apk packages will be installed from external *.apk files."
+                "No additional apk packages will be installed from external *.apk files. "
+                f"'{self.block_id} -> project -> addl_ext_pkgs' not specified."
             )
             return
 

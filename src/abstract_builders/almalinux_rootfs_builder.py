@@ -272,7 +272,8 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
         # Check whether extra packages are provided
         if not self.block_cfg.project.addl_pkgs:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> addl_pkgs' not specified. No additional rpm packages will be installed."
+                "No additional rpm packages will be installed. "
+                f"'{self.block_id} -> project -> addl_pkgs' not specified."
             )
             return
 
@@ -321,7 +322,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
 
     def add_addl_ext_packages(self):
         """
-        Installs additional user defined RPM packages from external *.rpm files.
+        Installs additional user defined rpm packages from external *.rpm files.
 
         Args:
             None
@@ -341,8 +342,8 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
         # Check whether extra packages are provided
         if not self.block_cfg.project.addl_ext_pkgs:
             pretty_print.print_info(
-                f"'{self.block_id} -> project -> addl_ext_pkgs' not specified. "
-                "No additional RPM packages will be installed from external *.rpm files."
+                "No additional rpm packages will be installed from external *.rpm files. "
+                f"'{self.block_id} -> project -> addl_ext_pkgs' not specified."
             )
             return
 
@@ -414,9 +415,9 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
             ext_pkgs_to_install = []
             for uri in self.block_cfg.project.addl_ext_pkgs:
                 if uri.rpartition(".")[2] != "rpm":
-                    # The provided file is not an RPM package
+                    # The provided file is not an rpm package
                     pretty_print.print_error(
-                        f"The file specified in '{uri}' in '{self.block_id} -> project -> addl_ext_pkgs' is not an RPM package"
+                        f"The file specified in '{uri}' in '{self.block_id} -> project -> addl_ext_pkgs' is not an rpm package"
                     )
                     sys.exit(1)
                 if urllib.parse.urlparse(uri).scheme == "file":
@@ -437,7 +438,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                     local_pkg_file = local_pkg_path.name
                 else:
                     raise ValueError(
-                        "The following string is not a valid reference to an RPM package file: "
+                        "The following string is not a valid reference to an rpm package file: "
                         f"{uri}. Only URI schemes 'https', 'http', and 'file' are supported."
                     )
 

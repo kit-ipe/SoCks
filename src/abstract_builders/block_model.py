@@ -43,3 +43,10 @@ class Block_Project_Model_Default_Fields:
     add_build_info = Field(
         default=..., description="Switch to specify whether or not build information should be included in the block"
     )
+    static_kernel_modules = Field(
+        default=...,
+        description=(
+            "Switch to specify whether kernel modules are installed statically. "
+            "If they are not installed statically, they should be installed with a custom package."
+        ),
+    )
