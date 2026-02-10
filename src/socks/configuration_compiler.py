@@ -174,9 +174,9 @@ class Configuration_Compiler:
                     # Get value from project configuration
                     value = project_cfg
                     for key in keys:
-                        if key not in value:
+                        if value is None or key not in value:
                             pretty_print.print_error(
-                                f"The following setting contains a placeholder that does not point to a valid setting: {search_object}"
+                                f"The following setting in the project configuration contains a placeholder that does not refer to a valid setting: {search_object}"
                             )
                             sys.exit(1)
                         value = value[key]
