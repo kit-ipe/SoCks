@@ -122,7 +122,13 @@ project_cfg, _ = Configuration_Compiler.compile(
 # Check project type and find respective module
 arch_supp_pkgs = ["amd_zynqmp_support", "amd_versal_support", "raspberrypi_support"]
 project_model_suffix = "_Base_Model"
-project_model_class_name = project_cfg["project"]["type"] + project_model_suffix
+try:
+    project_model_class_name = project_cfg["project"]["type"] + project_model_suffix
+except (KeyError, TypeError):
+    pretty_print.print_error(
+        f"The following error occurred while analyzing node 'project -> type' of the project configuration: Field required"
+    )
+    sys.exit(1)
 project_model_module = None
 for package in arch_supp_pkgs:
     try:
@@ -177,7 +183,7 @@ except pydantic.ValidationError as e:
                 # If the item is an integer, it is an index in a list
                 keys[-1] = f"{keys[-1]}[{item}]"
         pretty_print.print_error(
-            f"The following error occured while analyzing node '{' -> '.join(keys)}' "
+            f"The following error occurred while analyzing node '{' -> '.join(keys)}' "
             f"of the project configuration: {err['msg']}"
         )
     sys.exit(1)
