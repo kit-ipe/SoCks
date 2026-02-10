@@ -43,7 +43,15 @@ class Container_Executor:
                 installation_valid = results.returncode == 0 and any(
                     "Docker version" in s for s in results.stdout.splitlines()
                 )
-            if container_tool == "podman":
+                if installation_valid:
+                    # Check for docker buildx
+                    results = self._shell_executor.get_sh_results(
+                        command=[container_tool, "buildx", "version"], check=False
+                    )
+                    if results.returncode != 0:
+                        pretty_print.print_error(f"Docker buildx is not available on the host system")
+                        sys.exit(1)
+            elif container_tool == "podman":
                 installation_valid = results.returncode == 0 and any(
                     "podman version" in s for s in results.stdout.splitlines()
                 )
