@@ -152,6 +152,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
             self._work_dir.mkdir(parents=True, exist_ok=True)
 
+            self._clean_output_archives()
             pretty_print.print_build("Building the base root file system...")
 
             repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
@@ -269,6 +270,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Installing additional packages...")
 
             repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
@@ -386,6 +388,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Installing additional packages from external *.apk files...")
 
             # Clean package directory
@@ -491,6 +494,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Adding users...")
 
             # Collect SSH keys
@@ -567,7 +571,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
 
     def build_archive(self, prebuilt: bool = False):
         """
-        Packs the entire rootfs in a archive.
+        Packs the entire rootfs in an archive.
 
         Args:
             prebuilt:

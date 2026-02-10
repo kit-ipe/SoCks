@@ -360,6 +360,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Applying patches...")
 
             for item in self.block_cfg.project.patches:
@@ -470,6 +471,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(File_System_Builder):
             self.clean_work()
             self._build_dir.mkdir(parents=True)
 
+            self._clean_output_archives()
             pretty_print.print_build("Building the base root file system...")
 
             base_rootfs_build_commands = [

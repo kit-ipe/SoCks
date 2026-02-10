@@ -171,6 +171,7 @@ class Debian_RootFS_Builder(File_System_Builder):
             self.clean_work()
             self._work_dir.mkdir(parents=True, exist_ok=True)
 
+            self._clean_output_archives()
             pretty_print.print_build("Building the base root file system...")
 
             base_rootfs_build_commands = [
@@ -279,7 +280,7 @@ class Debian_RootFS_Builder(File_System_Builder):
                 ),
             )
             and not self._build_validator.check_rebuild_bc_config(
-                keys=[["blocks", self.block_id, "project", "custom_pkgs"]]
+                keys=[["blocks", self.block_id, "project", "custom_pkgs"]], accept_prep=True
             )
         ):
             pretty_print.print_build("No need to build custom packages. No altered source files detected...")
@@ -293,6 +294,10 @@ class Debian_RootFS_Builder(File_System_Builder):
                 print_commands=True,
                 run_as_root=True,
             )
+
+            # Remove invalid symlinks from output directory
+            for package in self._output_dir.glob("*.deb"):
+                package.unlink(missing_ok=True)
 
             pretty_print.print_build("Building custom packages...")
 
@@ -335,7 +340,7 @@ class Debian_RootFS_Builder(File_System_Builder):
                             f"custom_pkgs (name: {package.name}) -> build_time_files' is invalid."
                         )
                         sys.exit(1)
-                    srcs = (self._dependencies_dir / item.src_block).glob(item.src_name)
+                    srcs = list((self._dependencies_dir / item.src_block).glob(item.src_name))
                     if not srcs:
                         pretty_print.print_error(
                             f"Source item '{item.src_name}' specified in '{self.block_id} -> project -> "
@@ -370,6 +375,11 @@ class Debian_RootFS_Builder(File_System_Builder):
                 logfile=self._block_temp_dir / "build_custom_packages.log",
                 output_scrolling=True,
             )
+
+            # Create symlinks to the output files
+            self._output_dir.mkdir(parents=True, exist_ok=True)
+            for package in self.custom_pkg_build_dir.glob("*.deb"):
+                (self._output_dir / package.name).symlink_to(self.custom_pkg_build_dir / package)
 
     def add_addl_packages(self):
         """
@@ -410,6 +420,7 @@ class Debian_RootFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Installing additional packages...")
 
             addl_pkgs_str = f"apt update && apt install -y " + " ".join(self.block_cfg.project.addl_pkgs)
@@ -519,6 +530,7 @@ class Debian_RootFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Installing additional packages from external *.deb files...")
 
             # Clean package directory
@@ -651,6 +663,7 @@ class Debian_RootFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Installing custom packages...")
 
             # Check whether all packages are available
@@ -724,6 +737,7 @@ class Debian_RootFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Adding users...")
 
             # Collect SSH keys
@@ -800,7 +814,7 @@ class Debian_RootFS_Builder(File_System_Builder):
 
     def build_archive(self, prebuilt: bool = False):
         """
-        Packs the entire rootfs in a archive.
+        Packs the entire rootfs in an archive.
 
         Args:
             prebuilt:

@@ -270,6 +270,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             self.clean_work()
             self._build_dir.mkdir(parents=True)
 
+            self._clean_output_archives()
             pretty_print.print_build("Building the base ram file system...")
 
             base_ramfs_build_commands = [
@@ -384,11 +385,12 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Adding additional unprocessed files and directories from the source repo...")
 
             add_sr_layer_commands = []
             for item in self.block_cfg.project.source_repo_fs_layer:
-                srcs = self._source_repo_dir.glob(item.src_name)
+                srcs = list(self._source_repo_dir.glob(item.src_name))
                 if not srcs:
                     pretty_print.print_error(
                         f"Source item '{item.src_name}' specified in '{self.block_id} -> project -> source_repo_fs_layer' "

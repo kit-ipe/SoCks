@@ -46,7 +46,7 @@ class Block_Project_Model_Default_Fields:
     static_kernel_modules = Field(
         default=...,
         description=(
-            "Switch to specify whether kernel modules are installed statically. "
+            "Switch to specify whether kernel modules should be installed statically in the file system. "
             "If they are not installed statically, they should be installed with a custom package."
         ),
     )

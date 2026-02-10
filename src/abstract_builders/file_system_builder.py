@@ -152,6 +152,7 @@ class File_System_Builder(Builder):
         with self._build_log.timestamp(
             identifier=f"function-{inspect.getouterframes(inspect.currentframe(), 2)[1][3]}-success"
         ):
+            self._clean_output_archives()
             pretty_print.print_build(f"Executing {mod_script.name}...")
 
             run_mo_script_commands = [
@@ -219,6 +220,7 @@ class File_System_Builder(Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Adding predefined file system layers...")
 
             add_pd_layers_commands = [
@@ -286,6 +288,7 @@ class File_System_Builder(Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
+            self._clean_output_archives()
             pretty_print.print_build("Adding external files and directories created at build time...")
 
             add_bt_layer_commands = []
@@ -295,7 +298,7 @@ class File_System_Builder(Builder):
                         f"Source block '{item.src_block}' specified in '{self.block_id} -> project -> build_time_fs_layer' is invalid."
                     )
                     sys.exit(1)
-                srcs = (self._dependencies_dir / item.src_block).glob(item.src_name)
+                srcs = list((self._dependencies_dir / item.src_block).glob(item.src_name))
                 if not srcs:
                     pretty_print.print_error(
                         f"Source item '{item.src_name}' specified in '{self.block_id} -> project -> build_time_fs_layer' "
@@ -379,6 +382,7 @@ class File_System_Builder(Builder):
             pretty_print.print_build("No need to add Kernel Modules. No altered source files detected...")
             return
 
+        self._clean_output_archives()
         pretty_print.print_build("Adding Kernel Modules...")
 
         add_kmodules_commands = [
@@ -404,6 +408,31 @@ class File_System_Builder(Builder):
         # Save checksum in file
         with self._source_kmods_md5_file.open("w") as f:
             print(md5_new_file, file=f, end="")
+
+    def _clean_output_archives(self):
+        """
+        Cleans all rootfs archives and block packages from the output directory.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Reset timestamp
+        self._build_log.del_logged_timestamp(identifier="function-_build_archive-success")
+
+        # Remove rootfs archives
+        for archive in self._output_dir.glob(f"{self._file_system_name}*"):
+            archive.unlink()
+
+        # Remove block package
+        for block_pkg in self._output_dir.glob(f"bp_{self.block_id}_*.tar.gz"):
+            block_pkg.unlink()
 
     def _build_archive(self, archive_name: str, file_extension: str, tar_compress_param: str = ""):
         """
@@ -447,9 +476,7 @@ class File_System_Builder(Builder):
             return
 
         with self._build_log.timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success"):
-            self.clean_output()
-            self._output_dir.mkdir(parents=True)
-
+            self._clean_output_archives()
             pretty_print.print_build("Building archive...")
 
             if self.block_cfg.project.add_build_info == True:
@@ -603,6 +630,7 @@ class File_System_Builder(Builder):
         self.clean_work()
         self._work_dir.mkdir(parents=True)
 
+        self._clean_output_archives()
         pretty_print.print_build("Importing pre-built file system...")
 
         # Extract pre-built files
