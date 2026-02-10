@@ -15,7 +15,7 @@ SoCks (short for SoC blocks) is a lightweight and modular framework to build com
     - [Printing the Project Configuration](#printing-the-project-configuration)
   - [Creating patch files](#creating-patch-files)
   - [Using menuconfig and creating configuration snippets](#using-menuconfig-and-creating-configuration-snippets)
-- [Available Builders (ZynqMP)](#available-builders-(zynqmp))
+- [Available Builders (ZynqMP)](#available-builders-zynqmp)
   - [ZynqMP_AlmaLinux_RootFS_Builder](#zynqmp_almalinux_rootfs_builder)
     - [Block Configuration](#block-configuration)
     - [External Source Files](#external-source-files)
@@ -190,7 +190,7 @@ Key:
     - **Versal**: AMD Versal devices
     - **RaspberryPi**: Raspberry Pi SBCs. Currently, only Model 4 and Model 5 are supported.
   - **socks_version**: Version of SoCks that must be used to build this project. Since SoCks is still in an early stage of development, breaking changes may occur at any time, requiring manual updates to the project configuration file. SoCks uses this setting to notify the user that the project configuration must be manually adjusted to be compatible with the version of SoCks being used (In most cases, only the version number in this field needs to be updated.). It is possible to set the value to `any` to skip this check.
-- **blocks**: List of blocks to be used in the project. For details see [Available Builders (ZynqMP)](#available-builders-(zynqmp)).
+- **blocks**: List of blocks to be used in the project. For details see [Available Builders (ZynqMP)](#available-builders-zynqmp).
 
 #### User Specific Extension
 
