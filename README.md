@@ -77,9 +77,9 @@ SoCks (short for SoC blocks) is a lightweight and modular framework to build com
 By default, SoCks builds everything in containers that provide all the necessary build tools. However, some tools are still required on the development system. The following list provides an overview:
 
 - Python (3.10 or newer)
-- A containerization tool (Docker (including buildx) or Podman)
 - Git
-- Vivado and Vitis (Only if you target AMD's ZynqMP or Versal SoCs)
+- A containerization tool (Docker (including buildx) or Podman)
+- Vivado and Vitis (Only if you target one of AMD's ZynqMP or Versal SoCs)
 
 ### Installation
 
@@ -122,6 +122,8 @@ project:
   name: "my-project"
   socks_version: "0.0.post1.dev308"
 ```
+
+The individual settings are explained in the [Project Configuration](#project-configuration) section.
 
 ### Building an image
 
