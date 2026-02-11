@@ -79,6 +79,7 @@ By default, SoCks builds everything in containers that provide all the necessary
 - Python (3.10 or newer)
 - A containerization tool (Docker (including buildx) or Podman)
 - Git
+- Vivado and Vitis (Only if you target AMD's ZynqMP or Versal SoCs)
 
 ### Installation
 
@@ -147,7 +148,7 @@ $ eval "$(register-python-argcomplete socks)"
 
 ### Project Configuration
 
-A SoCks project is fully described by the YAML file `project.yml`. This file must be present in the root directory of a SoCks project. The following excerpt shows an example of the structure of `project.yml` for a ZynqMP project, but the keys are similar for all supported SoC architectures:
+A SoCks project is fully described by the YAML file `project.yml`. This file must be present in the root directory of a SoCks project. The following excerpt shows an example of the structure of `project.yml`. This example is for a ZynqMP project, but the keys are similar for all supported SoC architectures:
 
 ```
 ---
