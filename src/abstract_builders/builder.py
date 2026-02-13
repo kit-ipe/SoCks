@@ -332,7 +332,7 @@ class Builder(ABC):
 
     def _compose_build_info(self) -> str:
         """
-        Compose a string with build information.
+        Compose a build information string in YAML format.
 
         Args:
             None
@@ -345,6 +345,12 @@ class Builder(ABC):
         """
 
         build_info = ""
+
+        # Start with the SoCks project name
+        build_info = build_info + f"PROJECT_NAME: {self.project_cfg.project.name}\n"
+
+        # Line break to separate sections
+        build_info = build_info + "\n"
 
         # Use the git command to collect information, if possible
         if (
@@ -386,9 +392,27 @@ class Builder(ABC):
 
             results = self.shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "status", "--porcelain"])
             if results.stdout:
-                build_info = build_info + "GIT_IS_REPO_CLEAN: false\n\n"
+                build_info = build_info + "GIT_IS_REPO_CLEAN: false\n"
             else:
-                build_info = build_info + "GIT_IS_REPO_CLEAN: true\n\n"
+                build_info = build_info + "GIT_IS_REPO_CLEAN: true\n"
+            results = self.shell_executor.get_sh_results(["git", "-C", str(self._project_dir), "remote", "-v"])
+            if results.stdout:
+                git_remote_names = [line.split()[0] for line in results.stdout.splitlines()]
+                git_remote_names = list(set(git_remote_names))  # Remove duplicates
+                git_remote_urls = "["
+                for name in git_remote_names:
+                    results = self.shell_executor.get_sh_results(
+                        ["git", "-C", str(self._project_dir), "remote", "get-url", name]
+                    )
+                    if git_remote_urls == "[":  # The first element in the list
+                        git_remote_urls = git_remote_urls + f'"{results.stdout.splitlines()[0]}"'
+                    else:  # All other elements in the list
+                        git_remote_urls = git_remote_urls + f', "{results.stdout.splitlines()[0]}"'
+                git_remote_urls = git_remote_urls + "]"
+                build_info = build_info + f"GIT_REMOTE_URLS: {git_remote_urls}\n"
+
+        # Line break to separate sections
+        build_info = build_info + "\n"
 
         # Collect information for which the git command is not required
         current_time = time.time()
