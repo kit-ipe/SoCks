@@ -270,7 +270,8 @@ class ZynqMP_AMD_UBoot_SSBL_Builder(Builder):
                 # Add build information file
                 with self._build_info_file.open("w") as f:
                     print('const char *build_info = "', file=f, end="")
-                    print(self._compose_build_info().replace("\n", "\\n"), file=f, end="")
+                    c_compatible_build_info = self._compose_build_info().replace("\n", "\\n").replace('"', '\\"')
+                    print(c_compatible_build_info, file=f, end="")
                     print('";', file=f, end="")
             else:
                 # Remove existing build information file
