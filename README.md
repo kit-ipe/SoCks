@@ -4,14 +4,18 @@ SoCks (short for SoC blocks) is a lightweight and modular framework to build com
 
 ## Table of Contents
 - [Quick start](#quick-start)
+  - [Requirements](#requirements)
   - [Installation](#installation)
   - [Example Projects](#example-projects)
+  - [Creating a Project from Scratch](#creating-a-project-from-scratch)
   - [Building an image](#building-an-image)
 - [Development flow](#development-flow)
   - [Project Configuration](#project-configuration)
+    - [User Specific Extension](#user-specific-extension)
+    - [Printing the Project Configuration](#printing-the-project-configuration)
   - [Creating patch files](#creating-patch-files)
   - [Using menuconfig and creating configuration snippets](#using-menuconfig-and-creating-configuration-snippets)
-- [Available Builders (ZynqMP)](#available-builders-(zynqmp))
+- [Available Builders (ZynqMP)](#available-builders-zynqmp)
   - [ZynqMP_AlmaLinux_RootFS_Builder](#zynqmp_almalinux_rootfs_builder)
     - [Block Configuration](#block-configuration)
     - [External Source Files](#external-source-files)
@@ -68,6 +72,15 @@ SoCks (short for SoC blocks) is a lightweight and modular framework to build com
 
 ## Quick start
 
+### Requirements
+
+By default, SoCks builds everything in containers that provide all the necessary build tools. However, some tools are still required on the development system. The following list provides an overview:
+
+- Python (3.10 or newer)
+- Git
+- A containerization tool (Docker (including buildx) or Podman)
+- Vivado and Vitis (Only if you target one of AMD's ZynqMP or Versal SoCs)
+
 ### Installation
 
 SoCks is available as a python package, but currently only in this repo and not in a software repository like PyPI. This might change in the future.
@@ -92,6 +105,25 @@ $ pip install -e .
 ### Example Projects
 
 The easiest way to get started with SoCks is to exploring an example project. Repository [SoCks-example-projects](https://github.com/kit-ipe/SoCks-example-projects) contains a number of example projects for various supported SoC architectures. If you cannot find a suitable example project, please do not hesitate to contact [me](mailto:marvin.fuchs@kit.edu).
+
+### Creating a Project from Scratch
+
+Since SoCks is still in an early stage of development, there is no convenient support for creating new projects from scratch. The currently recommended workflow is to start with one of the [example projects](#example-projects). However, it is also possible to start from scratch and be guided by the SoCks error messages, which will tell you what is required in `project.yml`. Below is a minimal starting point for `project.yml`:
+
+```
+---
+import:
+  - project-zynqmp-default.yml
+external_tools:
+  container_tool: docker
+  xilinx:
+    version: "2024.2"
+project:
+  name: "my-project"
+  socks_version: "0.0.post1.dev308"
+```
+
+The individual settings are explained in the [Project Configuration](#project-configuration) section.
 
 ### Building an image
 
@@ -118,23 +150,58 @@ $ eval "$(register-python-argcomplete socks)"
 
 ### Project Configuration
 
-A SoCks project is fully described by the YAML file `project.yml`. This file must be present in the root directory of a SoCks project. To support the reuse of project configuration snippets, SoCks allows to import such snippets as follows:
+A SoCks project is fully described by the YAML file `project.yml`. This file must be present in the root directory of a SoCks project. The following excerpt shows an example of the structure of `project.yml`. This example is for a ZynqMP project, but the keys are similar for all supported SoC architectures:
 
 ```
+---
 import:
   - project-zynqmp-default.yml
+external_tools:
+  container_tool: docker
+  make:
+    max_build_threads: 16
+  xilinx:
+    version: "2024.2"
+    max_threads_vivado: 16
+project:
+  name: "my-project"
+  type: ZynqMP
+  socks_version: "0.0.post1.dev308"
+blocks:
+  ...
 ```
 
-The imported files are imported in the order in which they are declared and before anything else in the file is processed. This means that it is posible to overwrite the information from the imported configuration file in the file that imports it.
+Key:
+- **import**: List of project configuration snippets to be imported. SoCks allows to import project configuration snippets to facilitate reuse in different projects. The imported files are imported in the order in which they are declared and before any other elements in the file are processed. This means that the information from the imported configuration file can be overwritten in the file that imports it. The SoCks framework provides a base configuration file for each supported architecture. It is recommended to use one of these files in every SoCks project to reduce the information in the project configuration file to project-specific configurations. The following list provides an overview:
+  - `project-zynqmp-default.yml`
+  - `project-versal-default.yml`
+  - `project-raspberrypi-default.yml`
+- **external_tools**: Settings for tools that SoCks uses and that must be available on the host system
+  - **container_tool**: The containerization tool to be used. Options are:
+    - **docker**: [Docker](https://docs.docker.com/engine/install/) (recommended)
+    - **podman**: [Podman](https://podman.io/docs/installation)
+    - **none**: SoCks does not use containerization and builds everything directly in the environment in which it is executed. When SoCks is used interactively for development, this is not recommended, as all tools that SoCks uses for building must be available on the host system. However, this option must be used when SoCks itself is used in a container, e.g., in a GitLab CI/CD pipeline.
+  - **make [optional]**: Settings for GNU Make
+    - **max_build_threads [optional]**: Number of Makefile recipes to be executed simultaneously (make parameter: -j). If not specified, the number of CPU cores is used.
+  - **xilinx**: Settings for the AMD Xilinx tools that SoCks uses (currently Vivado and Vitis)
+    - **version**: Version of the AMD toolset to be used. This also affects which source code is used for FSBL and PMU-FW. If one of the base configuration files is imported into `project.yml` and not overwritten, this setting also affects which repo branch of U-Boot, ATF, Linux kernel, and devicetree is used.
+    - **max_threads_vivado [optional]**: Maximum number of jobs to be executed simultaneously by Vivado. If not specified, the number of CPU cores is used.
+- **project**: General project settings
+  - **name**: Name of the project
+  - **type**: The SoCks project type (SoC architecture). This parameter is specified in the available base configurations. Options are:
+    - **ZynqMP**: AMD ZynqMP devices
+    - **Versal**: AMD Versal devices
+    - **RaspberryPi**: Raspberry Pi SBCs. Currently, only Model 4 and Model 5 are supported.
+  - **socks_version**: Version of SoCks that must be used to build this project. Since SoCks is still in an early stage of development, breaking changes may occur at any time, requiring manual updates to the project configuration file. SoCks uses this setting to notify the user that the project configuration must be manually adjusted to be compatible with the version of SoCks being used (In most cases, only the version number in this field needs to be updated.). It is possible to set the value to `any` to skip this check.
+- **blocks**: List of blocks to be used in the project. For details see [Available Builders (ZynqMP)](#available-builders-zynqmp).
 
-The SoCks framework provides a base configuration files for every architecture that is supported. It is recommended to use one of these files in every SoCks project, to reduce the information in the project configuration file to project specific configurations. The following list gives an overview:
-- `project-zynqmp-default.yml`
-- `project-versal-default.yml`
-- `project-raspberrypi-default.yml`
+#### User Specific Extension
 
 Sometimes it is necessary to adapt the project configuration to the user's specific host system. For example, by changing the containerization tool to be used or by adding additional packages to the SoC's file system for debugging purposes. For this purpose, one can create a file `project-user.yml` in the same directory as `project.yml`. The file `project-user.yml` is applied on top of the main project configuration described in `project.yml`. It is recommended that `project.yml` always contains a complete, buildable project configuration and `project-user.yml` is only used to overwrite already existing settings. It is therefore also not possible to import other YAML files into `project-user.yml`. The file `project-user.yml` should be listed in the `.gitignore` file so that it is excluded from version control.
 
-SoCks can print the full project configuration with all includes resolved to the standard output:
+#### Printing the Project Configuration
+
+SoCks can print the full project configuration with all includes and placeholders resolved to the standard output:
 ```
 $ socks --show-configuration
 ```

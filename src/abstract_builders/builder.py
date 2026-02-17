@@ -58,7 +58,7 @@ class Builder(ABC):
                         # If the item is an integer, it is an index in a list
                         keys[-1] = f"{keys[-1]}[{item}]"
                 pretty_print.print_error(
-                    f"The following error occured while analyzing node '{' -> '.join(keys)}' "
+                    f"The following error occurred while analyzing node '{' -> '.join(keys)}' "
                     f"of the project configuration: {err['msg']}"
                 )
             sys.exit(1)
