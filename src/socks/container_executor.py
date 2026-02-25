@@ -34,6 +34,10 @@ class Container_Executor:
         # Shell command executor
         self._shell_executor = Shell_Executor(prohibit_output_processing=prohibit_output_processing)
 
+        # Get host user and id (a bit complicated but should work in most Unix environments)
+        self._host_user_id = os.getuid()
+        self._host_user = pwd.getpwuid(self._host_user_id).pw_name
+
         if container_tool != "none":
             # Check if the selected container tool is installed
             # This detailed check is necessary to avoid being tricked by podman's Docker compatibility layer
@@ -44,7 +48,25 @@ class Container_Executor:
                     "Docker version" in s for s in results.stdout.splitlines()
                 )
                 if installation_valid:
-                    # Check for docker buildx
+                    # Check Docker context
+                    results = self._shell_executor.get_sh_results(
+                        command=[container_tool, "context", "show"], check=False
+                    )
+                    if results.returncode == 0 and results.stdout.splitlines()[0].strip() == "rootless":
+                        pretty_print.print_error(
+                            "The Docker client on this system is connected to the rootless context. SoCks does not yet "
+                            "support rootless mode. Check 'docker info' to verify your current Docker configuration."
+                        )
+                        sys.exit(1)
+                    # Check Docker group
+                    results = self._shell_executor.get_sh_results(command=["groups"], check=False)
+                    if "docker" not in results.stdout.splitlines()[0]:
+                        pretty_print.print_error(
+                            f"User '{self._host_user}' is not in the 'docker' group. SoCks requires this in order to "
+                            "use Docker properly."
+                        )
+                        sys.exit(1)
+                    # Check for Docker buildx
                     results = self._shell_executor.get_sh_results(
                         command=[container_tool, "buildx", "version"], check=False
                     )
@@ -68,10 +90,6 @@ class Container_Executor:
         self._container_file = container_file
         # Identifier of the container image in format <image name>:<image tag>.
         self._container_image_tagged = f"{container_image}:{container_image_tag}"
-
-        # Get host user and id (a bit complicated but should work in most Unix environments)
-        self._host_user_id = os.getuid()
-        self._host_user = pwd.getpwuid(self._host_user_id).pw_name
 
         # Enforce printing shell commands before they are executed in the container.
         # This setting overwrites all other shell command printing settings.
