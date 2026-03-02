@@ -536,7 +536,7 @@ Key:
   - The file URI of a local file. In this case the string must start with `file://`.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **project -> dt_includes**: A list of user defined device tree source files to be included in the device tree. The files must be located in `src/devicetree/dt_includes`.
-- **project -> dt_includes**: The target board for which the project is being built. This setting adds a board specific section to the device tree, if available. Use `custom` if the target board is not in the list of supported boards.
+- **project -> board**: The target board for which the project is being built. This setting adds a board specific section to the device tree, if available. Use `custom` if the target board is not in the list of supported boards.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
   - `amd-xilinx-tools-alma8`
   - `amd-xilinx-tools-alma9`
