@@ -58,9 +58,9 @@ class Container_Executor:
                             "support rootless mode. Check 'docker info' to verify your current Docker configuration."
                         )
                         sys.exit(1)
-                    # Check Docker group
+                    # Check Docker group (if the user is not root)
                     results = self._shell_executor.get_sh_results(command=["groups"], check=False)
-                    if "docker" not in results.stdout.splitlines()[0]:
+                    if self._host_user_id != 0 and "docker" not in results.stdout.splitlines()[0]:
                         pretty_print.print_error(
                             f"User '{self._host_user}' is not in the 'docker' group. SoCks requires this in order to "
                             "use Docker properly."
