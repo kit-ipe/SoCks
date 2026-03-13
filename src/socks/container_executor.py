@@ -22,6 +22,7 @@ class Container_Executor:
         container_file: pathlib.Path,
         container_image: str,
         container_image_tag: str,
+        container_platform: str,
         container_log_file: pathlib.Path,
         prohibit_output_processing: bool = False,
         enforce_command_printing: bool = False,
@@ -90,6 +91,8 @@ class Container_Executor:
         self._container_file = container_file
         # Identifier of the container image in format <image name>:<image tag>.
         self._container_image_tagged = f"{container_image}:{container_image_tag}"
+        # The container platform to be used for building. Emulation may be required to run this platform.
+        self._container_platform = container_platform
 
         # Enforce printing shell commands before they are executed in the container.
         # This setting overwrites all other shell command printing settings.
@@ -169,6 +172,8 @@ class Container_Executor:
                         self._container_image_tagged,
                         "-f",
                         str(self._container_file),
+                        "--platform",
+                        f"{self._container_platform}",
                         "--ssh",
                         "default",
                         "--build-context",
@@ -189,6 +194,8 @@ class Container_Executor:
                         self._container_image_tagged,
                         "-f",
                         str(self._container_file),
+                        "--platform",
+                        f"{self._container_platform}",
                         "--ssh",
                         "default",
                         "--build-context",
@@ -319,6 +326,8 @@ class Container_Executor:
                     "run",
                     "--rm",
                     "-it",
+                    "--platform",
+                    f"{self._container_platform}",
                     f"--env CONTAINER_USER={container_user}",
                     f"--env CONTAINER_USER_ID={container_user_id}",
                     mounts,
@@ -469,6 +478,8 @@ class Container_Executor:
                         "run",
                         "--rm",
                         "-it",
+                        "--platform",
+                        f"{self._container_platform}",
                         f"--env CONTAINER_USER={container_user}",
                         f"--env CONTAINER_USER_ID={container_user_id}",
                         mounts,
@@ -486,6 +497,8 @@ class Container_Executor:
                         "run",
                         "--rm",
                         "-it",
+                        "--platform",
+                        f"{self._container_platform}",
                         f"--env CONTAINER_USER={container_user}",
                         f"--env CONTAINER_USER_ID={container_user_id}",
                         mounts,

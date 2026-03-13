@@ -143,6 +143,7 @@ class Builder(ABC):
             container_tool=self.project_cfg.external_tools.container_tool,
             container_image=self.block_cfg.container.image,
             container_image_tag=self.block_cfg.container.tag,
+            container_platform="linux/amd64",
             container_file=self._container_dir / f"{self.block_cfg.container.image}.containerfile",
             container_log_file=self._project_temp_dir / ".container_log.csv",
         )
@@ -591,7 +592,7 @@ class Builder(ABC):
 
     def apply_patches(self):
         """
-        This function iterates over all patches listed in the project configuration file and applies them to the repo.
+        Iterates over all patches listed in the project configuration file and applies them to the repo.
 
         Args:
             None
@@ -767,7 +768,7 @@ class Builder(ABC):
 
     def _attach_config_snippets(self, cross_comp_prefix: str = None, arch: str = None):
         """
-        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+        Iterates over all snippets listed in the project configuration file and attaches them to .config.
 
         Args:
             cross_comp_prefix:
@@ -1151,7 +1152,7 @@ class Builder(ABC):
 
     def _prep_clean_cfg(self, prep_srcs_commands: list[str]):
         """
-        This function is intended to create a new, clean Linux kernel or U-Boot project configuration.
+        Creates a new, clean Linux kernel or U-Boot project configuration.
 
         Args:
             menuconfig_commands:
@@ -1235,8 +1236,8 @@ class Builder(ABC):
 
     def import_req_src_tpl(self):
         """
-        This function checks whether there are already sources for this block
-        and, if not, asks the user to import a source code template.
+        Checks whether there are already sources for this block and, if not,
+        asks the user to import a source code template.
 
         Args:
             None
@@ -1289,10 +1290,10 @@ class Builder(ABC):
 
     def import_opt_src_tpl(self):
         """
-        This function checks whether there are already sources for this block
-        and, if not, offers the user to import an optional source code template.
-        To avoid bothering the user with this question with every build, it is
-        only asked if there are no temp files for this block yet.
+        Checks whether there are already sources for this block and, if not,
+        offers the user to import an optional source code template. To avoid
+        bothering the user with this question with every build, it is only
+        asked if there are no temp files for this block yet.
 
         Args:
             None
@@ -1347,7 +1348,7 @@ class Builder(ABC):
 
     def clean_repo(self, as_root: bool = False):
         """
-        This function cleans the git repo directory.
+        Cleans the git repo directory.
 
         Args:
             as_root:
@@ -1404,7 +1405,7 @@ class Builder(ABC):
 
     def clean_output(self):
         """
-        This function cleans the output directory.
+        Cleans the output directory.
 
         Args:
             None
@@ -1431,7 +1432,7 @@ class Builder(ABC):
 
     def clean_work(self, as_root: bool = False):
         """
-        This function cleans the work directory.
+        Cleans the work directory.
 
         Args:
             as_root:
@@ -1464,7 +1465,7 @@ class Builder(ABC):
 
     def clean_download(self):
         """
-        This function cleans the download directory.
+        Cleans the download directory.
 
         Args:
             None
@@ -1491,7 +1492,7 @@ class Builder(ABC):
 
     def clean_dependencies(self, dependency: str = ""):
         """
-        This function cleans the dependencies directory.
+        Cleans the dependencies directory.
 
         Args:
             dependency:
@@ -1531,7 +1532,7 @@ class Builder(ABC):
 
     def clean_block_temp(self):
         """
-        This function cleans the temp directory of a block.
+        Cleans the temp directory of a block.
 
         Args:
             None
