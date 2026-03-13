@@ -338,7 +338,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(File_System_Builder):
 
     def apply_patches(self):
         """
-        This function iterates over all patches listed in the project configuration file and applies them.
+        Iterates over all patches listed in the project configuration file and applies them.
 
         Args:
             None
@@ -520,7 +520,7 @@ class ZynqMP_AMD_PetaLinux_RootFS_Builder(File_System_Builder):
 
     def clean_repo(self):
         """
-        This function cleans the git repo directory.
+        Cleans the git repo directory.
 
         Args:
             None

@@ -182,7 +182,7 @@ class ZynqMP_AMD_UBoot_SSBL_Builder(Builder):
 
     def attach_config_snippets(self):
         """
-        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+        Iterates over all snippets listed in the project configuration file and attaches them to .config.
 
         Args:
             None

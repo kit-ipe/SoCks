@@ -223,7 +223,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
 
     def attach_config_snippets(self):
         """
-        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+        Iterates over all snippets listed in the project configuration file and attaches them to .config.
 
         Args:
             None
@@ -440,7 +440,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
 
     def clean_repo(self):
         """
-        This function cleans the work directory as root user.
+        Cleans the git repo directory.
 
         Args:
             None

@@ -636,7 +636,7 @@ class File_System_Builder(Builder):
 
     def clean_work(self):
         """
-        This function cleans the work directory as root user.
+        Cleans the work directory as root user.
 
         Args:
             None

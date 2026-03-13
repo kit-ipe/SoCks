@@ -393,7 +393,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
 
     def import_req_src_tpl(self):
         """
-        This function checks whether there are already sources for this block
+        Checks whether there are already sources for this block
         and, if not, asks the user to import a source code template.
 
         Args:
