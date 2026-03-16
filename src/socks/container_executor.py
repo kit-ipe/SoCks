@@ -35,8 +35,9 @@ class Container_Executor:
         self._shell_executor = Shell_Executor(prohibit_output_processing=prohibit_output_processing)
 
         # Get host user and id (a bit complicated but should work in most Unix environments)
-        self._host_user_id = os.getuid()
-        self._host_user = pwd.getpwuid(self._host_user_id).pw_name
+        self._host_uid = os.getuid()
+        self._host_gid = os.getgid()
+        self._host_user = pwd.getpwuid(self._host_uid).pw_name
 
         if container_tool != "none":
             # Check if the selected container tool is installed
@@ -60,7 +61,7 @@ class Container_Executor:
                         sys.exit(1)
                     # Check Docker group (if the user is not root)
                     results = self._shell_executor.get_sh_results(command=["groups"], check=False)
-                    if self._host_user_id != 0 and "docker" not in results.stdout.splitlines()[0]:
+                    if self._host_uid != 0 and "docker" not in results.stdout.splitlines()[0]:
                         pretty_print.print_error(
                             f"User '{self._host_user}' is not in the 'docker' group. SoCks requires this in order to "
                             "use Docker properly."
@@ -307,10 +308,12 @@ class Container_Executor:
                 # The root user should always be used in podman containers. Using a different user causes permission issues.
                 # Files created on the host via mounted directories belong to the user who started the container anyway.
                 container_user = "root"
-                container_user_id = "0"
+                container_uid = "0"
+                container_gid = "0"
             else:
                 container_user = self._host_user
-                container_user_id = self._host_user_id
+                container_uid = self._host_uid
+                container_gid = self._host_gid
 
             # Run commands in container
             self._shell_executor.exec_sh_command(
@@ -320,7 +323,8 @@ class Container_Executor:
                     "--rm",
                     "-it",
                     f"--env CONTAINER_USER={container_user}",
-                    f"--env CONTAINER_USER_ID={container_user_id}",
+                    f"--env CONTAINER_UID={container_uid}",
+                    f"--env CONTAINER_GID={container_gid}",
                     mounts,
                 ]
                 + custom_params
@@ -455,10 +459,12 @@ class Container_Executor:
                 # The root user should always be used in podman containers. Using a different user causes permission issues.
                 # Files created on the host via mounted directories belong to the user who started the container anyway.
                 container_user = "root"
-                container_user_id = "0"
+                container_uid = "0"
+                container_gid = "0"
             else:
                 container_user = self._host_user
-                container_user_id = self._host_user_id
+                container_uid = self._host_uid
+                container_gid = self._host_gid
 
             pretty_print.print_build("Starting container...")
 
@@ -470,7 +476,8 @@ class Container_Executor:
                         "--rm",
                         "-it",
                         f"--env CONTAINER_USER={container_user}",
-                        f"--env CONTAINER_USER_ID={container_user_id}",
+                        f"--env CONTAINER_UID={container_uid}",
+                        f"--env CONTAINER_GID={container_gid}",
                         mounts,
                         self._container_image_tagged,
                         "bash",
@@ -487,7 +494,8 @@ class Container_Executor:
                         "--rm",
                         "-it",
                         f"--env CONTAINER_USER={container_user}",
-                        f"--env CONTAINER_USER_ID={container_user_id}",
+                        f"--env CONTAINER_UID={container_uid}",
+                        f"--env CONTAINER_GID={container_gid}",
                         mounts,
                         self._container_image_tagged,
                     ],
@@ -553,7 +561,7 @@ class Container_Executor:
                     "--network",
                     "--clipboard=yes",
                     "--xauth=trusted",
-                    f"--user={self._host_user_id}:{self._host_user_id}",  # Replaces the entrypoint script in GUI containers
+                    f"--user={self._host_uid}:{self._host_gid}",  # Replaces the entrypoint script in GUI containers
                     "--no-entrypoint",  # The entrypoint script doesn't work if x11docker uses the docker backend
                     mounts,
                     self._container_image_tagged,
@@ -573,7 +581,8 @@ class Container_Executor:
                     "--cap-default",
                     "--user=RETAIN",
                     f"--env CONTAINER_USER={self._host_user}",
-                    f"--env CONTAINER_USER_ID={self._host_user_id}",
+                    f"--env CONTAINER_UID={self._host_uid}",
+                    f"--env CONTAINER_GID={self._host_gid}",
                     mounts,
                     self._container_image_tagged,
                     f"--runasuser={comp_commands}",
