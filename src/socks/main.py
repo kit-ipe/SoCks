@@ -9,6 +9,7 @@ import copy
 import argparse
 import yaml
 import pydantic
+import collections
 
 import socks
 import socks.pretty_print as pretty_print
@@ -61,7 +62,7 @@ def add_active_blocks(block: str, active_blocks: list[str], project_cfg: dict):
 
 def sort_blocks(blocks: list[str], project_cfg: dict):
     """
-    Sorts blocks in the order in which they are to be built.
+    Sorts blocks in the order in which they are to be built using Kahn's algorithm.
 
     Args:
         blocks:
@@ -76,21 +77,40 @@ def sort_blocks(blocks: list[str], project_cfg: dict):
         None
     """
 
-    tmp_block_list = blocks
+    sorted_list = []
+    queue = collections.deque()
+
+    # Build dependency graph and in-degree count
+    graph = collections.defaultdict(list)
+    in_degrees = {block: 0 for block in blocks}
     for block in blocks:
-        # Get a list of this blocks dependencies
-        block_deps = []
         if "project" in project_cfg["blocks"][block] and "dependencies" in project_cfg["blocks"][block]["project"]:
             for dep, dep_path in project_cfg["blocks"][block]["project"]["dependencies"].items():
-                block_deps.append(dep)
-        if not block_deps:
-            continue
-        # Make sure that all dependencies are in the list before this block
-        for dep in block_deps:
-            if dep in tmp_block_list[tmp_block_list.index(block) :]:
-                # Move dependency
-                tmp_block_list.insert(tmp_block_list.index(block), tmp_block_list.pop(blocks.index(dep)))
-    return tmp_block_list
+                graph[dep].append(block)
+                in_degrees[block] += 1
+
+    # Initialize queue
+    for block in blocks:
+        if in_degrees[block] == 0:
+            queue.append(block)
+
+    # Kahn’s Algorithm
+    while queue:
+        top = queue.popleft()
+        sorted_list.append(top)
+        for dependent in graph[top]:
+            in_degrees[dependent] -= 1
+            if in_degrees[dependent] == 0:
+                queue.append(dependent)
+
+    if len(sorted_list) != len(blocks):
+        affected_blocks = [block for block in blocks if in_degrees[block] != 0]
+        pretty_print.print_error(
+            "A cycle was detected in block dependencies. " f"The following blocks may be involved: {affected_blocks}"
+        )
+        sys.exit(1)
+
+    return sorted_list
 
 
 # Create list to collect warnings from the coordinating instance
