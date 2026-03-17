@@ -464,9 +464,10 @@ class Container_Executor:
                 comp_commands = comp_commands + "'"
 
             # Prepare user
-            if self._container_tool == "podman":
+            if self._container_tool == "podman" or self._container_platform == "linux/arm64/v8":
                 # The root user should always be used in podman containers. Using a different user causes permission issues.
                 # Files created on the host via mounted directories belong to the user who started the container anyway.
+                # The root user should also be used in emulated Docker containers, as using sudo in emulated containers is complicated.
                 container_user = "root"
                 container_uid = "0"
                 container_gid = "0"
