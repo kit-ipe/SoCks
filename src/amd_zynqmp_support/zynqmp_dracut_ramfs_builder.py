@@ -36,6 +36,10 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
             model_class=model_class,
         )
 
+        self.pre_action_warnings.append(
+            f"Builder {self.__class__.__name__} is experimental and should not be used for production. "
+        )
+
         # Project directories
         self._rootfs_dir = self._work_dir / "rootfs"
         self._kmodules_dir = self._work_dir / "kernel_modules"

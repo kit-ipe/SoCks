@@ -63,9 +63,12 @@ SoCks (short for SoC blocks) is a lightweight and modular framework to build com
   - [ZynqMP_Debian_RootFS_Builder](#zynqmp_debian_rootfs_builder)
     - [Block Configuration](#block-configuration-14)
     - [External Source Files](#external-source-files-14)
-  - [ZynqMP_Ubuntu_RootFS_Builder](#zynqmp_ubuntu_rootfs_builder)
+  - [ZynqMP_Dracut_RAMFS_Builder](#zynqmp_dracut_ramfs_builder)
     - [Block Configuration](#block-configuration-15)
     - [External Source Files](#external-source-files-15)
+  - [ZynqMP_Ubuntu_RootFS_Builder](#zynqmp_ubuntu_rootfs_builder)
+    - [Block Configuration](#block-configuration-16)
+    - [External Source Files](#external-source-files-16)
 - [Background](#background)
   - [Basics](#basics)
   - [Builders](#builders)
@@ -1261,6 +1264,43 @@ Key:
 
 SoCks requires external files in order to build this block. The following template packages are available:
 - **universal**: Contains universal template files to build a Debian root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional file `conclude_install.sh` allows to finalize the creation of the root file system. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer.
+
+### ZynqMP_Dracut_RAMFS_Builder
+
+This builder is designed to build an initramfs with dracut. Kernel modules are automatically added unless explicitly configured otherwise.
+
+#### Block Configuration
+
+The default configuration `project-zynqmp-default` does not contain any configuration for this block. The entire configuration must be carried out in the project configuration file.
+
+Configuration example:
+```
+ramfs:
+  source: "build"
+  builder: "ZynqMP_Dracut_RAMFS_Builder"
+  project:
+    dependencies:
+      kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
+      rootfs: "temp/rootfs/output/bp_rootfs_*.tar.gz"
+  container:
+    image: "dracut-ramfs-builder-alma9"
+    tag: "socks"
+```
+
+Key:
+- **source**: The source of the block. Options are:
+  - **build**: Build the block locally
+  - **import**: Import an already built block package
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_Dracut_RAMFS_Builder`.
+- **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
+- **container -> image**: The container image to be used for building. The following images are available for this block:
+  - `dracut-ramfs-builder-alma9`
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+
+#### External Source Files
+
+SoCks requires external files in order to build this block. The following template packages are available:
+- **rootfs-on-block-device**: Contains an example configuration file for dracut to mount the root filesystem from a block device, such as an SSD or an SD card.
 
 ### ZynqMP_Ubuntu_RootFS_Builder
 
