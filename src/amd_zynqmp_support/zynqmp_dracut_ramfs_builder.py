@@ -177,17 +177,18 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
             with self._source_rootfs_md5_file.open("r") as f:
                 md5_existsing_file = f.read()
 
-        # Check whether the Kernel modules need to be added
+        # Check whether the root filesystem need to be added
         if md5_existsing_file == md5_new_file:
             pretty_print.print_build("No need to import the root file system. No altered source files detected...")
             return
 
+        # Clean the entire work directory to enforce that the kernel modules are reimported and symlinked to the root filesystem
+        self.clean_work()
         self._work_dir.mkdir(parents=True, exist_ok=True)
 
         pretty_print.print_build("Importing the root file system...")
 
         unpack_rootfs_commands = [
-            f"rm -rf {self._rootfs_dir}",
             f"mkdir {self._rootfs_dir}",
             f"tar --numeric-owner -p -xf {rootfs_archives[0]} -C {self._rootfs_dir}",
         ]
