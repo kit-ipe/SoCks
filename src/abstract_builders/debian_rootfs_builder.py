@@ -277,6 +277,8 @@ class Debian_RootFS_Builder(File_System_Builder):
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
+                # Fix for running scriptlets with hardware acceleration on certain platforms
+                f"mount -t proc /proc {self._build_dir}/proc",
                 # Installing user defined packages
                 f'chroot {self._build_dir} /bin/bash -c "{addl_pkgs_str}"',
                 # The QEMU binary if only required during build, so delete it if it exists
@@ -287,6 +289,7 @@ class Debian_RootFS_Builder(File_System_Builder):
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._work_dir, "Z")],
+                custom_params=["--privileged"],
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_packages.log",
@@ -429,6 +432,8 @@ class Debian_RootFS_Builder(File_System_Builder):
                 # Move external packages to the build dircetory to make them available in chroot
                 f"rm -rf {self._build_dir}/tmp/{ext_pkgs_dir.stem}",
                 f"mv {ext_pkgs_dir} {self._build_dir}/tmp/",
+                # Fix for running scriptlets with hardware acceleration on certain platforms
+                f"mount -t proc /proc {self._build_dir}/proc",                
                 # Installing user defined external packages
                 f'chroot {self._build_dir} /bin/bash -c "{addl_pkgs_str}"',
                 # Remove external packages from tmp dir
@@ -441,6 +446,7 @@ class Debian_RootFS_Builder(File_System_Builder):
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._work_dir, "Z")],
+                custom_params=["--privileged"],                
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_external_packages.log",

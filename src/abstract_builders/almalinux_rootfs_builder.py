@@ -174,6 +174,8 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
+                # Fix for running scriptlets with hardware acceleration on certain platforms
+                f"mkdir -p {self._build_dir}/proc && mount -t proc /proc {self._build_dir}/proc",
                 # Clean all cache files generated from repository metadata
                 dnf_base_command + "clean all",
                 # Update all the installed packages
@@ -189,6 +191,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
             self.container_executor.exec_sh_commands(
                 commands=base_rootfs_build_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                custom_params=["--privileged"],                
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "build_base.log",
@@ -301,6 +304,8 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
+                # Fix for running scriptlets with hardware acceleration on certain platforms                
+                f"mount -t proc /proc {self._build_dir}/proc",
                 # Update all the installed packages
                 dnf_base_command + "update",
                 # Installing user defined packages
@@ -313,6 +318,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                custom_params=["--privileged"],                
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_packages.log",
@@ -452,6 +458,8 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
+                # Fix for running scriptlets with hardware acceleration on certain platforms
+                f"mount -t proc /proc {self._build_dir}/proc",                
                 # Update all the installed packages
                 dnf_base_command + "update",
                 # Movo to directory with local packages
@@ -468,6 +476,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                custom_params=["--privileged"],                
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_external_packages.log",
