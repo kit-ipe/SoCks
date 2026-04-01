@@ -21,7 +21,7 @@ if [ "$ID" = "debian" ]; then
         new_gid_max=$(("$CONTAINER_GID" + 1000))
         sed -i "s/^GID_MAX.*/GID_MAX          $new_uid_max/g" /etc/login.defs
     fi
-    # Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
+    # Create a user with the same name and id as the user on the host system. This makes it easier to use the projects from the host without a docker container.
     getent group $CONTAINER_USER || groupadd --gid $CONTAINER_GID $CONTAINER_USER
     if [ -d "/home/$CONTAINER_USER" ]; then
         # If the home directory does already exist, e.g. because something is mounted here, it must be initialized manually
@@ -50,7 +50,7 @@ elif [ "$ID" = "almalinux" ]; then
         new_gid_max=$(("$CONTAINER_GID" + 1000))
         sed -i "s/^GID_MAX.*/GID_MAX          $new_uid_max/g" /etc/login.defs
     fi
-    # Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
+    # Create a user with the same name and id as the user on the host system. This makes it easier to use the projects from the host without a docker container.
     getent group $CONTAINER_USER || groupadd --gid $CONTAINER_GID $CONTAINER_USER
     if [ -d "/home/$CONTAINER_USER" ]; then
         # If the home directory does already exist, e.g. because something is mounted here, it must be initialized manually
@@ -67,7 +67,7 @@ elif [ "$ID" = "almalinux" ]; then
     fi
 elif [ "$ID" = "alpine" ]; then
     # As far as I know, large user and group IDs are not a problem in Alpine Linux
-    # Create a user with the same name and id as the user on the host system. This makes it easier to use the projets from the host without a docker container.
+    # Create a user with the same name and id as the user on the host system. This makes it easier to use the projects from the host without a docker container.
     getent group $CONTAINER_USER || addgroup -g $CONTAINER_GID $CONTAINER_USER
     if [ -d "/home/$CONTAINER_USER" ]; then
         # If the home directory does already exist, e.g. because something is mounted here, it must be initialized manually
@@ -80,7 +80,7 @@ elif [ "$ID" = "alpine" ]; then
         addgroup $CONTAINER_USER wheel
     fi
 else
-    echo "Error in entrypoint.sh. This is neither a Debian nor an AlmaLinux system. It is $ID."
+    echo "Error in entrypoint.sh. This is neither a Debian, AlmaLinux, nor Alpine Linux system. It is $ID."
     exit 1
 fi
 
