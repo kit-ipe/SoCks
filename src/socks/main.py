@@ -140,7 +140,7 @@ project_cfg, _ = Configuration_Compiler.compile(
 )
 
 # Check project type and find respective module
-arch_supp_pkgs = ["amd_zynqmp_support", "amd_versal_support", "raspberrypi_support"]
+arch_supp_pkgs = ["amd_zynq_support", "amd_zynqmp_support", "amd_versal_support", "raspberrypi_support"]
 project_model_suffix = "_Base_Model"
 try:
     project_model_class_name = project_cfg["project"]["type"] + project_model_suffix

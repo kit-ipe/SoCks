@@ -1,16 +1,14 @@
 import sys
 import pathlib
-import shutil
-import urllib
 import hashlib
-import inspect
+import os
 
 import socks.pretty_print as pretty_print
 from amd_zynqmp_support.zynqmp_amd_devicetree_builder import ZynqMP_AMD_Devicetree_Builder
-from amd_versal_support.versal_amd_devicetree_model import Versal_AMD_Devicetree_Model
+from amd_zynq_support.zynq_amd_devicetree_model import Zynq_AMD_Devicetree_Model
 
 
-class Versal_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
+class Zynq_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
     """
     AMD devicetree builder class
     """
@@ -21,8 +19,8 @@ class Versal_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
         socks_dir: pathlib.Path,
         project_dir: pathlib.Path,
         block_id: str = "devicetree",
-        block_description: str = "Build the Devicetree for Versal devices",
-        model_class: type[object] = Versal_AMD_Devicetree_Model,
+        block_description: str = "Build the Devicetree for Zynq devices",
+        model_class: type[object] = Zynq_AMD_Devicetree_Model,
     ):
 
         super().__init__(
@@ -35,8 +33,7 @@ class Versal_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
         )
 
         self.pre_action_warnings.append(
-            "This block is experimental, it should not be used for production. "
-            "Versal blocks should use the Vitis SDT flow instead of the XSCT flow, as soon as it is stable."
+            f"Builder {self.__class__.__name__} is experimental and should not be used for production."
         )
 
     def prepare_dt_sources(self):
@@ -88,10 +85,7 @@ class Versal_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
             f"SOURCE_XSA_PATH=$(ls {self._xsa_dir}/*.xsa)",
             'printf "hsi open_hw_design ${SOURCE_XSA_PATH}'
             f"    \r\nhsi set_repo_path {self._source_repo_dir} "
-            "    \r\nset procs [hsi get_cells -hier -filter {IP_TYPE==PROCESSOR}]"
-            "    \r\nset target_proc [lsearch -inline -glob \$procs *psv_cortexa72_0*]"
-            '    \r\nputs \\"List of processors found in XSA is \[\$procs\]\\\\\\nWe will use \$target_proc...\\"'
-            "    \r\nhsi create_sw_design device-tree -os device_tree -proc \$target_proc ",
+            "    \r\nhsi create_sw_design device-tree -os device_tree -proc ps7_cortexa9_0 ",
         ]
 
         # If an evaluation card is used, include card specific devicetree section
