@@ -271,7 +271,7 @@ class Zynq_AMD_Image_Builder(AMD_Builder):
         # Check whether the Linux image needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[self._dependencies_dir / "kernel" / "zImage"],
-            out_search_list=[self._output_dir / "uImage"]
+            out_search_list=[self._output_dir / "uImage"],
         ):
             pretty_print.print_build("No need to rebuild legacy Linux image. No altered source files detected...")
             return
