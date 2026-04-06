@@ -71,7 +71,9 @@ class Builder(ABC):
             supported_deps = set(self._block_deps.keys())
             if not deps_in_prj_cfg.issubset(supported_deps):
                 invalid = deps_in_prj_cfg - supported_deps
-                raise KeyError(f"Builder '{self.__class__.__name__}' does not support dependencies on the following blocks: {invalid}")
+                raise KeyError(
+                    f"Builder '{self.__class__.__name__}' does not support dependencies on the following blocks: {invalid}"
+                )
 
         # Find project sources for this block
         # ToDo: Maybe this should be unified and one should merge these four variables and use only two.

@@ -28,10 +28,14 @@ class Zynq_Debian_RootFS_Builder(Debian_RootFS_Builder):
             model_class=model_class,
         )
 
-        # Target processor architecture
-        self._target_arch_debian = "armhf"
-        self._target_arch_qemu = "arm"
-
         self.pre_action_warnings.append(
             f"Builder {self.__class__.__name__} is experimental and should not be used for production."
         )
+
+    @property
+    def _target_arch_dist(self):
+        return "armhf"
+
+    @property
+    def _target_arch_qemu(self):
+        return "arm"

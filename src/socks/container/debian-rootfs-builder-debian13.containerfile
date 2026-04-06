@@ -1,9 +1,9 @@
-FROM multiarch/qemu-user-static:x86_64-aarch64 AS qemu
+FROM multiarch/qemu-user-static AS qemu
 FROM tianon/gosu AS gosu
 FROM debian:trixie
 
-# Install QEMU binary to run aarch64 binaries on an x86 architecture
-COPY --from=qemu /usr/bin/qemu-aarch64-static /usr/bin
+# Install QEMU binaries to run binaries for the target architecture on an x86 system
+COPY --from=qemu /usr/bin/qemu-*-static /usr/bin
 
 # Update all packages
 RUN apt update -y && apt upgrade -y && \

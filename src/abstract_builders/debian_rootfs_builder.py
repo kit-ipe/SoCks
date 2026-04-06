@@ -34,10 +34,6 @@ class Debian_RootFS_Builder(File_System_Builder):
             model_class=model_class,
         )
 
-        # Target processor architecture
-        self._target_arch_debian = "arm64"
-        self._target_arch_qemu = "aarch64"
-
     @property
     def _block_deps(self):
         # Products of other blocks on which this block depends
@@ -169,7 +165,7 @@ class Debian_RootFS_Builder(File_System_Builder):
                 f"fi",
                 'printf "\nInstall the base os via debootstrap...\n\n"',
                 # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
-                f"debootstrap --arch={self._target_arch_debian} {self.block_cfg.project.release} {self._build_dir} {self.block_cfg.project.mirror}",
+                f"debootstrap --arch={self._target_arch_dist} {self.block_cfg.project.release} {self._build_dir} {self.block_cfg.project.mirror}",
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
@@ -210,7 +206,7 @@ class Debian_RootFS_Builder(File_System_Builder):
 
         self._run_mod_script(
             mod_script=self._resources_dir / "mod_base_install.sh",
-            mod_script_params=[self._target_arch_debian, self.block_cfg.project.release, str(self._build_dir)],
+            mod_script_params=[self._target_arch_dist, self.block_cfg.project.release, str(self._build_dir)],
         )
 
     def run_concluding_mod_script(self):
@@ -229,7 +225,7 @@ class Debian_RootFS_Builder(File_System_Builder):
 
         self._run_mod_script(
             mod_script=self._resources_dir / "conclude_install.sh",
-            mod_script_params=[self._target_arch_debian, self.block_cfg.project.release, str(self._build_dir)],
+            mod_script_params=[self._target_arch_dist, self.block_cfg.project.release, str(self._build_dir)],
         )
 
     def add_addl_packages(self):

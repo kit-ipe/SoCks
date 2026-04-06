@@ -34,8 +34,6 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             model_class=model_class,
         )
 
-        self._target_arch = "aarch64"
-
     @property
     def _block_deps(self):
         # Products of other blocks on which this block depends
@@ -155,19 +153,17 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             pretty_print.print_build("Building the base root file system...")
 
             repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
-            apk_base_command = (
-                f"apk --no-interactive --arch {self._target_arch} {repos_str} --update-cache --root {self._build_dir} "
-            )
+            apk_base_command = f"apk --no-interactive --arch {self._target_arch_dist} {repos_str} --update-cache --root {self._build_dir} "
             base_rootfs_build_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi",
                 # Install Meta package for minimal alpine base
                 apk_base_command + "--initdb --allow-untrusted add alpine-base",
                 # The QEMU binary if only required during build, so delete it if it exists
-                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+                f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -204,7 +200,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
         repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
         self._run_mod_script(
             mod_script=self._resources_dir / "mod_base_install.sh",
-            mod_script_params=[self._target_arch, f'"{repos_str}"', str(self._build_dir)],
+            mod_script_params=[self._target_arch_dist, f'"{repos_str}"', str(self._build_dir)],
         )
 
     def run_concluding_mod_script(self):
@@ -224,7 +220,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
         repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
         self._run_mod_script(
             mod_script=self._resources_dir / "conclude_install.sh",
-            mod_script_params=[self._target_arch, f'"{repos_str}"', str(self._build_dir)],
+            mod_script_params=[self._target_arch_dist, f'"{repos_str}"', str(self._build_dir)],
         )
 
     def add_addl_packages(self):
@@ -271,21 +267,19 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             pretty_print.print_build("Installing additional packages...")
 
             repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
-            apk_base_command = (
-                f"apk --no-interactive --arch {self._target_arch} {repos_str} --update-cache --root {self._build_dir} "
-            )
+            apk_base_command = f"apk --no-interactive --arch {self._target_arch_dist} {repos_str} --update-cache --root {self._build_dir} "
             add_packages_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi",
                 # Update all the installed packages
                 apk_base_command + "upgrade",
                 # Installing user defined packages
                 apk_base_command + "add " + " ".join(self.block_cfg.project.addl_pkgs),
                 # The QEMU binary if only required during build, so delete it if it exists
-                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+                f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -428,14 +422,12 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
 
             rel_pkg_paths = ["./" + pkg for pkg in ext_pkgs_to_install]
             repos_str = " ".join([f"--repository {url}" for url in self.block_cfg.project.repositories])
-            apk_base_command = (
-                f"apk --no-interactive --arch {self._target_arch} {repos_str} --update-cache --root {self._build_dir} "
-            )
+            apk_base_command = f"apk --no-interactive --arch {self._target_arch_dist} {repos_str} --update-cache --root {self._build_dir} "
             add_packages_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi",
                 # Update all the installed packages
                 apk_base_command + "upgrade",
@@ -446,7 +438,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
                 # Movo back to the previous directory
                 "cd -",
                 # The QEMU binary if only required during build, so delete it if it exists
-                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+                f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -510,10 +502,10 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
                         shutil.copy(ssh_key_src_file, ssh_keys_temp_dir / user.ssh_key)
 
             add_users_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi; "
                 # Make SSH keys from the host system available in the chroot environment
                 f"if [ -e {ssh_keys_temp_dir} ]; then "
@@ -554,7 +546,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
             add_users_commands.append(f"rm -rf {self._build_dir}/tmp/{ssh_keys_temp_dir.parts[-1]}")
 
             # The QEMU binary if only required during build, so delete it if it exists
-            add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
+            add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static")
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(

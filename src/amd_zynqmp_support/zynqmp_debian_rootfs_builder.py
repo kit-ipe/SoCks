@@ -27,3 +27,11 @@ class ZynqMP_Debian_RootFS_Builder(Debian_RootFS_Builder):
             block_description=block_description,
             model_class=model_class,
         )
+
+    @property
+    def _target_arch_dist(self):
+        return "arm64"  # Debian refers to this architecture as 'arm64' rather than 'aarch64'
+
+    @property
+    def _target_arch_qemu(self):
+        return "aarch64"

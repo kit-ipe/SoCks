@@ -27,3 +27,11 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AlmaLinux_RootFS_Builder):
             block_description=block_description,
             model_class=model_class,
         )
+
+    @property
+    def _target_arch_dist(self):
+        return "aarch64"
+
+    @property
+    def _target_arch_qemu(self):
+        return "aarch64"
