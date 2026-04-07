@@ -162,6 +162,8 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
                 f"fi",
                 # Install Meta package for minimal alpine base
                 apk_base_command + "--initdb --allow-untrusted add alpine-base",
+                # Add repositories to the target file system
+                "printf \"" + "\\n".join(self.block_cfg.project.repositories) + f"\\n\" >> {self._build_dir}/etc/apk/repositories",
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
