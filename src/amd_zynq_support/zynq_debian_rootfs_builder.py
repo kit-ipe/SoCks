@@ -29,7 +29,7 @@ class Zynq_Debian_RootFS_Builder(Debian_RootFS_Builder):
         )
 
         self.pre_action_warnings.append(
-            f"Builder {self.__class__.__name__} is experimental and should not be used for production."
+            f"Builder '{self.__class__.__name__}' is experimental and should not be used for production."
         )
 
     @property

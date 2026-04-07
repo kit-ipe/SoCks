@@ -34,7 +34,7 @@ class Zynq_AMD_FSBL_Builder(ZynqMP_AMD_FSBL_Builder):
         )
 
         self.pre_action_warnings.append(
-            f"Builder {self.__class__.__name__} is experimental and should not be used for production."
+            f"Builder '{self.__class__.__name__}' is experimental and should not be used for production."
         )
 
     def create_fsbl_project(self):

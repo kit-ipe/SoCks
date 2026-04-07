@@ -33,7 +33,7 @@ class Zynq_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
         )
 
         self.pre_action_warnings.append(
-            f"Builder {self.__class__.__name__} is experimental and should not be used for production."
+            f"Builder '{self.__class__.__name__}' is experimental and should not be used for production."
         )
 
     def prepare_dt_sources(self):
