@@ -65,6 +65,16 @@ class Builder(ABC):
 
         self.block_cfg = getattr(self.project_cfg.blocks, block_id)
 
+        # Make sure that all dependencies are valid (The model of the builder should prevent this, but just to be on the safe side, in case the model is faulty)
+        if "project" in self.block_cfg.model_fields and "dependencies" in self.block_cfg.project.model_fields:
+            deps_in_prj_cfg = set(self.block_cfg.project.dependencies.model_fields)
+            supported_deps = set(self._block_deps.keys())
+            if not deps_in_prj_cfg.issubset(supported_deps):
+                invalid = deps_in_prj_cfg - supported_deps
+                raise KeyError(
+                    f"Builder '{self.__class__.__name__}' does not support dependencies on the following blocks: {invalid}"
+                )
+
         # Find project sources for this block
         # ToDo: Maybe this should be unified and one should merge these four variables and use only two.
         # But I suspect that there will rarely be several project sources and that their interaction is not uniform.

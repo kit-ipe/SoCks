@@ -1,10 +1,10 @@
 import pathlib
 
 from abstract_builders.debian_rootfs_builder import Debian_RootFS_Builder
-from amd_zynqmp_support.zynqmp_debian_rootfs_model import ZynqMP_Debian_RootFS_Model
+from amd_zynq_support.zynq_debian_rootfs_model import Zynq_Debian_RootFS_Model
 
 
-class ZynqMP_Debian_RootFS_Builder(Debian_RootFS_Builder):
+class Zynq_Debian_RootFS_Builder(Debian_RootFS_Builder):
     """
     Debian root file system builder class
     """
@@ -16,7 +16,7 @@ class ZynqMP_Debian_RootFS_Builder(Debian_RootFS_Builder):
         project_dir: pathlib.Path,
         block_id: str = "rootfs",
         block_description: str = "Build a Debian root file system",
-        model_class: type[object] = ZynqMP_Debian_RootFS_Model,
+        model_class: type[object] = Zynq_Debian_RootFS_Model,
     ):
 
         super().__init__(
@@ -28,10 +28,14 @@ class ZynqMP_Debian_RootFS_Builder(Debian_RootFS_Builder):
             model_class=model_class,
         )
 
+        self.pre_action_warnings.append(
+            f"Builder '{self.__class__.__name__}' is experimental and should not be used for production."
+        )
+
     @property
     def _target_arch_dist(self):
-        return "arm64"  # Debian refers to this architecture as 'arm64' rather than 'aarch64'
+        return "armhf"
 
     @property
     def _target_arch_qemu(self):
-        return "aarch64"
+        return "arm"

@@ -34,8 +34,6 @@ class Debian_RootFS_Builder(File_System_Builder):
             model_class=model_class,
         )
 
-        self._target_arch = "arm64"
-
     @property
     def _block_deps(self):
         # Products of other blocks on which this block depends
@@ -160,16 +158,16 @@ class Debian_RootFS_Builder(File_System_Builder):
             pretty_print.print_build("Building the base root file system...")
 
             base_rootfs_build_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi",
                 'printf "\nInstall the base os via debootstrap...\n\n"',
                 # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
-                f"debootstrap --arch={self._target_arch} {self.block_cfg.project.release} {self._build_dir} {self.block_cfg.project.mirror}",
+                f"debootstrap --arch={self._target_arch_dist} {self.block_cfg.project.release} {self._build_dir} {self.block_cfg.project.mirror}",
                 # The QEMU binary if only required during build, so delete it if it exists
-                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+                f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -208,7 +206,7 @@ class Debian_RootFS_Builder(File_System_Builder):
 
         self._run_mod_script(
             mod_script=self._resources_dir / "mod_base_install.sh",
-            mod_script_params=[self._target_arch, self.block_cfg.project.release, str(self._build_dir)],
+            mod_script_params=[self._target_arch_dist, self.block_cfg.project.release, str(self._build_dir)],
         )
 
     def run_concluding_mod_script(self):
@@ -227,7 +225,7 @@ class Debian_RootFS_Builder(File_System_Builder):
 
         self._run_mod_script(
             mod_script=self._resources_dir / "conclude_install.sh",
-            mod_script_params=[self._target_arch, self.block_cfg.project.release, str(self._build_dir)],
+            mod_script_params=[self._target_arch_dist, self.block_cfg.project.release, str(self._build_dir)],
         )
 
     def add_addl_packages(self):
@@ -272,15 +270,15 @@ class Debian_RootFS_Builder(File_System_Builder):
 
             addl_pkgs_str = f"apt update && apt install -y " + " ".join(self.block_cfg.project.addl_pkgs)
             add_packages_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi",
                 # Installing user defined packages
                 f'chroot {self._build_dir} /bin/bash -c "{addl_pkgs_str}"',
                 # The QEMU binary if only required during build, so delete it if it exists
-                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+                f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -421,10 +419,10 @@ class Debian_RootFS_Builder(File_System_Builder):
             rel_pkg_paths = ["./" + pkg for pkg in ext_pkgs_to_install]
             addl_pkgs_str = f"apt update && cd /tmp/{ext_pkgs_dir.stem} && apt install -y " + " ".join(rel_pkg_paths)
             add_packages_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi",
                 # Move external packages to the build dircetory to make them available in chroot
                 f"rm -rf {self._build_dir}/tmp/{ext_pkgs_dir.stem}",
@@ -434,7 +432,7 @@ class Debian_RootFS_Builder(File_System_Builder):
                 # Remove external packages from tmp dir
                 f"rm -rf {self._build_dir}/tmp/{ext_pkgs_dir.stem}",
                 # The QEMU binary if only required during build, so delete it if it exists
-                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+                f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
@@ -498,10 +496,10 @@ class Debian_RootFS_Builder(File_System_Builder):
                         shutil.copy(ssh_key_src_file, ssh_keys_temp_dir / user.ssh_key)
 
             add_users_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi; "
                 # Make SSH keys from the host system available in the chroot environment
                 f"if [ -e {ssh_keys_temp_dir} ]; then "
@@ -542,7 +540,7 @@ class Debian_RootFS_Builder(File_System_Builder):
             add_users_commands.append(f"rm -rf {self._build_dir}/tmp/{ssh_keys_temp_dir.parts[-1]}")
 
             # The QEMU binary if only required during build, so delete it if it exists
-            add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
+            add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static")
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(

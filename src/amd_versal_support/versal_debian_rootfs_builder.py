@@ -34,6 +34,14 @@ class Versal_Debian_RootFS_Builder(Debian_RootFS_Builder):
         )
 
     @property
+    def _target_arch_dist(self):
+        return "arm64"  # Debian refers to this architecture as 'arm64' rather than 'aarch64'
+
+    @property
+    def _target_arch_qemu(self):
+        return "aarch64"
+
+    @property
     def _block_deps(self):
         # Products of other blocks on which this block depends
         # This dict is used to check whether the imported block packages contain

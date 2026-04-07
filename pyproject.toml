@@ -24,6 +24,7 @@ dependencies = [
 
 [tool.setuptools.package-data]
 socks = ["container/*.containerfile", "container/*.sh", "templates/**/*"]
+amd_zynq_support = ["templates/**/*"]
 amd_zynqmp_support = ["templates/**/*"]
 amd_versal_support = ["templates/**/*"]
 raspberrypi_support = ["templates/**/*"]

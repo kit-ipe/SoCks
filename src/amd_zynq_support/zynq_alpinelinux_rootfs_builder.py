@@ -1,10 +1,10 @@
 import pathlib
 
 from abstract_builders.alpinelinux_rootfs_builder import AlpineLinux_RootFS_Builder
-from amd_zynqmp_support.zynqmp_alpinelinux_rootfs_model import ZynqMP_AlpineLinux_RootFS_Model
+from amd_zynq_support.zynq_alpinelinux_rootfs_model import Zynq_AlpineLinux_RootFS_Model
 
 
-class ZynqMP_AlpineLinux_RootFS_Builder(AlpineLinux_RootFS_Builder):
+class Zynq_AlpineLinux_RootFS_Builder(AlpineLinux_RootFS_Builder):
     """
     Alpine Linux root file system builder class
     """
@@ -16,7 +16,7 @@ class ZynqMP_AlpineLinux_RootFS_Builder(AlpineLinux_RootFS_Builder):
         project_dir: pathlib.Path,
         block_id: str = "rootfs",
         block_description: str = "Build an Alpine Linux root file system",
-        model_class: type[object] = ZynqMP_AlpineLinux_RootFS_Model,
+        model_class: type[object] = Zynq_AlpineLinux_RootFS_Model,
     ):
 
         super().__init__(
@@ -28,10 +28,14 @@ class ZynqMP_AlpineLinux_RootFS_Builder(AlpineLinux_RootFS_Builder):
             model_class=model_class,
         )
 
+        self.pre_action_warnings.append(
+            f"Builder '{self.__class__.__name__}' is experimental and should not be used for production."
+        )
+
     @property
     def _target_arch_dist(self):
-        return "aarch64"
+        return "armhf"
 
     @property
     def _target_arch_qemu(self):
-        return "aarch64"
+        return "arm"
