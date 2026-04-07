@@ -94,7 +94,7 @@ class Zynq_AMD_FSBL_Builder(ZynqMP_AMD_FSBL_Builder):
             f"git -C {self._source_repo_dir} config user.email 'container-user@example.com'",
             f"git -C {self._source_repo_dir} config user.name 'container-user'",
             f"git -C {self._source_repo_dir} add {self._source_repo_dir}/.",
-            # f"git -C {self._source_repo_dir} reset -- {self._source_repo_dir}/zynqmp_fsbl_bsp/psu_cortexa53_0/libsrc/libmetal_*/build_libmetal/",  # If this directory exists, it changes during build time and should therefore not be tracked by Git. Libmetal is the only library with this behavior that I have discovered so far.
+            f"git -C {self._source_repo_dir} reset -- {self._source_repo_dir}/zynq_fsbl_bsp/ps7_cortexa9_0/libsrc/libmetal_*/build_libmetal/",  # If this directory exists, it changes during build time and should therefore not be tracked by Git. Libmetal is the only library with this behavior that I have discovered so far.
             f"git -C {self._source_repo_dir} commit --quiet -m 'Initial commit'",
         ]
 
