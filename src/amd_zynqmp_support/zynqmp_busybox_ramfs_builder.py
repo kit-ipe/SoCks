@@ -138,6 +138,14 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
         return block_cmds
 
     @property
+    def _target_arch_dist(self):
+        return "aarch64"
+
+    @property
+    def _target_arch_qemu(self):
+        return None
+
+    @property
     def _file_system_name(self):
         return f"busybox_fs_zynqmp_{self.project_cfg.project.name}"
 
@@ -174,7 +182,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
 
         menuconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=aarch64-unknown-linux-uclibc-",
+            f"export CROSS_COMPILE={self._target_arch_dist}-unknown-linux-uclibc-",
             "make menuconfig",
         ]
 
@@ -198,7 +206,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
 
         create_defconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=aarch64-unknown-linux-uclibc-",
+            f"export CROSS_COMPILE={self._target_arch_dist}-unknown-linux-uclibc-",
             "make defconfig",
             'sed -i "s%^# CONFIG_STATIC is not set$%CONFIG_STATIC=y%" .config',
         ]
@@ -219,7 +227,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             None
         """
 
-        self._create_config_snippet(cross_comp_prefix="aarch64-unknown-linux-uclibc-", defconfig_target="defconfig")
+        self._create_config_snippet(cross_comp_prefix=f"{self._target_arch_dist}-unknown-linux-uclibc-", defconfig_target="defconfig")
 
     def attach_config_snippets(self):
         """
@@ -235,7 +243,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             None
         """
 
-        self._attach_config_snippets(cross_comp_prefix="aarch64-unknown-linux-uclibc-")
+        self._attach_config_snippets(cross_comp_prefix=f"{self._target_arch_dist}-unknown-linux-uclibc-")
 
     def build_base_file_system(self):
         """
@@ -274,7 +282,7 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
 
             base_ramfs_build_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=aarch64-unknown-linux-uclibc-",
+                f"export CROSS_COMPILE={self._target_arch_dist}-unknown-linux-uclibc-",
                 f'sed -i "s%^CONFIG_PREFIX=.*$%CONFIG_PREFIX=\\"{self._build_dir}\\"%" .config',
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
                 f"mkdir -p {self._build_dir}",

@@ -30,7 +30,7 @@ class ZynqMP_Ubuntu_RootFS_Builder(Ubuntu_RootFS_Builder):
 
     @property
     def _target_arch_dist(self):
-        return "arm64"  # Debian refers to this architecture as 'arm64' rather than 'aarch64'
+        return "arm64"  # Ubuntu refers to this architecture as 'arm64' rather than 'aarch64'
 
     @property
     def _target_arch_qemu(self):
