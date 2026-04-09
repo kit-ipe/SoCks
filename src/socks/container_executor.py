@@ -319,7 +319,6 @@ class Container_Executor:
                     "run",
                     "--rm",
                     "-it",
-                    "--network=host",
                     f"--env CONTAINER_USER={container_user}",
                     f"--env CONTAINER_USER_ID={container_user_id}",
                     mounts,
