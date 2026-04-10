@@ -277,19 +277,27 @@ class Debian_RootFS_Builder(File_System_Builder):
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
-                # Fix for running scriptlets with hardware acceleration on certain platforms
-                f"mount -t proc /proc {self._build_dir}/proc",
                 # Installing user defined packages
                 f'chroot {self._build_dir} /bin/bash -c "{addl_pkgs_str}"',
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
+            # If specified, mount /proc in the build environment. Some package scriptlets require access to '/proc' to execute properly.
+            if self.block_cfg.project.build_with_proc:
+                container_params = ["--privileged"]
+                add_packages_commands = [
+                    f"mkdir -p {self._build_dir}/proc",
+                    f"mount -t proc /proc {self._build_dir}/proc",
+                ] + add_packages_commands
+            else:
+                container_params = []
+
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._work_dir, "Z")],
-                custom_params=["--privileged"],
+                custom_params=container_params,
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_packages.log",
@@ -432,8 +440,6 @@ class Debian_RootFS_Builder(File_System_Builder):
                 # Move external packages to the build dircetory to make them available in chroot
                 f"rm -rf {self._build_dir}/tmp/{ext_pkgs_dir.stem}",
                 f"mv {ext_pkgs_dir} {self._build_dir}/tmp/",
-                # Fix for running scriptlets with hardware acceleration on certain platforms
-                f"mount -t proc /proc {self._build_dir}/proc",                
                 # Installing user defined external packages
                 f'chroot {self._build_dir} /bin/bash -c "{addl_pkgs_str}"',
                 # Remove external packages from tmp dir
@@ -442,11 +448,21 @@ class Debian_RootFS_Builder(File_System_Builder):
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
+            # If specified, mount /proc in the build environment. Some package scriptlets require access to '/proc' to execute properly.
+            if self.block_cfg.project.build_with_proc:
+                container_params = ["--privileged"]
+                add_packages_commands = [
+                    f"mkdir -p {self._build_dir}/proc",
+                    f"mount -t proc /proc {self._build_dir}/proc",
+                ] + add_packages_commands
+            else:
+                container_params = []
+
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._work_dir, "Z")],
-                custom_params=["--privileged"],                
+                custom_params=container_params,
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_external_packages.log",

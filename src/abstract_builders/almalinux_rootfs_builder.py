@@ -174,8 +174,6 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
-                # Fix for running scriptlets with hardware acceleration on certain platforms
-                f"mkdir -p {self._build_dir}/proc && mount -t proc /proc {self._build_dir}/proc",
                 # Clean all cache files generated from repository metadata
                 dnf_base_command + "clean all",
                 # Update all the installed packages
@@ -187,11 +185,21 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
+            # If specified, mount /proc in the build environment. Some package scriptlets require access to '/proc' to execute properly.
+            if self.block_cfg.project.build_with_proc:
+                container_params = ["--privileged"]
+                base_rootfs_build_commands = [
+                    f"mkdir -p {self._build_dir}/proc",
+                    f"mount -t proc /proc {self._build_dir}/proc",
+                ] + base_rootfs_build_commands
+            else:
+                container_params = []
+
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=base_rootfs_build_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
-                custom_params=["--privileged"],                
+                custom_params=container_params,
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "build_base.log",
@@ -304,8 +312,6 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
-                # Fix for running scriptlets with hardware acceleration on certain platforms                
-                f"mount -t proc /proc {self._build_dir}/proc",
                 # Update all the installed packages
                 dnf_base_command + "update",
                 # Installing user defined packages
@@ -314,11 +320,21 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
+            # If specified, mount /proc in the build environment. Some package scriptlets require access to '/proc' to execute properly.
+            if self.block_cfg.project.build_with_proc:
+                container_params = ["--privileged"]
+                add_packages_commands = [
+                    f"mkdir -p {self._build_dir}/proc",
+                    f"mount -t proc /proc {self._build_dir}/proc",
+                ] + add_packages_commands
+            else:
+                container_params = []
+
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
-                custom_params=["--privileged"],                
+                custom_params=container_params,
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_packages.log",
@@ -458,8 +474,6 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
                 f"fi",
-                # Fix for running scriptlets with hardware acceleration on certain platforms
-                f"mount -t proc /proc {self._build_dir}/proc",                
                 # Update all the installed packages
                 dnf_base_command + "update",
                 # Movo to directory with local packages
@@ -472,11 +486,21 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
             ]
 
+            # If specified, mount /proc in the build environment. Some package scriptlets require access to '/proc' to execute properly.
+            if self.block_cfg.project.build_with_proc:
+                container_params = ["--privileged"]
+                add_packages_commands = [
+                    f"mkdir -p {self._build_dir}/proc",
+                    f"mount -t proc /proc {self._build_dir}/proc",
+                ] + add_packages_commands
+            else:
+                container_params = []
+
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
-                custom_params=["--privileged"],                
+                custom_params=container_params,
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_external_packages.log",
