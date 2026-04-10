@@ -268,6 +268,7 @@ rootfs:
   builder: "ZynqMP_AlmaLinux_RootFS_Builder"
   project:
     release: "9"
+    build_with_proc: false
     addl_pkgs: ["python3", "nano", "vim"]
     addl_ext_pkgs:
          - "https://repo.almalinux.org/almalinux/9/BaseOS/aarch64/os/Packages/openssh-server-8.7p1-43.el9.aarch64.rpm"
@@ -314,6 +315,7 @@ Key:
 - **project -> release**: The release version of AlmaLinux to be built. Options are:
   - 8
   - 9
+- **project -> build_with_proc**: A binary parameter that specifies whether '/proc' is mounted in the build environment of the file system. Some package scriptlets require `/proc` to execute properly. **Warning:** When enabled, the containerization tool runs with the `--privileged` flag, ensuring '/proc' is available inside the container.
 - **project -> addl_pkgs [optional]**: A list of additional rpm packages to be installed from a repo into the root file system. Make sure the repos that contain these files are available to dnf. See section *External Source Files* for more details.
 - **project -> addl_ext_pkgs [optional]**: A list of additional rpm packages to be installed from external \*.rpm files into the root file system. List entries must be strings in URI format. Supported are:
   - The URL to a packages online. The string must start with `https://` or `http://`.
@@ -1184,6 +1186,7 @@ rootfs:
   project:
     release: "bookworm"
     mirror: "http://ftp.de.debian.org/debian/"
+    build_with_proc: false
     addl_pkgs: ["sudo", "python3", "openssh-server", "nano", "vim"]
     addl_ext_pkgs:
          - "http://ftp.de.debian.org/debian/pool/main/o/openssh/openssh-server_9.2p1-2+deb12u5_arm64.deb"
@@ -1230,6 +1233,7 @@ Key:
 - **project -> release**: The release version of Debian to be built. Options are:
   - bookworm
 - **project -> mirror**: Debian mirror to be used. Choose a local mirror to speed up the build process.
+- **project -> build_with_proc**: A binary parameter that specifies whether '/proc' is mounted in the build environment of the file system. Some package scriptlets require `/proc` to execute properly. **Warning:** When enabled, the containerization tool runs with the `--privileged` flag, ensuring '/proc' is available inside the container.
 - **project -> addl_pkgs [optional]**: A list of additional deb packages to be installed from a repo into the root file system.
 - **project -> addl_ext_pkgs [optional]**: A list of additional rpm packages to be installed from external \*.rpm files into the root file system. List entries must be strings in URI format. Supported are:
   - The URL to a packages online. The string must start with `https://` or `http://`.

@@ -281,10 +281,21 @@ class Debian_RootFS_Builder(File_System_Builder):
                 f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
 
+            # If specified, mount /proc in the build environment. Some package scriptlets require access to '/proc' to execute properly.
+            if self.block_cfg.project.build_with_proc:
+                container_params = ["--privileged"]
+                add_packages_commands = [
+                    f"mkdir -p {self._build_dir}/proc",
+                    f"mount -t proc /proc {self._build_dir}/proc",
+                ] + add_packages_commands
+            else:
+                container_params = []
+
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._work_dir, "Z")],
+                custom_params=container_params,
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_packages.log",
@@ -435,10 +446,21 @@ class Debian_RootFS_Builder(File_System_Builder):
                 f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
 
+            # If specified, mount /proc in the build environment. Some package scriptlets require access to '/proc' to execute properly.
+            if self.block_cfg.project.build_with_proc:
+                container_params = ["--privileged"]
+                add_packages_commands = [
+                    f"mkdir -p {self._build_dir}/proc",
+                    f"mount -t proc /proc {self._build_dir}/proc",
+                ] + add_packages_commands
+            else:
+                container_params = []
+
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._work_dir, "Z")],
+                custom_params=container_params,
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_external_packages.log",
