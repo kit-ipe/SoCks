@@ -524,6 +524,13 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
             pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
             sys.exit(1)
 
+        # Check whether users are specified
+        if not self.block_cfg.project.users:
+            pretty_print.print_info(
+                f"'{self.block_id} -> project -> users' not specified. No user accounts will be created."
+            )
+            return
+
         # Check whether users need to be added
         users_already_added = (
             self._build_log.get_logged_timestamp(identifier=f"function-{inspect.currentframe().f_code.co_name}-success")
