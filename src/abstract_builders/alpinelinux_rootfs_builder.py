@@ -163,7 +163,9 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
                 # Install Meta package for minimal alpine base
                 apk_base_command + "--initdb --allow-untrusted add alpine-base",
                 # Add repositories to the target file system
-                "printf \"" + "\\n".join(self.block_cfg.project.repositories) + f"\\n\" >> {self._build_dir}/etc/apk/repositories",
+                'printf "'
+                + "\\n".join(self.block_cfg.project.repositories)
+                + f'\\n" >> {self._build_dir}/etc/apk/repositories',
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
@@ -471,6 +473,13 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
         if not self._build_dir.is_dir():
             pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
             sys.exit(1)
+
+        # Check whether users are specified
+        if not self.block_cfg.project.users:
+            pretty_print.print_info(
+                f"'{self.block_id} -> project -> users' not specified. No user accounts will be created."
+            )
+            return
 
         # Check whether users need to be added
         users_already_added = (

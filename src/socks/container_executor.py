@@ -152,14 +152,16 @@ class Container_Executor:
                 identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
             ),
         ):
-            pretty_print.print_build(f"No need to build {self._container_tool} image {self._container_image_tagged}...")
+            pretty_print.print_build(
+                f"No need to build {self._container_tool} image '{self._container_image_tagged}'..."
+            )
             return
 
         with self._container_log.timestamp(
             identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
         ):
             if self._container_tool == "docker":
-                pretty_print.print_build(f"Building docker image {self._container_image_tagged}...")
+                pretty_print.print_build(f"Building docker image '{self._container_image_tagged}'...")
 
                 self._shell_executor.exec_sh_command(
                     [
@@ -180,7 +182,7 @@ class Container_Executor:
                 )
 
             elif self._container_tool == "podman":
-                pretty_print.print_build(f"Building podman image {self._container_image_tagged}...")
+                pretty_print.print_build(f"Building podman image '{self._container_image_tagged}'...")
 
                 self._shell_executor.exec_sh_command(
                     [

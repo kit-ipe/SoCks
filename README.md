@@ -327,7 +327,7 @@ Key:
 - **project -> build_time_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
 - **project -> build_time_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
 - **project -> build_time_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
-- **project -> users**: A list of dicts describing users to be added to the root file system.
+- **project -> users [optional]**: A list of dicts describing users to be added to the root file system.
 - **project -> users -> [N] -> name**: The name of the user.
 - **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -1`.
 - **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
@@ -424,7 +424,7 @@ Key:
 - **project -> build_time_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
 - **project -> build_time_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
 - **project -> build_time_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
-- **project -> users**: A list of dicts describing users to be added to the root file system.
+- **project -> users [optional]**: A list of dicts describing users to be added to the root file system.
 - **project -> users -> [N] -> name**: The name of the user.
 - **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -6`.
 - **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
@@ -1245,7 +1245,7 @@ Key:
 - **project -> build_time_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
 - **project -> build_time_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
 - **project -> build_time_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
-- **project -> users**: A list of dicts describing users to be added to the root file system.
+- **project -> users [optional]**: A list of dicts describing users to be added to the root file system.
 - **project -> users -> [N] -> name**: The name of the user.
 - **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -6`.
 - **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
@@ -1339,7 +1339,7 @@ Key:
 - **project -> build_time_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
 - **project -> build_time_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
 - **project -> build_time_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
-- **project -> users**: A list of dicts describing users to be added to the root file system.
+- **project -> users [optional]**: A list of dicts describing users to be added to the root file system.
 - **project -> users -> [N] -> name**: The name of the user.
 - **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -6`.
 - **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
