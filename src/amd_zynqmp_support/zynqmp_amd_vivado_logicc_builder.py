@@ -138,8 +138,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
             # Install logicc
             f"cd {self._logicc_install_dir}/logicc",
-            "pip install -U .",
             "./install_toml_parser",
+            "pip install -U .",
         ]
 
         self.container_executor.exec_sh_commands(
