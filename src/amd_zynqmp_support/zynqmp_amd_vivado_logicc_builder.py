@@ -41,7 +41,6 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         self._logicc_image_dir = self._logicc_work_dir / "image"
 
         self._logicc_cfg_cmds = [
-            f"logicc config set lib_dir {self._logicc_install_dir}/logicc/lib",
             f"logicc config set work_dir {self._source_repo_dir}",
             f"logicc config set build_dir {self._logicc_build_dir}",
             f"logicc config set image_dir {self._logicc_image_dir}",
