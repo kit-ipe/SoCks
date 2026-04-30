@@ -41,7 +41,6 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         self._logicc_image_dir = self._logicc_work_dir / "image"
 
         self._logicc_cfg_cmds = [
-            f"logicc config set lib_dir {self._logicc_install_dir}/logicc/lib",
             f"logicc config set work_dir {self._source_repo_dir}",
             f"logicc config set build_dir {self._logicc_build_dir}",
             f"logicc config set image_dir {self._logicc_image_dir}",
@@ -138,8 +137,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
             # Install logicc
             f"cd {self._logicc_install_dir}/logicc",
-            "pip install -U .",
             "./install_toml_parser",
+            "pip install -U .",
         ]
 
         self.container_executor.exec_sh_commands(
