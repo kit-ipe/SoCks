@@ -154,13 +154,12 @@ class Container_Executor:
             pretty_print.print_build(f"Pulling {self._container_tool} image '{self._container_image_reference}'...")
 
             self._shell_executor.exec_sh_command(
-                command=[
+                [
                     self._container_tool,
                     "image",
                     "pull",
                     f"{self._container_image_registry}/{self._container_image_reference}",
-                ],
-                check=False,
+                ]
             )
 
             return
