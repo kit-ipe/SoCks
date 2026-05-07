@@ -14,8 +14,8 @@ blocks:
       # If no 'import_src' property is specified, the block must be built locally
       add_build_info: false
     container:
-      image: "kernel-builder-alma9"
-      tag: "socks"
+      image: "kernel-build-env-alma9"
+      registry: "local"
   image:
     source: "build"
     builder: "RaspberryPi_Image_Builder"
@@ -26,5 +26,5 @@ blocks:
       dependencies:
         kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
     container:
-      image: "amd-image-builder-alma9"
-      tag: "socks"
+      image: "amd-image-build-env-alma9"
+      registry: "local"

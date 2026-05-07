@@ -19,7 +19,12 @@ class Container_Settings_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     image: str = Field(default=..., description="Container image to build the block")
-    tag: str = Field(default=..., description="Container image tag")
+    namespace: str = Field(default="socks-local", description="Namespace of the container image.")
+    tag: Optional[str] = Field(default=None, description="Container image tag")
+    registry: Literal["local", "docker.io"] = Field(
+        default=...,
+        description="Registry that provides the container image. It is also possible to build the image locally.",
+    )
 
 
 class Block_Model(BaseModel):
