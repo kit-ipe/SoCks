@@ -1,6 +1,7 @@
 import os
 import pwd
 import pathlib
+import re
 import sys
 import inspect
 import subprocess
@@ -76,6 +77,23 @@ class Container_Executor:
                     if results.returncode != 0:
                         pretty_print.print_error(f"Docker buildx is not available on the host system")
                         sys.exit(1)
+                    results = self._shell_executor.get_sh_results(
+                        command=[container_tool, "buildx", "inspect"], check=False
+                    )
+                    buildx_driver = ""
+                    for line in results.stdout.splitlines():
+                        if line.startswith("Driver:"):
+                            buildx_driver = line.split()[1]
+                            break
+                    if buildx_driver != "docker":
+                        # As far as I know only the 'docker' driver supports using local container base images.
+                        # With a different driver (e.g. 'docker-container'), buildx has always tried to fetch the
+                        # base image from docker hub.
+                        pretty_print.print_error(
+                            f"Docker buildx currently uses the '{buildx_driver}' driver, but SoCks only supports the "
+                            "'docker' driver. Please switch to a buildx builder that uses driver 'docker'."
+                        )
+                        sys.exit(1)
             elif container_tool == "podman":
                 installation_valid = results.returncode == 0 and any(
                     "podman version" in s for s in results.stdout.splitlines()
@@ -127,6 +145,120 @@ class Container_Executor:
         pretty_print.print_error(f"{feature} is only available if a containerization tool is used.")
         sys.exit(1)
 
+    def _get_base_image(self, container_file: pathlib.Path) -> tuple[str, pathlib.Path] | tuple[None, None]:
+        """
+        Extracts the base image from a container file by parsing the first FROM instruction
+        that references a socks-base-* image.
+
+        Args:
+            container_file:
+                Path to the container file to parse
+
+        Returns:
+            The base image name and the base image container file or None if no base image was found
+
+        Raises:
+            FileNotFoundError:
+                If the base container file does not exist
+        """
+
+        if not container_file.is_file():
+            raise FileNotFoundError(f"Container file not found: {container_file}")
+
+        base_image_name = None
+        with open(container_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                # Match lines like: FROM socks-base-alma8:latest or FROM socks-local/socks-base-alma8:latest
+                # We only care about the base image name
+                # The socks-local/ prefix is optional
+                # The :latest tag (or any other tag) is optional
+                match = re.match(r"^FROM\s+(?:socks-local/)?(socks-base-[^:\s]+)(?::\S+)?", line, re.IGNORECASE)
+                if match:
+                    base_image_name = match.group(1)
+                    break
+
+        # Find associated base image container file
+        if base_image_name:
+            base_container_file = self._container_file.parent / "base" / f"{base_image_name}.containerfile"
+            if not base_container_file.is_file():
+                raise FileNotFoundError(f"Base container file not found: {base_container_file}")
+            return (base_image_name, base_container_file)
+        else:
+            return (None, None)
+
+    def _build_base_image(self, base_image_name: str, base_container_file: pathlib.Path):
+        """
+        Builds a base layer image.
+
+        Args:
+            base_image_name:
+                Name of the base image
+            base_container_file:
+                Path to the base container file
+
+        Returns:
+            None
+
+        Raises:
+            ValueError:
+                If an unexpected container tool is specified or if a container file is required but not specified
+        """
+
+        base_image_reference = f"socks-local/{base_image_name}"
+
+        # Check if base image needs to be built
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=[base_container_file, base_container_file.parent.parent / "entrypoint.sh"],
+            out_timestamp=self._container_log.get_logged_timestamp(
+                identifier=f"{self._container_tool}-image-{base_image_reference}-built"
+            ),
+        ):
+            pretty_print.print_build(f"No need to build {self._container_tool} image '{base_image_reference}'...")
+            return
+
+        with self._container_log.timestamp(identifier=f"{self._container_tool}-image-{base_image_reference}-built"):
+            if self._container_tool == "docker":
+                pretty_print.print_build(f"Building docker image '{base_image_reference}'...")
+
+                self._shell_executor.exec_sh_command(
+                    [
+                        "docker",
+                        "buildx",
+                        "build",
+                        "-t",
+                        base_image_reference,
+                        "-f",
+                        str(base_container_file),
+                        "--ssh",
+                        "default",
+                        "--build-context",
+                        f"container_srcs={str(base_container_file.parent.parent)}",
+                        "--load",
+                        ".",
+                    ]
+                )
+            elif self._container_tool == "podman":
+                pretty_print.print_build(f"Building podman image '{base_image_reference}'...")
+
+                self._shell_executor.exec_sh_command(
+                    [
+                        "podman",
+                        "build",
+                        "-t",
+                        base_image_reference,
+                        "-f",
+                        str(base_container_file),
+                        "--ssh",
+                        "default",
+                        "--build-context",
+                        f"container_srcs={str(base_container_file.parent.parent)}",
+                        ".",
+                    ]
+                )
+            else:
+                raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
     def prepare_container_image(self):
         """
         Builds or pulls the container image for the selected container tool.
@@ -176,9 +308,17 @@ class Container_Executor:
             )
             sys.exit(1)
 
+        # Build base image first
+        base_image_name, base_container_file = self._get_base_image(self._container_file)
+        if base_image_name:
+            self._build_base_image(base_image_name=base_image_name, base_container_file=base_container_file)
+
         # Check whether the image needs to be built
+        src_search_list = [self._container_file]
+        if base_container_file:
+            src_search_list.append(base_container_file)
         if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._container_file, self._container_file.parent / "entrypoint.sh"],
+            src_search_list=src_search_list,
             out_timestamp=self._container_log.get_logged_timestamp(
                 identifier=f"{self._container_tool}-image-{self._container_image_reference}-built"
             ),
@@ -187,6 +327,18 @@ class Container_Executor:
                 f"No need to build {self._container_tool} image '{self._container_image_reference}'..."
             )
             return
+
+        if self._container_image_namespace != "socks-local":
+            pretty_print.print_warning(
+                f"You are about to build a local container image that will be located in namespace "
+                f"'{self._container_image_namespace}' and not in the SoCks default namespace 'socks-local'. "
+                f"This is supported, but not recommended. Do you still want to proceed? (y/N) ",
+                end="",
+            )
+            answer = input("").strip().lower()
+            if answer not in ("y", "yes"):
+                pretty_print.print_clean("Building container image aborted...")
+                sys.exit(1)
 
         with self._container_log.timestamp(
             identifier=f"{self._container_tool}-image-{self._container_image_reference}-built"
@@ -211,7 +363,6 @@ class Container_Executor:
                         ".",
                     ]
                 )
-
             elif self._container_tool == "podman":
                 pretty_print.print_build(f"Building podman image '{self._container_image_reference}'...")
 
@@ -231,7 +382,6 @@ class Container_Executor:
                         ".",
                     ]
                 )
-
             else:
                 raise ValueError(f"Unexpected container tool: {self._container_tool}")
 

@@ -1,31 +1,12 @@
+FROM socks-local/socks-base-alpine:latest AS base
+
 FROM multiarch/qemu-user-static AS qemu
-FROM tianon/gosu AS gosu
-FROM alpine:3.22
+FROM base
 
 # Install QEMU binaries to run binaries for the target architecture on an x86 system
 COPY --from=qemu /usr/bin/qemu-*-static /usr/bin
 
-# Update all packages
-RUN apk --no-interactive upgrade && \
-# Install required packages to make the image compatible with SoCks
-    apk --no-interactive add bash && \
 # Install required packages to modify the base RootFS
-    apk --no-interactive add rsync && \
+RUN apk --no-interactive add rsync && \
 # Install required packages to package the RootFS
-    apk --no-interactive add tar pigz pixz && \
-# Install sudo and allow all users to use sudo without a password
-    apk --no-interactive add sudo && \
-    echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-
-# Install goso as shown here: https://github.com/tianon/gosu/blob/master/INSTALL.md
-COPY --from=gosu /gosu /usr/local/bin/
-
-# Copy the entrypoint script into the container and make it executable
-COPY --from=container_srcs entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Set the entrypoint to the script
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-# Set the default command to run when the container starts
-CMD ["/bin/bash"]
+    apk --no-interactive add tar pigz pixz
