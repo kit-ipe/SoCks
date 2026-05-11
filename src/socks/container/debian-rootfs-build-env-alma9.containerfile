@@ -1,7 +1,5 @@
-FROM socks-local/socks-base-alma9:latest AS base
-
 FROM multiarch/qemu-user-static AS qemu
-FROM base
+FROM socks-local/socks-base-alma9:latest
 
 # Install QEMU binaries to run binaries for the target architecture on an x86 system
 COPY --from=qemu /usr/bin/qemu-*-static /usr/bin

@@ -1,4 +1,4 @@
-FROM socks-local/socks-base-alma9:latest AS base
+FROM socks-local/socks-base-alma9:latest
 
 # Install cross compiler
 RUN dnf -y install wget && \

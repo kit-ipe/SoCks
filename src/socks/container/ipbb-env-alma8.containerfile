@@ -1,4 +1,4 @@
-FROM socks-local/socks-base-alma8:latest AS base
+FROM socks-local/socks-base-alma8:latest
 
 # Install devicetree compiler
 RUN dnf -y install dtc

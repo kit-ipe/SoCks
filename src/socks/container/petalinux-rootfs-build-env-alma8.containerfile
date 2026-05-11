@@ -1,4 +1,4 @@
-FROM socks-local/socks-base-alma8:latest AS base
+FROM socks-local/socks-base-alma8:latest
 
 # Install tools required by yocto
 RUN dnf -y install glibc-locale-source glibc-langpack-en && \
