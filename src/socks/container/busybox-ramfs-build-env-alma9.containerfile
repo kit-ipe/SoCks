@@ -1,10 +1,4 @@
-FROM almalinux:8 AS busybox-toolchain
-
-# Enable Power Tools repo
-RUN dnf -y install 'dnf-command(config-manager)' && \
-    dnf config-manager --set-enabled powertools && \
-# Enable EPEL repo
-    dnf -y install epel-release
+FROM socks-local/socks-base-alma9:latest AS busybox-toolchain
 
 # Install cross-compilation toolchain
 #RUN dnf -y install wget
@@ -45,16 +39,7 @@ RUN mkdir /app/tools/crosstool-ng-workspace && \
     ct-ng olddefconfig && \
     ct-ng build
 
-FROM tianon/gosu AS gosu
-FROM almalinux:8
-
-# Enable Power Tools repo
-RUN dnf -y install 'dnf-command(config-manager)' && \
-    dnf config-manager --set-enabled powertools && \
-# Enable EPEL repo
-    dnf -y install epel-release && \
-# Install development tools
-    dnf -y group install "Development Tools"
+FROM socks-local/socks-base-alma9:latest
 
 # Install the toolchain in a location accessible to all users
 RUN mkdir /opt/crosstool-ng-toolchains && \
@@ -67,20 +52,4 @@ RUN dnf -y install perl-Pod-Html ncurses-devel && \
 # Install required packages to modify the base file system
     dnf -y install rsync && \
 # Install required packages to package the initramfs
-    dnf -y install pigz pxz && \
-# Install sudo and allow all users to use sudo without a password
-    dnf -y install sudo && \
-    echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-
-# Install goso as shown here: https://github.com/tianon/gosu/blob/master/INSTALL.md
-COPY --from=gosu /gosu /usr/local/bin/
-
-# Copy the entrypoint script into the container and make it executable
-COPY --from=container_srcs entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Set the entrypoint to the script
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-
-# Set the default command to run when the container starts
-CMD ["/bin/bash"]
+    dnf -y install pigz pxz

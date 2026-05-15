@@ -64,7 +64,7 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
         }
         block_cmds["clean"].extend(
             [
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -76,7 +76,7 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
             block_cmds["prepare"].extend(
                 [
                     self._build_validator.del_project_cfg,
-                    self.container_executor.build_container_image,
+                    self.container_executor.prepare_container_image,
                     self.init_repo,
                     self.apply_patches,
                     self.attach_config_snippets,
@@ -89,10 +89,12 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
             )
             block_cmds["create-patches"].extend([self.create_patches])
             block_cmds["create-cfg-snippet"].extend([self.create_config_snippet])
-            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
-            block_cmds["menucfg"].extend([self.container_executor.build_container_image, self.run_menuconfig])
+            block_cmds["start-container"].extend(
+                [self.container_executor.prepare_container_image, self.start_container]
+            )
+            block_cmds["menucfg"].extend([self.container_executor.prepare_container_image, self.run_menuconfig])
         elif self.block_cfg.source == "import":
-            block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
+            block_cmds["build"].extend([self.container_executor.prepare_container_image, self.import_prebuilt])
         return block_cmds
 
     def validate_srcs(self):

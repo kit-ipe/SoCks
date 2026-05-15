@@ -99,7 +99,7 @@ class Builder(ABC):
 
         # SoCks directorys
         self._socks_dir = socks_dir
-        self._container_dir = self._socks_dir / "container"
+        self._container_files_dir = self._socks_dir / "container"
         self._builders_dir = pathlib.Path(importlib.resources.files(self.__module__.partition(".")[0]))
         if not (self._builders_dir / "__init__.py").is_file():
             raise ModuleNotFoundError(f"The following directory is not a package: {self._builders_dir}")
@@ -151,11 +151,21 @@ class Builder(ABC):
         self.shell_executor = Shell_Executor()
         self.container_executor = Container_Executor(
             container_tool=self.project_cfg.external_tools.container_tool,
+            container_image_registry=self.block_cfg.container.registry,
             container_image=self.block_cfg.container.image,
+            container_image_namespace=self.block_cfg.container.namespace,
             container_image_tag=self.block_cfg.container.tag,
-            container_file=self._container_dir / f"{self.block_cfg.container.image}.containerfile",
+            container_files_dir=self._container_files_dir,
             container_log_file=self._project_temp_dir / ".container_log.csv",
         )
+
+        # Migration assistance
+        if self.block_cfg.container.tag == "socks":
+            self.pre_action_warnings.append(
+                "The configuration for this block uses the container image tag 'socks', which is a deprecated "
+                "setting. Please update the container configuration to match the new format and avoid container "
+                "image duplication."
+            )
 
     @property
     @abstractmethod
