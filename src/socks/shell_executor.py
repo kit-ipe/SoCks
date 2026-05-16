@@ -2,11 +2,298 @@ import pathlib
 import shutil
 import sys
 import re
-import select
 import subprocess
 import os
+import codecs
+import errno
+import fcntl
+import pty
+import struct
+import termios
 
 import socks.pretty_print as pretty_print
+
+
+class _Terminal_Screen_Buffer:
+    """
+    A lightweight terminal screen model for managing subprocess output scrolling.
+    """
+
+    def __init__(self, visible_lines: int):
+        self._visible_lines = visible_lines
+        self._max_buffer_lines = max(visible_lines + 20, 100)
+        self._lines = [""]
+        self._cursor_row = 0
+        self._cursor_col = 0
+        self._parser_state = "text"
+        self._csi_buffer = ""
+        self._completed_lines = []
+
+    def feed(self, text: str):
+        """
+        Adds new text to the buffer. Control sequences are detected and applied to the buffer.
+
+        Args:
+            text:
+                 Terminal output from a subprocess that is to be added to the buffer.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        # Parse incoming characters and apply their terminal control effects to the virtual buffer.
+        for char in text:
+            if self._parser_state == "text":
+                if char == "\x1b":
+                    self._parser_state = "escape"
+                elif char == "\n":
+                    self._newline()
+                elif char == "\r":
+                    self._cursor_col = 0
+                elif char == "\b":
+                    self._cursor_col = max(0, self._cursor_col - 1)
+                elif char == "\t":
+                    tab_width = 8 - (self._cursor_col % 8)
+                    self._write_text(" " * tab_width)
+                elif char >= " " and char != "\x7f":
+                    self._write_text(char)
+            elif self._parser_state == "escape":
+                if char == "[":
+                    self._parser_state = "csi"
+                    self._csi_buffer = ""
+                elif char == "]":
+                    self._parser_state = "osc"
+                else:
+                    self._parser_state = "text"
+            elif self._parser_state == "csi":
+                self._csi_buffer += char
+                if "@" <= char <= "~":
+                    self._apply_csi(self._csi_buffer)
+                    self._csi_buffer = ""
+                    self._parser_state = "text"
+            elif self._parser_state == "osc":
+                if char == "\x07":
+                    self._parser_state = "text"
+
+    def collect_completed_lines(self) -> list[str]:
+        """
+        Hands completed lines to the caller and clears the internal queue afterwards. This function is to be used
+        to write the logfile.
+
+        Args:
+            None
+
+        Returns:
+            Completed lines that have not yet been collected.
+
+        Raises:
+            None
+        """
+
+        completed_lines = self._completed_lines
+        self._completed_lines = []
+        return completed_lines
+
+    def flush_current_line(self) -> list[str]:
+        """
+        Hands the current in-progress (unterminated) line. This function is to be used to write the logfile.
+
+        Args:
+            None
+
+        Returns:
+            Current in-progress line.
+
+        Raises:
+            None
+        """
+
+        self._ensure_cursor_row()
+        if self._lines[self._cursor_row]:
+            return [self._lines[self._cursor_row]]
+        return []
+
+    def get_visible_lines(self) -> list[str]:
+        """
+        Returns the tail of the virtual screen that should be shown in the scrolling view.
+
+        Args:
+            None
+
+        Returns:
+            Lines to be displayed in the scrolling view.
+
+        Raises:
+            None
+        """
+
+        if self._visible_lines <= 0:
+            return []
+
+        visible_lines = self._lines
+        if len(visible_lines) > 1 and visible_lines[-1] == "":
+            visible_lines = visible_lines[:-1]
+
+        return visible_lines[-self._visible_lines :]
+
+    def _apply_csi(self, sequence: str):
+        """
+        Applies an ANSI CSI control sequence such as cursor movement or line clearing to the buffer.
+
+        Args:
+            sequence:
+                ANSI CSI control sequence.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        final = sequence[-1]
+        params = sequence[:-1]
+        params = params.lstrip("?")
+
+        def first_param(default: int) -> int:
+            if params == "":
+                return default
+            try:
+                return int(params.split(";")[0])
+            except ValueError:
+                return default
+
+        self._ensure_cursor_row()
+
+        if final == "A":
+            self._cursor_row = max(0, self._cursor_row - first_param(1))
+        elif final == "B":
+            self._cursor_row += first_param(1)
+            self._ensure_cursor_row()
+            self._trim_buffer()
+        elif final == "C":
+            self._cursor_col += first_param(1)
+        elif final == "D":
+            self._cursor_col = max(0, self._cursor_col - first_param(1))
+        elif final == "E":
+            self._cursor_row += first_param(1)
+            self._cursor_col = 0
+            self._ensure_cursor_row()
+            self._trim_buffer()
+        elif final == "F":
+            self._cursor_row = max(0, self._cursor_row - first_param(1))
+            self._cursor_col = 0
+        elif final == "G":
+            self._cursor_col = max(0, first_param(1) - 1)
+        elif final == "K":
+            mode = first_param(0)
+            line = self._lines[self._cursor_row]
+            if mode == 0:
+                self._lines[self._cursor_row] = line[: self._cursor_col]
+            elif mode == 1:
+                self._lines[self._cursor_row] = line[self._cursor_col :]
+                self._cursor_col = 0
+            elif mode == 2:
+                self._lines[self._cursor_row] = ""
+                self._cursor_col = 0
+        elif final == "J":
+            mode = first_param(0)
+            if mode == 2:
+                self._lines = [""]
+                self._cursor_row = 0
+                self._cursor_col = 0
+        elif final == "m":
+            # Select Graphic Rendition (colors, bold, ...); ignored for the scrolling view.
+            return
+
+        self._cursor_col = max(0, self._cursor_col)
+
+    def _ensure_cursor_row(self):
+        """
+        Expands the line list until the current cursor row exists.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        while self._cursor_row >= len(self._lines):
+            self._lines.append("")
+
+    def _trim_buffer(self):
+        """
+        Drops the oldest lines once the internal scrollback grows beyond the configured limit.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        while len(self._lines) > self._max_buffer_lines and self._cursor_row > 0:
+            self._lines.pop(0)
+            self._cursor_row -= 1
+
+    def _write_text(self, text: str):
+        """
+        Writes printable text at the current cursor position, replacing overwritten characters.
+
+        Args:
+            text:
+                Text to be written.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._ensure_cursor_row()
+        line = self._lines[self._cursor_row]
+
+        if self._cursor_col > len(line):
+            line += " " * (self._cursor_col - len(line))
+
+        prefix = line[: self._cursor_col]
+        suffix_start = self._cursor_col + len(text)
+        suffix = line[suffix_start:] if suffix_start < len(line) else ""
+        self._lines[self._cursor_row] = prefix + text + suffix
+        self._cursor_col += len(text)
+
+    def _newline(self):
+        """
+        Finalizes the current line and moves the virtual cursor to the next line.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        self._ensure_cursor_row()
+        self._completed_lines.append(self._lines[self._cursor_row])
+
+        self._cursor_row += 1
+        self._cursor_col = 0
+        self._ensure_cursor_row()
+        self._trim_buffer()
 
 
 class Shell_Executor:
@@ -102,7 +389,7 @@ class Shell_Executor:
             subprocess.CalledProcessError: If the return code of the subprocess is not 0
         """
 
-        # If scolling output is disabled and the output should not be hidden or logged, subprocess.run can be used
+        # If scrolling output is disabled and the output should not be hidden or logged, subprocess.run can be used
         # to run the subprocess
         if self._prohibit_output_processing or (output_scrolling == False and visible_lines != 0 and logfile == None):
             try:
@@ -126,113 +413,135 @@ class Shell_Executor:
         if logfile != None:
             logfile.unlink(missing_ok=True)
 
-        # Regex to strip ANSI escape sequences from strings
-        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+        terminal_size = shutil.get_terminal_size()
 
         # Adapt the number of visible lines to the size of the terminal, if necessary
-        visible_lines = min(visible_lines, shutil.get_terminal_size().lines - 2)
+        visible_lines = min(visible_lines, terminal_size.lines - 2)
 
         # Prepare to process the command line output of the command
         printed_lines = 0
-        last_lines = []
+        terminal_buffer = _Terminal_Screen_Buffer(visible_lines=visible_lines)
 
-        def update_last_lines(line):
-            if visible_lines <= 0:
+        def append_to_log(lines: list[str]):
+            # Persist finalized logical lines to the logfile without ANSI escape sequences.
+            if not logfile or not lines:
                 return
-            if len(last_lines) >= visible_lines:
-                last_lines.pop(0)
-            last_lines.append(line)
+
+            # Regex to strip ANSI escape sequences from strings
+            ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+            with logfile.open("a") as f:
+                for line in lines:
+                    print(ansi_escape.sub("", line), file=f)
+
+        def print_scrolling_output():
+            # Repaint only the currently visible tail of the virtual screen in the terminal.
+            nonlocal printed_lines
+
+            if not output_scrolling:
+                return
+
+            visible_output_lines = terminal_buffer.get_visible_lines()
+            sys.stdout.write(f"\033[{printed_lines}F")
+
+            lines_to_draw = max(printed_lines, len(visible_output_lines))
+
+            for idx in range(lines_to_draw):
+                if idx < len(visible_output_lines):
+                    line = visible_output_lines[idx]
+                    if len(line.expandtabs()) > terminal_size.columns:
+                        line = line.expandtabs()
+                        line = line[: (terminal_size.columns - 3)] + "..."
+                    sys.stdout.write("\033[K" + line + "\r\n")
+                else:
+                    sys.stdout.write("\033[K\r\n")
+
+            printed_lines = len(visible_output_lines)
+            sys.stdout.flush()
 
         # Tell the user where the complete output is logged
         if logfile:
             pretty_print.print_info(f"The complete output of this process is logged here: {logfile}\n")
 
-        # Start the subprocess
+        # Open and initialize a pseudo-terminal
+        master_fd, slave_fd = pty.openpty()
+        fcntl.ioctl(
+            slave_fd,
+            termios.TIOCSWINSZ,
+            struct.pack("HHHH", terminal_size.lines, terminal_size.columns, 0, 0),
+        )
+
+        # Start the subprocess on the pseudo terminal.
         process = subprocess.Popen(
             " ".join(command),
             shell=True,
             executable="sh",
             cwd=cwd,
             env=os.environ.copy(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
+            stdin=slave_fd,
+            stdout=slave_fd,
+            stderr=slave_fd,
+            text=False,
         )
+        os.close(slave_fd)
+
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
 
         # Continuously read from the process output
         while True:
             try:
-                # Wait for any of the pipes to have available data
-                readable = select.select([process.stdout, process.stderr], [], [])[0]
-
+                chunk = os.read(master_fd, 4096)
             except KeyboardInterrupt:
                 # Gracefully handle Ctrl+C
                 process.kill()
+                continue
+            except OSError as e:
+                # Break loop if the subprocess has terminated (Input/Output error is expected when the child process has terminated)
+                if e.errno == errno.EIO and process.poll() is not None:
+                    break
+                raise
 
-            # Read one line from the pipe(s) in which data is available
-            stdout_line = None
-            if process.stdout in readable:
-                stdout_line = process.stdout.readline()
-                # Strip all invisible elements from the end of the string (especially new line characters, etc.)
-                stdout_line = stdout_line.rstrip()
+            if chunk == b"":
+                # If no output was received, check whether the subprocess has terminated, and break the loop if that is the case
+                if process.poll() is not None:
+                    break
+                continue
 
-            stderr_line = None
-            if process.stderr in readable:
-                stderr_line = process.stderr.readline()
-                # Strip all invisible elements from the end of the string (especially new line characters, etc.)
-                stderr_line = stderr_line.rstrip()
+            decoded_output = decoder.decode(chunk)
+            if decoded_output == "":
+                continue
 
-            # If both are empty and the process is done, break
-            if not stdout_line and not stderr_line and process.poll() is not None:
-                break
-
-            # If provided, write to log file
-            if logfile:
-                with logfile.open("a") as f:
-                    if stdout_line:
-                        # Strip ANSI escape sequences as they cannot be printed to a file
-                        stdout_line = ansi_escape.sub("", stdout_line)
-                        print(stdout_line, file=f)
-                    if stderr_line:
-                        # Strip ANSI escape sequences as they cannot be printed to a file
-                        stderr_line = ansi_escape.sub("", stderr_line)
-                        print(stderr_line, file=f)
+            terminal_buffer.feed(decoded_output)
+            append_to_log(terminal_buffer.collect_completed_lines())
 
             if output_scrolling:
-                # Add output of the command to buffer
-                if stdout_line:
-                    update_last_lines(stdout_line)
-                if stderr_line:
-                    update_last_lines(stderr_line)
-
-                # Move the cursor to the beginning of the scrolling output
-                sys.stdout.write(f"\033[{printed_lines}F")
-                sys.stdout.flush()
-
-                # Print output
-                printed_lines = 0
-                terminal_width = shutil.get_terminal_size().columns
-                for line in last_lines:
-                    if len(line) > terminal_width:
-                        # Replace tabs with spaces to get a realistic line length
-                        line = line.expandtabs()
-                        # Limit the line length to avoid wrapping
-                        line = line[: (terminal_width - 3)] + "..."
-                    # Replace content of this line. The line is cleared before anything new is printed.
-                    sys.stdout.write("\033[K" + line + "\r\n")
-                    printed_lines += 1
-                sys.stdout.flush()
+                print_scrolling_output()
             else:
-                # Print output
-                if stdout_line:
-                    sys.stdout.write(stdout_line + "\r\n")
-                if stderr_line:
-                    sys.stdout.write(stderr_line + "\r\n")
+                sys.stdout.write(decoded_output)
                 sys.stdout.flush()
 
-        # Close the streams
-        process.stdout.close()
-        process.stderr.close()
+        # Finish output handling
+        flushed_output = decoder.decode(b"", final=True)
+        if flushed_output:
+            terminal_buffer.feed(flushed_output)
+            append_to_log(terminal_buffer.collect_completed_lines())
+
+            if output_scrolling:
+                print_scrolling_output()
+            else:
+                sys.stdout.write(flushed_output)
+                sys.stdout.flush()
+
+        if output_scrolling:
+            print_scrolling_output()
+            if printed_lines > 0:
+                sys.stdout.write("\033[K")
+                sys.stdout.flush()
+
+        append_to_log(terminal_buffer.flush_current_line())
+
+        # Close the pseudo terminal
+        os.close(master_fd)
         process.wait()
 
         # Check return code
