@@ -438,12 +438,10 @@ class Shell_Executor:
             # Repaint only the currently visible tail of the virtual screen in the terminal.
             nonlocal printed_lines
 
-            if not output_scrolling:
-                return
-
-            visible_output_lines = terminal_buffer.get_visible_lines()
+            # Move the cursor up
             sys.stdout.write(f"\033[{printed_lines}F")
 
+            visible_output_lines = terminal_buffer.get_visible_lines()
             lines_to_draw = max(printed_lines, len(visible_output_lines))
 
             for idx in range(lines_to_draw):
@@ -452,8 +450,10 @@ class Shell_Executor:
                     if len(line.expandtabs()) > terminal_size.columns:
                         line = line.expandtabs()
                         line = line[: (terminal_size.columns - 3)] + "..."
+                    # Print line and erase leftover content from previous renders
                     sys.stdout.write("\033[K" + line + "\r\n")
                 else:
+                    # Erase leftover content from previous renders
                     sys.stdout.write("\033[K\r\n")
 
             printed_lines = len(visible_output_lines)
