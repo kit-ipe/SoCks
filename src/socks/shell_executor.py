@@ -487,64 +487,74 @@ class Shell_Executor:
 
         decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
 
-        # Continuously read from the process output
-        while True:
+        try:
+            # Continuously read from the process output
+            while True:
+                try:
+                    chunk = os.read(master_fd, 4096)
+                except OSError as e:
+                    # Break loop if the subprocess has terminated (Input/Output error is expected when the child process has terminated)
+                    if e.errno == errno.EIO and process.poll() is not None:
+                        break
+                    raise
+
+                if chunk == b"":
+                    # If no output was received, check whether the subprocess has terminated, and break the loop if that is the case
+                    if process.poll() is not None:
+                        break
+                    continue
+
+                decoded_output = decoder.decode(chunk)
+                if decoded_output == "":
+                    continue
+
+                terminal_buffer.feed(decoded_output)
+                append_to_log(terminal_buffer.collect_completed_lines())
+
+                if output_scrolling:
+                    print_scrolling_output()
+                else:
+                    sys.stdout.write(decoded_output)
+                    sys.stdout.flush()
+
+            # Finish output handling
+            flushed_output = decoder.decode(b"", final=True)
+            if flushed_output:
+                terminal_buffer.feed(flushed_output)
+                append_to_log(terminal_buffer.collect_completed_lines())
+
+                if output_scrolling:
+                    print_scrolling_output()
+                else:
+                    sys.stdout.write(flushed_output)
+                    sys.stdout.flush()
+
+            if output_scrolling:
+                print_scrolling_output()
+                if printed_lines > 0:
+                    sys.stdout.write("\033[K")
+                    sys.stdout.flush()
+
+            append_to_log(terminal_buffer.flush_current_line())
+
+        except KeyboardInterrupt:
+            # On user interrupt, forcefully terminate the process
             try:
-                chunk = os.read(master_fd, 4096)
-            except KeyboardInterrupt:
-                # Gracefully handle Ctrl+C
                 process.kill()
-                continue
-            except OSError as e:
-                # Break loop if the subprocess has terminated (Input/Output error is expected when the child process has terminated)
-                if e.errno == errno.EIO and process.poll() is not None:
-                    break
-                raise
+                process.wait()
+            except ProcessLookupError:
+                # Process already exited
+                pass
 
-            if chunk == b"":
-                # If no output was received, check whether the subprocess has terminated, and break the loop if that is the case
-                if process.poll() is not None:
-                    break
-                continue
-
-            decoded_output = decoder.decode(chunk)
-            if decoded_output == "":
-                continue
-
-            terminal_buffer.feed(decoded_output)
-            append_to_log(terminal_buffer.collect_completed_lines())
-
-            if output_scrolling:
-                print_scrolling_output()
-            else:
-                sys.stdout.write(decoded_output)
-                sys.stdout.flush()
-
-        # Finish output handling
-        flushed_output = decoder.decode(b"", final=True)
-        if flushed_output:
-            terminal_buffer.feed(flushed_output)
-            append_to_log(terminal_buffer.collect_completed_lines())
-
-            if output_scrolling:
-                print_scrolling_output()
-            else:
-                sys.stdout.write(flushed_output)
-                sys.stdout.flush()
-
-        if output_scrolling:
-            print_scrolling_output()
-            if printed_lines > 0:
-                sys.stdout.write("\033[K")
-                sys.stdout.flush()
-
-        append_to_log(terminal_buffer.flush_current_line())
+            print("")  # Push the error message to a new line
+            pretty_print.print_error("The sub-process was interrupted by the user (Ctrl+C).\n")
+            sys.exit(1)
 
         # Close the pseudo terminal
         os.close(master_fd)
-        process.wait()
 
         # Check return code
+        process.wait()
         if check and process.returncode != 0:
             pretty_print.print_error(
                 "The return code of a sub-process was not equal to zero (see output above).\n"
