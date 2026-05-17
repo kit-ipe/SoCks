@@ -34,6 +34,8 @@ class ZynqMP_AMD_FSBL_Builder(AMD_Builder):
             model_class=model_class,
         )
 
+        self.check_amd_tools(required_tools=["vitis"], pre_action_check=True)
+
     @property
     def _block_deps(self):
         # Products of other blocks on which this block depends

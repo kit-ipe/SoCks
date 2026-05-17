@@ -34,6 +34,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             model_class=model_class,
         )
 
+        self.check_amd_tools(required_tools=["vivado"], pre_action_check=True)
+
         # Project directories
         self._logicc_install_dir = self._work_dir / "logicc-tool"
         self._logicc_work_dir = self._work_dir / "logicc-work"
