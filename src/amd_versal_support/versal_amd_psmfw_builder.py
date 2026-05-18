@@ -36,6 +36,7 @@ class Versal_AMD_PSMFW_Builder(AMD_Builder):
             "This block is experimental, it should not be used for production. "
             "Versal blocks should use the Vitis SDT flow instead of the XSCT flow, as soon as it is stable."
         )
+        self.check_amd_tools(required_tools=["vitis"], pre_action_check=True)
 
         # Project directories
         self._vitis_workspace_dir = self._work_dir / "vitis_workspace"

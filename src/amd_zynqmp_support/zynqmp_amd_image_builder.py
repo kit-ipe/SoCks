@@ -35,6 +35,8 @@ class ZynqMP_AMD_Image_Builder(AMD_Builder):
             model_class=model_class,
         )
 
+        self.check_amd_tools(required_tools=["vitis"], pre_action_check=True)
+
         # Source images to be used in this block
         self._atf_img_path = self._dependencies_dir / "atf/bl31.elf"
         self._dt_img_path = self._dependencies_dir / "devicetree/system.dtb"

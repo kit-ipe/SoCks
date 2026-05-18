@@ -38,6 +38,8 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             model_class=model_class,
         )
 
+        self.check_amd_tools(required_tools=["vitis"], pre_action_check=True)
+
         # Project directories
         self._dt_incl_dir = self._block_src_dir / "dt_includes"
         self._dt_overlay_dir = self._block_src_dir / "dt_overlays"

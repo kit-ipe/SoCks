@@ -34,14 +34,6 @@ class AMD_Builder(Builder):
             block_description=block_description,
         )
 
-        # These variables are initialized with the function check_amd_tools() as soon as AMD Xilinx tools are needed.
-        # This allows people to use all features of socks that do not require AMD Xilinx tools also when they
-        # do not have the AMD Xilinx tools installed.
-        self._amd_vivado_path = None
-        self._amd_vitis_path = None
-        self._amd_tools_path = None
-        self._amd_license = None
-
         # Project directories
         self._xsa_dir = self._block_temp_dir / "source_xsa"
 
@@ -49,16 +41,27 @@ class AMD_Builder(Builder):
         # File for saving the checksum of the XSA-file on which the project is based
         self._source_xsa_md5_file = self._work_dir / "source_xsa.md5"
 
-    def check_amd_tools(self, required_tools: list[str]):
+    # These static variables are initialized dynamically via function check_amd_tools(). This allows people to use all
+    # features of socks that do not require AMD Xilinx tools also when they do not have the AMD Xilinx tools installed.
+    _amd_vivado_path = None
+    _amd_vitis_path = None
+    _amd_tools_path = None
+    _amd_license = None
+
+    def check_amd_tools(self, required_tools: list[str], pre_action_check: bool = False):
         """
-        Collects and checks AMD Xilinx tools setup information from the host environment. This function should
-        only be called immediately before one of the AMD Xilinx tools is used and not in the constructor of a class.
-        This allows people to use all features of socks that do not require AMD Xilinx tools also when they
-        do not have the AMD Xilinx tools installed.
+        Retrieves and verifies AMD Xilinx tools setup information from the host environment.
+        Parameter 'pre_action_check' should be set to 'True' when this function is called in the constructor of a
+        builder class. This allows all SoCks functions that do not require AMD Xilinx tools to be used, even if
+        those tools are not installed. With parameter 'pre_action_check' set to 'False', this function should only
+        be called immediately before one of the AMD Xilinx tools is used in a builder.
 
         Args:
             required_tools:
                 A list of all AMD Xilinx tools (vivado, vitis) that are required.
+            pre_action_check:
+                Perform just a pre-action check that creates pre-action warnings instead of issuing serious errors
+                that cause the program to terminate.
 
         Returns:
             None
@@ -75,45 +78,57 @@ class AMD_Builder(Builder):
 
         # Skip if the requested AMD Xilinx tools have already been checked
         if (
-            all(getattr(self, f"_amd_{tool}_path") is not None for tool in required_tools)
-            and self._amd_license is not None
+            all(getattr(AMD_Builder, f"_amd_{tool}_path") is not None for tool in required_tools)
+            and AMD_Builder._amd_license is not None
         ):
             return
 
         # Read values from environment
         for tool in required_tools:
             setattr(
-                self,
+                AMD_Builder,
                 f"_amd_{tool}_path",
                 pathlib.Path(os.getenv(f"XILINX_{tool.upper()}")) if os.getenv(f"XILINX_{tool.upper()}") else None,
             )
-        self._amd_license = os.getenv("XILINXD_LICENSE_FILE")
+        AMD_Builder._amd_license = os.getenv("XILINXD_LICENSE_FILE")
+
+        def _report_failure(pre_action_warning_msg: str, error_msg: str):
+            if pre_action_check:
+                self.pre_action_warnings.append(pre_action_warning_msg)
+                return
+            else:
+                pretty_print.print_error(error_msg)
+                sys.exit(1)
 
         # Check if the requested tools are available and if the version matches the project
         for tool in required_tools:
-            if getattr(self, f"_amd_{tool}_path") is None:
-                pretty_print.print_error(
-                    f"{tool.capitalize()} could not be found. "
-                    f"Please source {tool.capitalize()} {self.project_cfg.external_tools.xilinx.version}."
+            if getattr(AMD_Builder, f"_amd_{tool}_path") is None:
+                _report_failure(
+                    pre_action_warning_msg=f"{tool.capitalize()} could not be found. This may cause errors "
+                    f"during execution. If possible, source {tool.capitalize()} to avoid such issues.",
+                    error_msg=f"{tool.capitalize()} could not be found. "
+                    f"Please source {tool.capitalize()} {self.project_cfg.external_tools.xilinx.version}.",
                 )
-                sys.exit(1)
             else:
-                if getattr(self, f"_amd_{tool}_path").name != self.project_cfg.external_tools.xilinx.version:
-                    pretty_print.print_error(
-                        f"The sourced version of {tool.capitalize()} is "
-                        f"'{getattr(self, f'_amd_{tool}_path').name}',"
-                        f" but this project requires version '{self.project_cfg.external_tools.xilinx.version}'."
+                if getattr(AMD_Builder, f"_amd_{tool}_path").name != self.project_cfg.external_tools.xilinx.version:
+                    _report_failure(
+                        pre_action_warning_msg=f"The sourced version of {tool.capitalize()} is "
+                        f"'{getattr(AMD_Builder, f'_amd_{tool}_path').name}',"
+                        f" but this project requires version '{self.project_cfg.external_tools.xilinx.version}'.",
+                        error_msg=f"The sourced version of {tool.capitalize()} is "
+                        f"'{getattr(AMD_Builder, f'_amd_{tool}_path').name}',"
+                        f" but this project requires version '{self.project_cfg.external_tools.xilinx.version}'.",
                     )
-                    sys.exit(1)
-                self._amd_tools_path = getattr(self, f"_amd_{tool}_path").parent.parent
+                AMD_Builder._amd_tools_path = getattr(AMD_Builder, f"_amd_{tool}_path").parent.parent
 
         # Check if the license was found
-        if self._amd_license is None:
-            pretty_print.print_error(
-                f"AMD Xilinx license could not be found. It was expected in "
-                "environment variable 'XILINXD_LICENSE_FILE'."
+        if AMD_Builder._amd_license is None:
+            _report_failure(
+                pre_action_warning_msg="AMD Xilinx license could not be found. It was expected in "
+                "environment variable 'XILINXD_LICENSE_FILE'. This may cause errors during execution.",
+                error_msg="AMD Xilinx license could not be found. It was expected in "
+                "environment variable 'XILINXD_LICENSE_FILE'.",
             )
-            sys.exit(1)
 
     def start_container(self):
         """
