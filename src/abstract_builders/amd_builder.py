@@ -92,53 +92,43 @@ class AMD_Builder(Builder):
             )
         AMD_Builder._amd_license = os.getenv("XILINXD_LICENSE_FILE")
 
+        def _report_failure(pre_action_warning_msg: str, error_msg: str):
+            if pre_action_check:
+                self.pre_action_warnings.append(pre_action_warning_msg)
+                return
+            else:
+                pretty_print.print_error(error_msg)
+                sys.exit(1)
+
         # Check if the requested tools are available and if the version matches the project
         for tool in required_tools:
             if getattr(AMD_Builder, f"_amd_{tool}_path") is None:
-                if pre_action_check:
-                    self.pre_action_warnings.append(
-                        f"{tool.capitalize()} could not be found. This may cause errors during execution. "
-                        f"If possible, source {tool.capitalize()} to avoid such issues."
-                    )
-                    return
-                else:
-                    pretty_print.print_error(
-                        f"{tool.capitalize()} could not be found. "
-                        f"Please source {tool.capitalize()} {self.project_cfg.external_tools.xilinx.version}."
-                    )
-                    sys.exit(1)
+                _report_failure(
+                    pre_action_warning_msg=f"{tool.capitalize()} could not be found. This may cause errors "
+                    f"during execution. If possible, source {tool.capitalize()} to avoid such issues.",
+                    error_msg=f"{tool.capitalize()} could not be found. "
+                    f"Please source {tool.capitalize()} {self.project_cfg.external_tools.xilinx.version}.",
+                )
             else:
                 if getattr(AMD_Builder, f"_amd_{tool}_path").name != self.project_cfg.external_tools.xilinx.version:
-                    if pre_action_check:
-                        self.pre_action_warnings.append(
-                            f"The sourced version of {tool.capitalize()} is "
-                            f"'{getattr(AMD_Builder, f'_amd_{tool}_path').name}',"
-                            f" but this project requires version '{self.project_cfg.external_tools.xilinx.version}'."
-                        )
-                        return
-                    else:
-                        pretty_print.print_error(
-                            f"The sourced version of {tool.capitalize()} is "
-                            f"'{getattr(AMD_Builder, f'_amd_{tool}_path').name}',"
-                            f" but this project requires version '{self.project_cfg.external_tools.xilinx.version}'."
-                        )
-                        sys.exit(1)
+                    _report_failure(
+                        pre_action_warning_msg=f"The sourced version of {tool.capitalize()} is "
+                        f"'{getattr(AMD_Builder, f'_amd_{tool}_path').name}',"
+                        f" but this project requires version '{self.project_cfg.external_tools.xilinx.version}'.",
+                        error_msg=f"The sourced version of {tool.capitalize()} is "
+                        f"'{getattr(AMD_Builder, f'_amd_{tool}_path').name}',"
+                        f" but this project requires version '{self.project_cfg.external_tools.xilinx.version}'.",
+                    )
                 AMD_Builder._amd_tools_path = getattr(AMD_Builder, f"_amd_{tool}_path").parent.parent
 
         # Check if the license was found
         if AMD_Builder._amd_license is None:
-            if pre_action_check:
-                self.pre_action_warnings.append(
-                    "AMD Xilinx license could not be found. It was expected in "
-                    "environment variable 'XILINXD_LICENSE_FILE'. This may cause errors during execution."
-                )
-                return
-            else:
-                pretty_print.print_error(
-                    "AMD Xilinx license could not be found. It was expected in "
-                    "environment variable 'XILINXD_LICENSE_FILE'."
-                )
-                sys.exit(1)
+            _report_failure(
+                pre_action_warning_msg="AMD Xilinx license could not be found. It was expected in "
+                "environment variable 'XILINXD_LICENSE_FILE'. This may cause errors during execution.",
+                error_msg="AMD Xilinx license could not be found. It was expected in "
+                "environment variable 'XILINXD_LICENSE_FILE'.",
+            )
 
     def start_container(self):
         """
