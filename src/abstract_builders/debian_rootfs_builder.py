@@ -557,6 +557,7 @@ class Debian_RootFS_Builder(File_System_Builder):
                         + f"HOME_OF_{user.name.upper()}=\$(getent passwd {user.name} | cut -d: -f6) && "  # Get user home directory in chroot environment
                         + f"mkdir -p -m 700 \${{HOME_OF_{user.name.upper()}}}/.ssh && "
                         + f"cat /tmp/{ssh_keys_temp_dir.parts[-1]}/{user.ssh_key} >> \${{HOME_OF_{user.name.upper()}}}/.ssh/authorized_keys && "
+                        + f"chmod 600 \${{HOME_OF_{user.name.upper()}}}/.ssh/authorized_keys && "
                     )
                 # The string should not end with &&
                 add_user_str = add_user_str.rstrip(" && ")
