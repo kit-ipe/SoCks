@@ -414,10 +414,17 @@ class Builder(ABC):
                     results = self.shell_executor.get_sh_results(
                         ["git", "-C", str(self._project_dir), "remote", "get-url", name]
                     )
+
+                    # Mask password/token if the URL contains one
+                    remote_url = results.stdout.splitlines()[0]
+                    remote_url_parts = urllib.parse.urlsplit(remote_url)
+                    if remote_url_parts.password is not None:
+                        remote_url = remote_url.replace(remote_url_parts.password, "[MASKED]")
+
                     if git_remote_urls == "[":  # The first element in the list
-                        git_remote_urls = git_remote_urls + f'"{results.stdout.splitlines()[0]}"'
+                        git_remote_urls = git_remote_urls + f'"{remote_url}"'
                     else:  # All other elements in the list
-                        git_remote_urls = git_remote_urls + f', "{results.stdout.splitlines()[0]}"'
+                        git_remote_urls = git_remote_urls + f', "{remote_url}"'
                 git_remote_urls = git_remote_urls + "]"
                 build_info = build_info + f"GIT_REMOTE_URLS: {git_remote_urls}\n"
 
