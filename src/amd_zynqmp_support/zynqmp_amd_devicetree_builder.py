@@ -63,7 +63,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
         block_cmds = {"prepare": [], "build": [], "clean": [], "create-patches": [], "start-container": []}
         block_cmds["clean"].extend(
             [
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -77,7 +77,7 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
             block_cmds["prepare"].extend(
                 [
                     self._build_validator.del_project_cfg,
-                    self.container_executor.build_container_image,
+                    self.container_executor.prepare_container_image,
                     self.import_dependencies,
                     self.init_repo,
                     self.apply_patches,
@@ -96,9 +96,11 @@ class ZynqMP_AMD_Devicetree_Builder(AMD_Builder):
                 ]
             )
             block_cmds["create-patches"].extend([self.create_patches])
-            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["start-container"].extend(
+                [self.container_executor.prepare_container_image, self.start_container]
+            )
         elif self.block_cfg.source == "import":
-            block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
+            block_cmds["build"].extend([self.container_executor.prepare_container_image, self.import_prebuilt])
         return block_cmds
 
     def validate_srcs(self):

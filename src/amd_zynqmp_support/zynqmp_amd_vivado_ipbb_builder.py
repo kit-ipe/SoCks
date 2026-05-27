@@ -58,7 +58,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": [], "start-vivado-gui": []}
         block_cmds["clean"].extend(
             [
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.clean_download,
                 self.clean_repo,
                 self.clean_output,
@@ -69,7 +69,7 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             block_cmds["prepare"].extend(
                 [
                     self._build_validator.del_project_cfg,
-                    self.container_executor.build_container_image,
+                    self.container_executor.prepare_container_image,
                     self.init_repo,
                     self.create_vivado_project,
                     self._build_validator.save_project_cfg_prepare,
@@ -79,12 +79,14 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             block_cmds["build"].extend(
                 [self.build_vivado_project, self.export_block_package, self._build_validator.save_project_cfg_build]
             )
-            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["start-container"].extend(
+                [self.container_executor.prepare_container_image, self.start_container]
+            )
             block_cmds["start-vivado-gui"].extend(
-                [self.container_executor.build_container_image, self.start_vivado_gui]
+                [self.container_executor.prepare_container_image, self.start_vivado_gui]
             )
         elif self.block_cfg.source == "import":
-            block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
+            block_cmds["build"].extend([self.container_executor.prepare_container_image, self.import_prebuilt])
         return block_cmds
 
     def init_repo(self):

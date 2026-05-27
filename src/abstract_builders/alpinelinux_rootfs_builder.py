@@ -56,7 +56,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
         block_cmds["prepare"].extend(
             [
                 self._build_validator.del_project_cfg,
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.import_dependencies,
                 self.container_executor.enable_multiarch,
                 self._build_validator.save_project_cfg_prepare,
@@ -64,7 +64,7 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
         )
         block_cmds["clean"].extend(
             [
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_dependencies,
@@ -102,7 +102,9 @@ class AlpineLinux_RootFS_Builder(File_System_Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["start-container"].extend(
+                [self.container_executor.prepare_container_image, self.start_container]
+            )
         elif self.block_cfg.source == "import":
             block_cmds["build"].extend(block_cmds["prepare"])
             block_cmds["build"].extend(
