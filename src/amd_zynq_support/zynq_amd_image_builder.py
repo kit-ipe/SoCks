@@ -38,6 +38,7 @@ class Zynq_AMD_Image_Builder(AMD_Builder):
         self.pre_action_warnings.append(
             f"Builder '{self.__class__.__name__}' is experimental and should not be used for production."
         )
+        self.check_amd_tools(required_tools=["vitis"], pre_action_check=True)
 
         # Source images to be used in this block
         self._dt_img_path = self._dependencies_dir / "devicetree/system.dtb"

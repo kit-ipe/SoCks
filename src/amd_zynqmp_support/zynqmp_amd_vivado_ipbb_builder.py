@@ -33,6 +33,8 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
             model_class=model_class,
         )
 
+        self.check_amd_tools(required_tools=["vivado"], pre_action_check=True)
+
         self._ipbb_work_dir_name = "ipbb-work"
 
         # Project directories
