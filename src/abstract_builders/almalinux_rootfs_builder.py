@@ -47,8 +47,6 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
         # they are not listed in the project configuration.
         block_deps = {
             "kernel": [".*"],
-            "devicetree": ["system.dtb", "system.dts"],
-            "vivado": [".*.xsa"],
         }
         return block_deps
 
