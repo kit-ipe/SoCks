@@ -151,8 +151,11 @@ class Shell_Executor:
             if not logfile or not text:
                 return
 
+            # Remove control sequences
             cleaned = ansi_escape_re.sub("", text)
             cleaned = ascii_control_re.sub("", cleaned)
+            # Normalize line endings (convert Windows style to Unix style to avoid unintended blank lines)
+            cleaned = cleaned.replace("\r\n", "\n")
 
             with logfile.open("a") as f:
                 f.write(cleaned)
