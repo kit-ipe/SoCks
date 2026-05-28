@@ -134,7 +134,7 @@ class Shell_Executor:
         terminal_size = shutil.get_terminal_size()
 
         # Adapt the number of visible lines to the size of the terminal, if necessary
-        visible_lines = min(visible_lines, terminal_size.lines - 3)
+        visible_lines = min(visible_lines, terminal_size.lines - 2)
 
         # Prepare to process the command line output of the command using a terminal emulator
         screen = pyte.Screen(terminal_size.columns, terminal_size.lines)
