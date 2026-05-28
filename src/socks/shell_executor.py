@@ -201,7 +201,7 @@ class Shell_Executor:
 
         # Tell the user where the complete output is logged
         if logfile:
-            pretty_print.print_info(f"The complete output of this process is logged here: {logfile}\n")
+            pretty_print.print_info(f"The complete output of this process is logged here: {logfile}")
 
         # Open and initialize a pseudo-terminal
         master_fd, slave_fd = pty.openpty()
