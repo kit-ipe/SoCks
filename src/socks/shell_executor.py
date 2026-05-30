@@ -50,9 +50,7 @@ class Shell_Executor:
         """
 
         try:
-            result = subprocess.run(
-                " ".join(command), shell=True, executable="sh", cwd=cwd, capture_output=True, text=True, check=check
-            )
+            result = subprocess.run(args=command, cwd=cwd, capture_output=True, text=True, check=check)
         except subprocess.CalledProcessError as e:
             if e.stdout:
                 print(f"\n{e.stdout}")
@@ -85,6 +83,8 @@ class Shell_Executor:
         Args:
             command:
                 The command to execute as a list of strings. Example: ['/usr/bin/ping', 'www.google.com'].
+                The individual strings must not contain any whitespace. Bash commands passed to a tool (like Docker)
+                as a string are the only exception where whitespaces are allowed.
                 The executable should be given with the full path, as mentioned
                 here: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
             cwd:
@@ -104,16 +104,30 @@ class Shell_Executor:
             None
 
         Raises:
-            None
+            ValueError:
+                If individual strings in the command contain whitespaces (Bash commands passed to tools (like Docker)
+                are the only exception where whitespaces are allowed)
         """
+
+        # Ensure the format of the command is valid (no whitespaces)
+        command_wo_bash_cmd = command
+        for i in range(len(command) - 2):
+            if command[i] == "bash" and command[i + 1] == "-c":
+                # Remove "bash", "-c", and the following string, which is the bash command.
+                # The Bash command is allowed to contain whitespaces, so it should not be recognized as a faulty string.
+                command_wo_bash_cmd = command[:i] + command[i + 3 :]
+        # Bash commands passed to x11docker begin with '--runasuser='
+        command_wo_bash_cmd = [s for s in command_wo_bash_cmd if not s.startswith("--runasuser=")]
+        # Identify faulty strings
+        faulty_strings = [s for s in command_wo_bash_cmd if re.search(r"\s", s)]
+        if faulty_strings:
+            raise ValueError(f"Unexpected whitespaces in the following parts of the command: {faulty_strings}")
 
         # If scrolling output is disabled and the output should not be hidden or logged, subprocess.run can be used
         # to run the subprocess
         if self._prohibit_output_processing or (output_scrolling == False and visible_lines != 0 and logfile == None):
             try:
-                subprocess.run(
-                    " ".join(command), shell=True, executable="sh", cwd=cwd, check=check, env=os.environ.copy()
-                )
+                subprocess.run(args=command, cwd=cwd, check=check, env=os.environ.copy())
             except subprocess.CalledProcessError as e:
                 if e.stdout:
                     print(f"\n{e.stdout}")
@@ -213,9 +227,7 @@ class Shell_Executor:
 
         # Start the subprocess on the pseudo-terminal.
         process = subprocess.Popen(
-            " ".join(command),
-            shell=True,
-            executable="sh",
+            args=command,
             cwd=cwd,
             env=os.environ.copy(),
             stdin=slave_fd,

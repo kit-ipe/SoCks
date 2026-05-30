@@ -1,3 +1,4 @@
+import os
 import sys
 import pathlib
 import inspect
@@ -175,10 +176,17 @@ class ZynqMP_AMD_Vivado_IPBB_Builder(AMD_Builder):
         for path in self._local_source_dirs:
             local_source_mounts.append((path, "Z"))
 
+        ssh_sock_path = os.environ.get("SSH_AUTH_SOCK")
+        if ssh_sock_path is None:
+            pretty_print.print_error(
+                f"SSH socket not found. It was expected in the environment variable 'SSH_AUTH_SOCK' on the host system."
+            )
+            sys.exit(1)
+
         self.container_executor.exec_sh_commands(
             commands=init_ipbb_env_commands,
             dirs_to_mount=[(self._repo_dir, "Z")] + local_source_mounts,
-            custom_params=["-v", "$SSH_AUTH_SOCK:/ssh-auth-sock", "--env", "SSH_AUTH_SOCK=/ssh-auth-sock"],
+            custom_params=["-v", f"{ssh_sock_path}:/ssh-auth-sock", "--env", "SSH_AUTH_SOCK=/ssh-auth-sock"],
             print_commands=True,
         )
 
