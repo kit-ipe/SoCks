@@ -9,6 +9,7 @@ import fcntl
 import pty
 import struct
 import termios
+import signal
 import pyte
 
 import socks.pretty_print as pretty_print
@@ -234,6 +235,8 @@ class Shell_Executor:
             stdout=slave_fd,
             stderr=slave_fd,
             text=False,
+            # Run the subprocess in a separate session so that we can terminate the entire process tree on user interrupt
+            start_new_session=True,
         )
         os.close(slave_fd)
 
@@ -275,12 +278,19 @@ class Shell_Executor:
                     sys.stdout.flush()
 
         except KeyboardInterrupt:
-            # On user interrupt, forcefully terminate the process
+            # On user interrupt, terminate the entire process group of the spawned process so that all of its children are also terminated
             try:
-                process.kill()
-                process.wait()
+                # Try a graceful termination first
+                # Because we started the subprocess in a new session its PID is also the process group ID (PGID)
+                os.killpg(process.pid, signal.SIGTERM)
+
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    # If still alive, force kill the entire process group
+                    os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
-                # Process already exited
+                # Process (or group) already gone
                 pass
 
             print("")  # Push the error message to a new line
