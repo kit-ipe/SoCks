@@ -183,6 +183,8 @@ class File_System_Builder(Builder):
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
                 print_commands=True,
                 run_as_root=True,
+                logfile=self._block_temp_dir / f"{mod_script.stem}.log",
+                output_scrolling=True,
             )
 
     def add_pd_layers(self):

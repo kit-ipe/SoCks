@@ -129,7 +129,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
 
         self._logicc_install_dir.mkdir(parents=True)
 
-        pretty_print.print_build("Installing logicc...")
+        pretty_print.print_build("Initializing the logicc environment...")
 
         if self.project_cfg.external_tools.container_tool in ["docker", "podman"]:
             # If a build container is used, a Python environment is required for logicc
@@ -173,6 +173,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             dirs_to_mount=[(self._work_dir, "Z")],
             custom_params=["-v", f"{ssh_sock_path}:/ssh-auth-sock", "--env", "SSH_AUTH_SOCK=/ssh-auth-sock"],
             print_commands=True,
+            logfile=self._block_temp_dir / "init_logicc_environment.log",
+            output_scrolling=True,
         )
 
     def create_vivado_project(self):
@@ -250,6 +252,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
                     (self._work_dir, "Z"),
                 ],
                 print_commands=True,
+                logfile=self._block_temp_dir / "create_project.log",
+                output_scrolling=True,
             )
 
     def build_vivado_project(self):

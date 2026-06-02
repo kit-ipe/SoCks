@@ -1179,7 +1179,7 @@ class Builder(ABC):
 
     def _prep_clean_cfg(self, prep_srcs_commands: list[str]):
         """
-        This function is intended to create a new, clean Linux kernel or U-Boot project configuration.
+        Creates a new, clean base configuration for Kconfig-based projects such as the Linux kernel or U-Boot.
 
         Args:
             menuconfig_commands:
@@ -1206,6 +1206,8 @@ class Builder(ABC):
             commands=prep_srcs_commands,
             dirs_to_mount=[(self._repo_dir, "Z")],
             print_commands=True,
+            logfile=self._block_temp_dir / f"prepare_base_config.log",
+            output_scrolling=True,
         )
 
     def _import_src_tpl(self, template: pathlib.Path):
