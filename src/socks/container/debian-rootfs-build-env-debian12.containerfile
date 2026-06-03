@@ -9,6 +9,6 @@ RUN apt install -y debootstrap debian-archive-keyring && \
 # Remove this package to disable the architecture check of debootstrap (https://github.com/RPi-Distro/pi-gen/issues/603)
     apt purge -y arch-test && \
 # Install required packages to modify the base RootFS
-    apt install -y rsync && \
+    apt install -y rsync fakeroot && \
 # Install required packages to package the RootFS
     apt install -y tar pigz pixz
