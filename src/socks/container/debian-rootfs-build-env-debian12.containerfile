@@ -12,6 +12,7 @@ RUN apt install -y debootstrap debian-archive-keyring fakeroot && \
     apt install -y rsync && \
 # Install required packages to package the RootFS
     apt install -y tar pigz pixz
+
 # Create an 'alias' for 'debootstrap', because it must be run in a fakeroot environment when using rootless Podman
 # and a Debian 12 container, even if the user inside the container has root privileges.
 # (https://github.com/podman-container-tools/podman/issues/4619)
