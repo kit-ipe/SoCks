@@ -165,7 +165,7 @@ class Debian_RootFS_Builder(File_System_Builder):
                 f"fi",
                 'printf "\nInstall the base os via debootstrap...\n\n"',
                 # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
-                f"fakeroot debootstrap --arch={self._target_arch_dist} {self.block_cfg.project.release} {self._build_dir} {self.block_cfg.project.mirror}",
+                f"debootstrap --arch={self._target_arch_dist} {self.block_cfg.project.release} {self._build_dir} {self.block_cfg.project.mirror}",
                 # The QEMU binary if only required during build, so delete it if it exists
                 f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
