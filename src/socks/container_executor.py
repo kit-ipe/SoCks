@@ -1,4 +1,5 @@
 import os
+import shutil
 import pwd
 import pathlib
 import re
@@ -378,7 +379,8 @@ class Container_Executor:
                         "default",
                         "--build-context",
                         f"container_srcs={str(self._container_file.parent)}",
-                        "--ulimit nofile=2048:2048",  # This is required to be able to build a toolchain with crosstool-ng in the container
+                        "--ulimit",
+                        "nofile=2048:2048",  # This is required to be able to build a toolchain with crosstool-ng in the container
                         ".",
                     ]
                 )
@@ -470,7 +472,7 @@ class Container_Executor:
         """
 
         # Assemble command string for container
-        comp_commands = "'"
+        comp_commands = ""
         if self._enforce_command_printing or print_commands:
             comp_commands = comp_commands + 'trap "echo \\"csc> \$BASH_COMMAND\\"" DEBUG && '
         for i, command in enumerate(commands):
@@ -479,12 +481,13 @@ class Container_Executor:
                 comp_commands = comp_commands + command
             else:
                 comp_commands = comp_commands + command + " && "
-        comp_commands = comp_commands + "'"
 
         if self._container_tool in ("docker", "podman"):
             # Prepare mounts
             existing_mounts = [mount for mount in dirs_to_mount if mount[0].is_dir()]
-            mounts = " ".join([f"-v {i[0]}:{i[0]}:{i[1]}" for i in existing_mounts])
+            mounts = []
+            for m in existing_mounts:
+                mounts.extend(["-v", f"{m[0]}:{m[0]}:{m[1]}"])
 
             # Prepare user
             if run_as_root or self._container_tool == "podman":
@@ -505,11 +508,14 @@ class Container_Executor:
                     "run",
                     "--rm",
                     "-it",
-                    f"--env CONTAINER_USER={container_user}",
-                    f"--env CONTAINER_UID={container_uid}",
-                    f"--env CONTAINER_GID={container_gid}",
-                    mounts,
+                    "--env",
+                    f"CONTAINER_USER={container_user}",
+                    "--env",
+                    f"CONTAINER_UID={container_uid}",
+                    "--env",
+                    f"CONTAINER_GID={container_gid}",
                 ]
+                + mounts
                 + custom_params
                 + [self._container_image_reference, "bash", "-c", comp_commands],
                 logfile=logfile,
@@ -623,19 +629,19 @@ class Container_Executor:
         if self._container_tool in ("docker", "podman"):
             # Check which mounts (resp. directories) are available on the host system
             existing_mounts = [mount for mount in potential_mounts if mount[0].is_dir()]
-            mounts = " ".join([f"-v {i[0]}:{i[0]}:{i[1]}" for i in existing_mounts])
+            mounts = []
+            for m in existing_mounts:
+                mounts.extend(["-v", f"{m[0]}:{m[0]}:{m[1]}"])
 
             # Assemble command string for container, if any
             comp_commands = ""
             if init_commands:
-                comp_commands = "'"
                 for i, command in enumerate(init_commands):
                     if i == len(init_commands) - 1:
                         # The last element of the list is treated differently
                         comp_commands = comp_commands + command + " && exec bash"
                     else:
                         comp_commands = comp_commands + command + " && "
-                comp_commands = comp_commands + "'"
 
             # Prepare user
             if self._container_tool == "podman":
@@ -658,10 +664,15 @@ class Container_Executor:
                         "run",
                         "--rm",
                         "-it",
-                        f"--env CONTAINER_USER={container_user}",
-                        f"--env CONTAINER_UID={container_uid}",
-                        f"--env CONTAINER_GID={container_gid}",
-                        mounts,
+                        "--env",
+                        f"CONTAINER_USER={container_user}",
+                        "--env",
+                        f"CONTAINER_UID={container_uid}",
+                        "--env",
+                        f"CONTAINER_GID={container_gid}",
+                    ]
+                    + mounts
+                    + [
                         self._container_image_reference,
                         "bash",
                         "-c",
@@ -676,10 +687,15 @@ class Container_Executor:
                         "run",
                         "--rm",
                         "-it",
-                        f"--env CONTAINER_USER={container_user}",
-                        f"--env CONTAINER_UID={container_uid}",
-                        f"--env CONTAINER_GID={container_gid}",
-                        mounts,
+                        "--env",
+                        f"CONTAINER_USER={container_user}",
+                        "--env",
+                        f"CONTAINER_UID={container_uid}",
+                        "--env",
+                        f"CONTAINER_GID={container_gid}",
+                    ]
+                    + mounts
+                    + [
                         self._container_image_reference,
                     ],
                     check=False,
@@ -712,8 +728,7 @@ class Container_Executor:
         """
 
         # Check if x11docker is installed
-        results = self._shell_executor.get_sh_results(command=["command", "-v", "x11docker"], check=False)
-        if not results.stdout:
+        if shutil.which("x11docker") is None:
             pretty_print.print_error(
                 "Command 'x11docker' not found. Install x11docker (https://github.com/mviereck/x11docker)."
             )
@@ -731,7 +746,12 @@ class Container_Executor:
 
         # Check which mounts (resp. directories) are available on the host system
         existing_mounts = [mount for mount in potential_mounts if mount[0].is_dir()]
-        mounts = " ".join([f"--share {i[0]}:{i[1]}" if i[1] == "ro" else f"--share {i[0]}" for i in existing_mounts])
+        mounts = []
+        for m in existing_mounts:
+            if m[1] == "ro":
+                mounts.extend(["--share", f"{m[0]}:{m[1]}"])
+            else:
+                mounts.extend(["--share", f"{m[0]}"])
 
         pretty_print.print_build("Starting container...")
 
@@ -746,7 +766,9 @@ class Container_Executor:
                     "--xauth=trusted",
                     f"--user={self._host_uid}:{self._host_gid}",  # Replaces the entrypoint script in GUI containers
                     "--no-entrypoint",  # The entrypoint script doesn't work if x11docker uses the docker backend
-                    mounts,
+                ]
+                + mounts
+                + [
                     self._container_image_reference,
                     f"--runasuser={comp_commands}",
                 ]
@@ -763,10 +785,15 @@ class Container_Executor:
                     "--xauth=trusted",
                     "--cap-default",
                     "--user=RETAIN",
-                    f"--env CONTAINER_USER={self._host_user}",
-                    f"--env CONTAINER_UID={self._host_uid}",
-                    f"--env CONTAINER_GID={self._host_gid}",
-                    mounts,
+                    "--env",
+                    f"CONTAINER_USER={self._host_user}",
+                    "--env",
+                    f"CONTAINER_UID={self._host_uid}",
+                    "--env",
+                    f"CONTAINER_GID={self._host_gid}",
+                ]
+                + mounts
+                + [
                     self._container_image_reference,
                     f"--runasuser={comp_commands}",
                 ]
