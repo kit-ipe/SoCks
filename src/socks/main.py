@@ -1,3 +1,4 @@
+import os
 import sys
 import pathlib
 import importlib.resources
@@ -123,6 +124,7 @@ project_dir = pathlib.Path.cwd()
 # Set root project configuration file
 project_cfg_root_file = project_dir / "project.yml"
 project_cfg_user_file = project_dir / "project-user.yml"
+project_cfg_ci_file = project_dir / "project-ci.yml"
 
 # Check if we are in a SoCks project
 if not project_cfg_root_file.exists():
@@ -131,12 +133,19 @@ if not project_cfg_root_file.exists():
     )
     sys.exit(1)
 
+# Check if we are running in a CI pipeline
+running_in_pipeline = False
+if os.getenv("CI") == "true":
+    running_in_pipeline = True
+    pretty_print.print_info(f"Execution environment recognized as a CI pipeline.")
+
 # Get project configuration
 project_cfg, _ = Configuration_Compiler.compile(
-    root_cfg_file=project_cfg_root_file,
-    user_cfg_file=project_cfg_user_file,
     socks_dir=socks_dir,
     project_dir=project_dir,
+    root_cfg_file=project_cfg_root_file,
+    user_cfg_file=project_cfg_user_file,
+    ci_cfg_file=project_cfg_ci_file if running_in_pipeline else None,
 )
 
 # Check project type and find respective module
@@ -358,7 +367,8 @@ def main():
         cli.print_usage()
         pretty_print.print_error("The following arguments are required: block command.")
         cli.exit()
-    if "raw_output" in args and args["raw_output"] == True:
+    if ("raw_output" in args and args["raw_output"] == True) or running_in_pipeline:
+        # Always disable output processing when running in a GitLab CI pipeline
         for builder in builders.values():
             builder.shell_executor.prohibit_output_processing(state=True)
             builder.container_executor.prohibit_output_processing(state=True)
