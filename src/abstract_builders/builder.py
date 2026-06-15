@@ -65,6 +65,16 @@ class Builder(ABC):
 
         self.block_cfg = getattr(self.project_cfg.blocks, block_id)
 
+        # Make sure that all dependencies are valid (The model of the builder should prevent this, but just to be on the safe side, in case the model is faulty)
+        if "project" in self.block_cfg.model_fields and "dependencies" in self.block_cfg.project.model_fields:
+            deps_in_prj_cfg = set(self.block_cfg.project.dependencies.model_fields)
+            supported_deps = set(self._block_deps.keys())
+            if not deps_in_prj_cfg.issubset(supported_deps):
+                invalid = deps_in_prj_cfg - supported_deps
+                raise KeyError(
+                    f"Builder '{self.__class__.__name__}' does not support dependencies on the following blocks: {invalid}"
+                )
+
         # Find project sources for this block
         # ToDo: Maybe this should be unified and one should merge these four variables and use only two.
         # But I suspect that there will rarely be several project sources and that their interaction is not uniform.
@@ -89,7 +99,7 @@ class Builder(ABC):
 
         # SoCks directorys
         self._socks_dir = socks_dir
-        self._container_dir = self._socks_dir / "container"
+        self._container_files_dir = self._socks_dir / "container"
         self._builders_dir = pathlib.Path(importlib.resources.files(self.__module__.partition(".")[0]))
         if not (self._builders_dir / "__init__.py").is_file():
             raise ModuleNotFoundError(f"The following directory is not a package: {self._builders_dir}")
@@ -141,12 +151,22 @@ class Builder(ABC):
         self.shell_executor = Shell_Executor()
         self.container_executor = Container_Executor(
             container_tool=self.project_cfg.external_tools.container_tool,
-            container_image=self.block_cfg.container.image,
-            container_image_tag=self.block_cfg.container.tag,
             container_platform="linux/amd64",
-            container_file=self._container_dir / f"{self.block_cfg.container.image}.containerfile",
+            container_image_registry=self.block_cfg.container.registry,
+            container_image=self.block_cfg.container.image,
+            container_image_namespace=self.block_cfg.container.namespace,
+            container_image_tag=self.block_cfg.container.tag,
+            container_files_dir=self._container_files_dir,
             container_log_file=self._project_temp_dir / ".container_log.csv",
         )
+
+        # Migration assistance
+        if self.block_cfg.container.tag == "socks":
+            self.pre_action_warnings.append(
+                "The configuration for this block uses the container image tag 'socks', which is a deprecated "
+                "setting. Please update the container configuration to match the new format and avoid container "
+                "image duplication."
+            )
 
     @property
     @abstractmethod
@@ -405,10 +425,17 @@ class Builder(ABC):
                     results = self.shell_executor.get_sh_results(
                         ["git", "-C", str(self._project_dir), "remote", "get-url", name]
                     )
+
+                    # Mask password/token if the URL contains one
+                    remote_url = results.stdout.splitlines()[0]
+                    remote_url_parts = urllib.parse.urlsplit(remote_url)
+                    if remote_url_parts.password is not None:
+                        remote_url = remote_url.replace(remote_url_parts.password, "[MASKED]")
+
                     if git_remote_urls == "[":  # The first element in the list
-                        git_remote_urls = git_remote_urls + f'"{results.stdout.splitlines()[0]}"'
+                        git_remote_urls = git_remote_urls + f'"{remote_url}"'
                     else:  # All other elements in the list
-                        git_remote_urls = git_remote_urls + f', "{results.stdout.splitlines()[0]}"'
+                        git_remote_urls = git_remote_urls + f', "{remote_url}"'
                 git_remote_urls = git_remote_urls + "]"
                 build_info = build_info + f"GIT_REMOTE_URLS: {git_remote_urls}\n"
 

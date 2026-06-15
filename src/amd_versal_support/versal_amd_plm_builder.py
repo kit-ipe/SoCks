@@ -36,6 +36,7 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
             "This block is experimental, it should not be used for production. "
             "Versal blocks should use the Vitis SDT flow instead of the XSCT flow, as soon as it is stable."
         )
+        self.check_amd_tools(required_tools=["vitis"], pre_action_check=True)
 
         # Project directories
         self._vitis_workspace_dir = self._work_dir / "vitis_workspace"
@@ -57,7 +58,7 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
         block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": []}
         block_cmds["clean"].extend(
             [
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_source_xsa,
@@ -70,7 +71,7 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
             block_cmds["prepare"].extend(
                 [
                     self._build_validator.del_project_cfg,
-                    self.container_executor.build_container_image,
+                    self.container_executor.prepare_container_image,
                     self.import_dependencies,
                     self.import_xsa,
                     self.create_plm_project,
@@ -81,9 +82,11 @@ class Versal_AMD_PLM_Builder(AMD_Builder):
             block_cmds["build"].extend(
                 [self.build_plm, self.export_block_package, self._build_validator.save_project_cfg_build]
             )
-            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["start-container"].extend(
+                [self.container_executor.prepare_container_image, self.start_container]
+            )
         elif self.block_cfg.source == "import":
-            block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
+            block_cmds["build"].extend([self.container_executor.prepare_container_image, self.import_prebuilt])
         return block_cmds
 
     def validate_srcs(self):

@@ -1,6 +1,6 @@
 # SoCks
 
-SoCks (short for SoC blocks) is a lightweight and modular framework to build complete embedded Linux images for SoC devices. Currently, the framework focuses on AMD Xilinx ZynqMP devices, but also offers experimental support for AMD Xilinx Versal and Raspberry Pi 4B and 5 devices.
+SoCks (short for SoC blocks) is a lightweight and modular framework to build complete embedded Linux images for SoC devices. Currently, the framework focuses on AMD Xilinx Zynq UltraScale+ (ZynqMP) devices, but also offers experimental support for AMD Xilinx Zynq 7000 (Zynq), AMD Xilinx Versal, and Raspberry Pi 4B and 5 devices.
 
 ## Table of Contents
 - [Quick start](#quick-start)
@@ -271,6 +271,7 @@ rootfs:
   builder: "ZynqMP_AlmaLinux_RootFS_Builder"
   project:
     release: "9"
+    build_with_proc: false
     addl_pkgs: ["python3", "nano", "vim"]
     addl_ext_pkgs:
          - "https://repo.almalinux.org/almalinux/9/BaseOS/aarch64/os/Packages/openssh-server-8.7p1-43.el9.aarch64.rpm"
@@ -305,8 +306,8 @@ rootfs:
       devicetree: "temp/devicetree/output/bp_devicetree*.tar.gz"
       vivado: "temp/vivado/output/bp_vivado*.tar.gz"
   container:
-    image: "alma9-rootfs-builder-alma9"
-    tag: "socks"
+    image: "alma9-rootfs-build-env-alma9"
+    registry: "local"
 ```
 
 Key:
@@ -317,6 +318,7 @@ Key:
 - **project -> release**: The release version of AlmaLinux to be built. Options are:
   - 8
   - 9
+- **project -> build_with_proc**: A binary parameter that specifies whether '/proc' is mounted in the build environment of the file system. Some package scriptlets require `/proc` to execute properly. **Warning:** When enabled, the containerization tool runs with the `--privileged` flag, ensuring '/proc' is available inside the container.
 - **project -> addl_pkgs [optional]**: A list of additional rpm packages to be installed from a repo into the root file system. Make sure the repos that contain these files are available to dnf. See section *External Source Files* for more details.
 - **project -> addl_ext_pkgs [optional]**: A list of additional rpm packages to be installed from external \*.rpm files into the root file system. List entries must be strings in URI format. Supported are:
   - The URL to a packages online. The string must start with `https://` or `http://`.
@@ -328,7 +330,7 @@ Key:
 - **project -> build_time_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
 - **project -> build_time_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
 - **project -> build_time_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
-- **project -> users**: A list of dicts describing users to be added to the root file system.
+- **project -> users [optional]**: A list of dicts describing users to be added to the root file system.
 - **project -> users -> [N] -> name**: The name of the user.
 - **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -1`.
 - **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
@@ -339,9 +341,13 @@ Key:
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of AlmaLinux to be built. The following images are available for this block:
-  - `alma8-rootfs-builder-alma8`
-  - `alma9-rootfs-builder-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `alma8-rootfs-build-env-alma8`
+  - `alma9-rootfs-build-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -404,8 +410,8 @@ rootfs:
       devicetree: "temp/devicetree/output/bp_devicetree*.tar.gz"
       vivado: "temp/vivado/output/bp_vivado*.tar.gz"
   container:
-    image: "alpine-rootfs-builder-alpine3.22"
-    tag: "socks"
+    image: "alpine-rootfs-build-env-alpine3.22"
+    registry: "local"
 ```
 
 Key:
@@ -425,7 +431,7 @@ Key:
 - **project -> build_time_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
 - **project -> build_time_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
 - **project -> build_time_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
-- **project -> users**: A list of dicts describing users to be added to the root file system.
+- **project -> users [optional]**: A list of dicts describing users to be added to the root file system.
 - **project -> users -> [N] -> name**: The name of the user.
 - **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -6`.
 - **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
@@ -436,8 +442,12 @@ Key:
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of Alpine Linux to be built. The following images are available for this block:
-  - `alpine-rootfs-builder-alpine3.22`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `alpine-rootfs-build-env-alpine3.22`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -467,8 +477,8 @@ atf:
       branch: "xilinx-v{{external_tools/xilinx/version}}"
     import_src: "https://serenity.web.cern.ch/.../atf.tar.gz"
   container:
-    image: "atf-builder-alma9"
-    tag: "socks"
+    image: "atf-build-env-alma9"
+    registry: "local"
 ```
 
 Key:
@@ -485,9 +495,13 @@ Key:
   - The file URI of a local file. In this case the string must start with `file://`.
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/atf/patches`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `atf-builder-alma8`
-  - `atf-builder-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `atf-build-env-alma8`
+  - `atf-build-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -521,8 +535,8 @@ devicetree:
       - system-user.dtsi
     board: "sm-k26"
   container:
-    image: "amd-xilinx-tools-alma8"
-    tag: "socks"
+    image: "amd-xilinx-tools-env-alma8"
+    registry: "local"
 ```
 
 Key:
@@ -541,9 +555,13 @@ Key:
 - **project -> dt_includes**: A list of user defined device tree source files to be included in the device tree. The files must be located in `src/devicetree/dt_includes`.
 - **project -> board**: The target board for which the project is being built. This setting adds a board specific section to the device tree, if available. Use `custom` if the target board is not in the list of supported boards.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `amd-xilinx-tools-alma8`
-  - `amd-xilinx-tools-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `amd-xilinx-tools-env-alma8`
+  - `amd-xilinx-tools-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -575,8 +593,8 @@ fsbl:
     patches:
       - 0001-Add-gitignore.patch
   container:
-    image: "amd-xilinx-tools-alma8"
-    tag: "socks"
+    image: "amd-xilinx-tools-env-alma8"
+    registry: "local"
 ```
 
 Key:
@@ -590,9 +608,13 @@ Key:
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/fsbl/patches`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `amd-xilinx-tools-alma8`
-  - `amd-xilinx-tools-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `amd-xilinx-tools-env-alma8`
+  - `amd-xilinx-tools-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -644,8 +666,8 @@ image:
       ramfs: "temp/ramfs/output/bp_ramfs_*.tar.gz"
       rootfs: "temp/rootfs/output/bp_rootfs_*.tar.gz"
   container:
-    image: "amd-image-builder-alma9"
-    tag: "socks"
+    image: "amd-image-build-env-alma9"
+    registry: "local"
 ```
 
 Key:
@@ -667,9 +689,13 @@ Key:
 - **project -> size_rootfs_partition**: Size of the root file system partition in the SD card image in MiB. It is possible to extend the size of this partition after the image has been flashed to an SD card.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `amd-image-builder-alma8`
-  - `amd-image-builder-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `amd-image-build-env-alma8`
+  - `amd-image-build-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -708,8 +734,8 @@ kernel:
     config_snippets:
       - disable-building-with-debug-info-to-reduce-size.cfg
   container:
-    image: "kernel-builder-alma9"
-    tag: "socks"
+    image: "kernel-build-env-alma9"
+    registry: "local"
 ```
 
 Key:
@@ -729,9 +755,13 @@ Key:
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/kernel/patches`.
 - **project -> config_snippets**: A list of configuration snippet files that are automatically attached to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add a new configuration snippets here if you create it with the command `create-cfg-snippet`. Configuration snippet files must be located in `src/ramfs/config`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `kernel-builder-alma8`
-  - `kernel-builder-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `kernel-build-env-alma8`
+  - `kernel-build-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -766,8 +796,8 @@ rootfs:
       - project: meta-xilinx
         patch: 0001-Strip-everything-except-the-rootfs-from-core-image-m.patch
   container:
-    image: "petalinux-rootfs-builder-alma8"
-    tag: "socks"
+    image: "petalinux-rootfs-build-env-alma8"
+    registry: "local"
 ```
 
 Key:
@@ -788,8 +818,12 @@ Key:
 - **project -> patches -> [N] -> project**: The target git repo of this patch.
 - **project -> patches -> [N] -> patch**: The path of the patch file.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `petalinux-rootfs-builder-alma8`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `petalinux-rootfs-build-env-alma8`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -820,8 +854,8 @@ pmu_fw:
     patches:
       - 0001-Add-gitignore.patch
   container:
-    image: "amd-xilinx-tools-alma8"
-    tag: "socks"
+    image: "amd-xilinx-tools-env-alma8"
+    registry: "local"
 ```
 
 Key:
@@ -835,9 +869,13 @@ Key:
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/fsbl/patches`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `amd-xilinx-tools-alma8`
-  - `amd-xilinx-tools-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `amd-xilinx-tools-env-alma8`
+  - `amd-xilinx-tools-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -879,8 +917,8 @@ ssbl:
     config_snippets:
       - set-MAC-address-offset-for-Kria-EEPROM.cfg
   container:
-    image: "kernel-builder-alma9"
-    tag: "socks"
+    image: "kernel-build-env-alma9"
+    registry: "local"
 ```
 
 Key:
@@ -899,9 +937,13 @@ Key:
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/ssbl/patches`.
 - **project -> config_snippets**: A list of configuration snippet files that are automatically attached to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add a new configuration snippets here if you create it with the command `create-cfg-snippet`. Configuration snippet files must be located in `src/ramfs/config`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `kernel-builder-alma8`
-  - `kernel-builder-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `kernel-build-env-alma8`
+  - `kernel-build-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -939,8 +981,8 @@ vivado:
     import_src: "https://serenity.web.cern.ch/.../vivado.tar.gz"
     name: "serenity-s1-kria"
   container:
-    image: "amd-xilinx-tools-alma8"
-    tag: "socks"
+    image: "amd-xilinx-tools-env-alma8"
+    registry: "local"
 ```
 
 Key:
@@ -957,9 +999,13 @@ Key:
   - The file URI of a local file. In this case the string must start with `file://`.
 - **project -> name**: Name of the Hog project
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `amd-xilinx-tools-alma8`
-  - `amd-xilinx-tools-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `amd-xilinx-tools-env-alma8`
+  - `amd-xilinx-tools-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -990,7 +1036,7 @@ blocks:
       name: "s1-kria"
       ipbb_tag: "dev/2024d"
     container:
-      image: "ipbb-builder-alma8"
+      image: "ipbb-env-alma8"
 ``` 
 
 Configuration example:
@@ -1011,8 +1057,8 @@ vivado:
     name: "s1-kria"
     ipbb_tag: "dev/2024d"
   container:
-    image: "ipbb-builder-alma8"
-    tag: "socks"
+    image: "ipbb-env-alma8"
+    registry: "local"
 ```
 
 Key:
@@ -1032,9 +1078,13 @@ Key:
 - **project -> name**: Name of the IPBB project
 - **project -> ipbb_tag**: The tag in the IPBB repo to be used
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `ipbb-builder-alma8`
-  - `ipbb-builder-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `ipbb-env-alma8`
+  - `ipbb-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -1060,7 +1110,7 @@ blocks:
       name: "qup:zcu216_rfdc_full"
       logicc_branch: "master"
     container:
-      image: "logicc-builder-alma8"
+      image: "logicc-env-alma8"
 ``` 
 
 Configuration example:
@@ -1076,8 +1126,8 @@ vivado:
     name: "qup:zcu216_rfdc_full"
     logicc_branch: "master"
   container:
-    image: "logicc-builder-alma8"
-    tag: "socks"
+    image: "logicc-env-alma8"
+    registry: "local"
 ```
 
 Key:
@@ -1095,8 +1145,12 @@ Key:
 - **project -> name**: Name of the logicc project. The format for regular projects is `<project>`. For grouped projects the format is `<group>:<project>`.
 - **project -> logicc_branch**: The branch in the logicc repo to be used
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `logicc-builder-alma8`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `logicc-env-alma8`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -1134,8 +1188,8 @@ ramfs:
     config_snippets:
       - configuration-snippet-1.cfg
   container:
-    image: "busybox-ramfs-builder-alma9"
-    tag: "socks"
+    image: "busybox-ramfs-build-env-alma9"
+    registry: "local"
 ```
 
 Key:
@@ -1161,9 +1215,13 @@ Key:
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/ramfs/patches`.
 - **project -> config_snippets**: A list of configuration snippet files that are automatically attached to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add a new configuration snippets here if you create it with the command `create-cfg-snippet`. Configuration snippet files must be located in `src/ramfs/config`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `busybox-ramfs-builder-alma8`
-  - `busybox-ramfs-builder-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `busybox-ramfs-build-env-alma8`
+  - `busybox-ramfs-build-env-alma9`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -1187,6 +1245,7 @@ rootfs:
   project:
     release: "bookworm"
     mirror: "http://ftp.de.debian.org/debian/"
+    build_with_proc: false
     addl_pkgs: ["sudo", "python3", "openssh-server", "nano", "vim"]
     addl_ext_pkgs:
          - "http://ftp.de.debian.org/debian/pool/main/o/openssh/openssh-server_9.2p1-2+deb12u5_arm64.deb"
@@ -1221,8 +1280,8 @@ rootfs:
       devicetree: "temp/devicetree/output/bp_devicetree*.tar.gz"
       vivado: "temp/vivado/output/bp_vivado*.tar.gz"
   container:
-    image: "debian-rootfs-builder-debian12"
-    tag: "socks"
+    image: "debian-rootfs-build-env-debian12"
+    registry: "local"
 ```
 
 Key:
@@ -1233,6 +1292,7 @@ Key:
 - **project -> release**: The release version of Debian to be built. Options are:
   - bookworm
 - **project -> mirror**: Debian mirror to be used. Choose a local mirror to speed up the build process.
+- **project -> build_with_proc**: A binary parameter that specifies whether '/proc' is mounted in the build environment of the file system. Some package scriptlets require `/proc` to execute properly. **Warning:** When enabled, the containerization tool runs with the `--privileged` flag, ensuring '/proc' is available inside the container.
 - **project -> addl_pkgs [optional]**: A list of additional deb packages to be installed from a repo into the root file system.
 - **project -> addl_ext_pkgs [optional]**: A list of additional rpm packages to be installed from external \*.rpm files into the root file system. List entries must be strings in URI format. Supported are:
   - The URL to a packages online. The string must start with `https://` or `http://`.
@@ -1244,7 +1304,7 @@ Key:
 - **project -> build_time_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
 - **project -> build_time_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
 - **project -> build_time_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
-- **project -> users**: A list of dicts describing users to be added to the root file system.
+- **project -> users [optional]**: A list of dicts describing users to be added to the root file system.
 - **project -> users -> [N] -> name**: The name of the user.
 - **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -6`.
 - **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
@@ -1255,10 +1315,14 @@ Key:
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of Debian to be built. The following images are available for this block:
-  - `debian-rootfs-builder-alma9`
-  - `debian-rootfs-builder-debian12`
-  - `debian-rootfs-builder-debian13`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `debian-rootfs-build-env-alma9`
+  - `debian-rootfs-build-env-debian12`
+  - `debian-rootfs-build-env-debian13`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
@@ -1352,8 +1416,8 @@ rootfs:
       devicetree: "temp/devicetree/output/bp_devicetree*.tar.gz"
       vivado: "temp/vivado/output/bp_vivado*.tar.gz"
   container:
-    image: "debian-rootfs-builder-debian13"
-    tag: "socks"
+    image: "debian-rootfs-build-env-debian13"
+    registry: "local"
 ```
 
 Key:
@@ -1375,7 +1439,7 @@ Key:
 - **project -> build_time_fs_layer -> [N] -> dest_name [optional]**: This parameter allows to rename the file or folder in the target location. It can be omitted if the source name is to be used.
 - **project -> build_time_fs_layer -> [N] -> dest_owner_group [optional]**: This parameter allows to set owner and group of the file or directory in the target location.
 - **project -> build_time_fs_layer -> [N] -> dest_permissions [optional]**: This parameter allows to set the file permission in the target location.
-- **project -> users**: A list of dicts describing users to be added to the root file system.
+- **project -> users [optional]**: A list of dicts describing users to be added to the root file system.
 - **project -> users -> [N] -> name**: The name of the user.
 - **project -> users -> [N] -> pw_hash**: The password of the user in hashed form. The hashed password can be generated with the following command: `openssl passwd -6`.
 - **project -> users -> [N] -> groups**: A list of groups the users is to be added to.
@@ -1386,10 +1450,14 @@ Key:
 - **project -> add_build_info**: A binary parameter that specifies whether build-related information should be built into the root file system. If it is set to `true`, SoCks creates the file `/etc/fs_build_info` with build related information in the root file system.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of Ubuntu to be built. The following images are available for this block:
-  - `debian-rootfs-builder-alma9`
-  - `debian-rootfs-builder-debian12`
-  - `debian-rootfs-builder-debian13`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+  - `debian-rootfs-build-env-alma9`
+  - `debian-rootfs-build-env-debian12`
+  - `debian-rootfs-build-env-debian13`
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 

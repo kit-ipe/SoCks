@@ -34,8 +34,6 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
             model_class=model_class,
         )
 
-        self._target_arch = "aarch64"
-
         # Project files
         # dnf configuration file to be used to build the file system for the target architecture
         self._dnf_conf_file = self._resources_dir / "dnf_build_time.conf"
@@ -49,8 +47,6 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
         # they are not listed in the project configuration.
         block_deps = {
             "kernel": [".*"],
-            "devicetree": ["system.dtb", "system.dts"],
-            "vivado": [".*.xsa"],
         }
         return block_deps
 
@@ -62,7 +58,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
         block_cmds["prepare"].extend(
             [
                 self._build_validator.del_project_cfg,
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.import_dependencies,
                 self.container_executor.enable_multiarch,
                 self._build_validator.save_project_cfg_prepare,
@@ -70,7 +66,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
         )
         block_cmds["clean"].extend(
             [
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_dependencies,
@@ -108,7 +104,9 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["start-container"].extend(
+                [self.container_executor.prepare_container_image, self.start_container]
+            )
         elif self.block_cfg.source == "import":
             block_cmds["build"].extend(block_cmds["prepare"])
             block_cmds["build"].extend(
@@ -167,12 +165,12 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
 
             pretty_print.print_build("Building the base root file system...")
 
-            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
+            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch_dist} --installroot={self._build_dir} "
             base_rootfs_build_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi",
                 # Clean all cache files generated from repository metadata
                 dnf_base_command + "clean all",
@@ -182,13 +180,24 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 # The 'Minimal Install' group consists of the 'Core' group and optionally the 'Standard' and 'Guest Agents' groups
                 dnf_base_command + 'groupinstall --with-optional "Minimal Install"',
                 # The QEMU binary if only required during build, so delete it if it exists
-                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+                f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
+
+            # If specified, mount /proc in the build environment. Some package scriptlets require access to '/proc' to execute properly.
+            if self.block_cfg.project.build_with_proc:
+                container_params = ["--privileged"]
+                base_rootfs_build_commands = [
+                    f"mkdir -p {self._build_dir}/proc",
+                    f"mount -t proc /proc {self._build_dir}/proc",
+                ] + base_rootfs_build_commands
+            else:
+                container_params = []
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=base_rootfs_build_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                custom_params=container_params,
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "build_base.log",
@@ -219,7 +228,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
         self._run_mod_script(
             mod_script=self._resources_dir / "mod_base_install.sh",
             mod_script_params=[
-                self._target_arch,
+                self._target_arch_dist,
                 self.block_cfg.project.release,
                 str(self._dnf_conf_file),
                 str(self._build_dir),
@@ -243,7 +252,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
         self._run_mod_script(
             mod_script=self._resources_dir / "conclude_install.sh",
             mod_script_params=[
-                self._target_arch,
+                self._target_arch_dist,
                 self.block_cfg.project.release,
                 str(self._dnf_conf_file),
                 str(self._build_dir),
@@ -294,25 +303,36 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
 
             pretty_print.print_build("Installing additional packages...")
 
-            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
+            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch_dist} --installroot={self._build_dir} "
             add_packages_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi",
                 # Update all the installed packages
                 dnf_base_command + "update",
                 # Installing user defined packages
                 dnf_base_command + "install " + " ".join(self.block_cfg.project.addl_pkgs),
                 # The QEMU binary if only required during build, so delete it if it exists
-                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+                f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
+
+            # If specified, mount /proc in the build environment. Some package scriptlets require access to '/proc' to execute properly.
+            if self.block_cfg.project.build_with_proc:
+                container_params = ["--privileged"]
+                add_packages_commands = [
+                    f"mkdir -p {self._build_dir}/proc",
+                    f"mount -t proc /proc {self._build_dir}/proc",
+                ] + add_packages_commands
+            else:
+                container_params = []
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                custom_params=container_params,
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_packages.log",
@@ -445,12 +465,12 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 ext_pkgs_to_install.append(local_pkg_file)
 
             rel_pkg_paths = ["./" + pkg for pkg in ext_pkgs_to_install]
-            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch} --installroot={self._build_dir} "
+            dnf_base_command = f"dnf -y --nodocs --verbose -c {self._dnf_conf_file} --releasever={self.block_cfg.project.release} --forcearch={self._target_arch_dist} --installroot={self._build_dir} "
             add_packages_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi",
                 # Update all the installed packages
                 dnf_base_command + "update",
@@ -461,13 +481,24 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 # Movo back to the previous directory
                 "cd -",
                 # The QEMU binary if only required during build, so delete it if it exists
-                f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static",
+                f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
             ]
+
+            # If specified, mount /proc in the build environment. Some package scriptlets require access to '/proc' to execute properly.
+            if self.block_cfg.project.build_with_proc:
+                container_params = ["--privileged"]
+                add_packages_commands = [
+                    f"mkdir -p {self._build_dir}/proc",
+                    f"mount -t proc /proc {self._build_dir}/proc",
+                ] + add_packages_commands
+            else:
+                container_params = []
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(
                 commands=add_packages_commands,
                 dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                custom_params=container_params,
                 print_commands=True,
                 run_as_root=True,
                 logfile=self._block_temp_dir / "install_additional_external_packages.log",
@@ -492,6 +523,13 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
         if not self._build_dir.is_dir():
             pretty_print.print_error(f"RootFS at {self._build_dir} not found.")
             sys.exit(1)
+
+        # Check whether users are specified
+        if not self.block_cfg.project.users:
+            pretty_print.print_info(
+                f"'{self.block_id} -> project -> users' not specified. No user accounts will be created."
+            )
+            return
 
         # Check whether users need to be added
         users_already_added = (
@@ -525,10 +563,10 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                         shutil.copy(ssh_key_src_file, ssh_keys_temp_dir / user.ssh_key)
 
             add_users_commands = [
-                # If a QEMU binary exists, it is probably needed to run aarch64 binaries on an x86 system during build. So copy it to build_dir.
-                f"if [ -e /usr/bin/qemu-aarch64-static ]; then "
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
-                f"    cp -a /usr/bin/qemu-aarch64-static {self._build_dir}/usr/bin/; "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi; "
                 # Make SSH keys from the host system available in the chroot environment
                 f"if [ -e {ssh_keys_temp_dir} ]; then "
@@ -541,9 +579,10 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 add_user_str = ""
                 if user.name != "root":
                     add_user_str = (
-                        add_user_str + f"if id {user.name} &>/dev/null; then userdel -r {user.name}; fi && "
-                    )  # Delete user account if it already exists
-                    add_user_str = add_user_str + f"useradd -m {user.name} && "
+                        add_user_str
+                        + f"if id {user.name} &>/dev/null; then userdel -r {user.name}; fi && "  # Delete user account if it already exists
+                        + f"useradd -m {user.name} && "
+                    )
                 for group in user.groups:
                     add_user_str = add_user_str + f"usermod -a -G {group} {user.name} && "
                 # Escape all $ symbols in the hash. I know this is ugly, but this is the only way I have found
@@ -552,12 +591,11 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 add_user_str = add_user_str + f"usermod -p {escaped_pw_hash} {user.name} && "
                 if user.ssh_key:
                     add_user_str = (
-                        add_user_str + f"HOME_OF_{user.name.upper()}=\$(getent passwd {user.name} | cut -d: -f6) && "
-                    )  # Get user home directory in chroot environment
-                    add_user_str = add_user_str + f"mkdir -p \${{HOME_OF_{user.name.upper()}}}/.ssh && "
-                    add_user_str = (
                         add_user_str
+                        + f"HOME_OF_{user.name.upper()}=\$(getent passwd {user.name} | cut -d: -f6) && "  # Get user home directory in chroot environment
+                        + f"mkdir -p -m 700 \${{HOME_OF_{user.name.upper()}}}/.ssh && "
                         + f"cat /tmp/{ssh_keys_temp_dir.parts[-1]}/{user.ssh_key} >> \${{HOME_OF_{user.name.upper()}}}/.ssh/authorized_keys && "
+                        + f"chmod 600 \${{HOME_OF_{user.name.upper()}}}/.ssh/authorized_keys && "
                     )
                 # The string should not end with &&
                 add_user_str = add_user_str.rstrip(" && ")
@@ -569,7 +607,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
             add_users_commands.append(f"rm -rf {self._build_dir}/tmp/{ssh_keys_temp_dir.parts[-1]}")
 
             # The QEMU binary if only required during build, so delete it if it exists
-            add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-aarch64-static")
+            add_users_commands.append(f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static")
 
             # The root user is used in this container. This is necessary in order to build a RootFS image.
             self.container_executor.exec_sh_commands(

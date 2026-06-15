@@ -27,3 +27,25 @@ class ZynqMP_AlmaLinux_RootFS_Builder(AlmaLinux_RootFS_Builder):
             block_description=block_description,
             model_class=model_class,
         )
+
+    @property
+    def _block_deps(self):
+        # Products of other blocks on which this block depends
+        # This dict is used to check whether the imported block packages contain
+        # all the required files. Regex can be used to describe the expected files.
+        # Optional dependencies can also be listed here. They will be ignored if
+        # they are not listed in the project configuration.
+        block_deps = {
+            "kernel": [".*"],
+            "devicetree": ["system.dtb", "system.dts"],
+            "vivado": [".*.xsa"],
+        }
+        return block_deps
+
+    @property
+    def _target_arch_dist(self):
+        return "aarch64"
+
+    @property
+    def _target_arch_qemu(self):
+        return "aarch64"

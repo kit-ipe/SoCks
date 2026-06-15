@@ -70,7 +70,7 @@ class Versal_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
 
         # Check if the project needs to be created
         if (md5_existsing_file == md5_new_file) and not self._build_validator.check_rebuild_bc_config(
-            keys=[["external_tools", "xilinx"]], accept_prep=True
+            keys=[["external_tools", "xilinx"], ["blocks", self.block_id, "project", "board"]], accept_prep=True
         ):
             pretty_print.print_info("No new XSA archive recognized. Devicetree sources are not recreated.")
             return
@@ -91,11 +91,33 @@ class Versal_AMD_Devicetree_Builder(ZynqMP_AMD_Devicetree_Builder):
             "    \r\nset procs [hsi get_cells -hier -filter {IP_TYPE==PROCESSOR}]"
             "    \r\nset target_proc [lsearch -inline -glob \$procs *psv_cortexa72_0*]"
             '    \r\nputs \\"List of processors found in XSA is \[\$procs\]\\\\\\nWe will use \$target_proc...\\"'
-            "    \r\nhsi create_sw_design device-tree -os device_tree -proc \$target_proc "
-            f"    \r\nhsi generate_target -dir {self._base_work_dir} "
-            f'    \r\nhsi close_hw_design [hsi current_hw_design]" > {self._base_work_dir}/generate_dts_prj.tcl',
-            f"xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl",
+            "    \r\nhsi create_sw_design device-tree -os device_tree -proc \$target_proc ",
         ]
+
+        # If an evaluation card is used, include card specific devicetree section
+        if self.block_cfg.project.board != "custom":
+            # Check if board file exists in device tree repo
+            board_name = self.block_cfg.project.board
+            xilinx_version = self.project_cfg.external_tools.xilinx.version
+            dt_file = self._source_repo_dir / f"device_tree/data/kernel_dtsi/{xilinx_version}/BOARD/{board_name}.dtsi"
+            if not dt_file.is_file():
+                pretty_print.print_error(
+                    f"Pre-defined devicetree section for board '{board_name}' specified in "
+                    f"'blocks -> {self.block_id} -> project -> board' not found. "
+                    f"It is expected that the file is at this location: {dt_file}."
+                )
+                sys.exit(1)
+            prep_dt_srcs_commands[-1] = (
+                prep_dt_srcs_commands[-1]
+                + f'    \r\nhsi set_property CONFIG.periph_type_overrides \\"{{BOARD {self.block_cfg.project.board}}}\\" [hsi get_os]'
+            )
+
+        prep_dt_srcs_commands[-1] = (
+            prep_dt_srcs_commands[-1]
+            + f"    \r\nhsi generate_target -dir {self._base_work_dir} "
+            + f'    \r\nhsi close_hw_design [hsi current_hw_design]" > {self._base_work_dir}/generate_dts_prj.tcl'
+        )
+        prep_dt_srcs_commands.append(f"xsct -nodisp {self._base_work_dir}/generate_dts_prj.tcl")
 
         self.container_executor.exec_sh_commands(
             commands=prep_dt_srcs_commands,

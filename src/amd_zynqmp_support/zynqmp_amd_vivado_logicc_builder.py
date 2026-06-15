@@ -34,6 +34,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             model_class=model_class,
         )
 
+        self.check_amd_tools(required_tools=["vivado"], pre_action_check=True)
+
         # Project directories
         self._logicc_install_dir = self._work_dir / "logicc-tool"
         self._logicc_work_dir = self._work_dir / "logicc-work"
@@ -41,7 +43,6 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         self._logicc_image_dir = self._logicc_work_dir / "image"
 
         self._logicc_cfg_cmds = [
-            f"logicc config set lib_dir {self._logicc_install_dir}/logicc/lib",
             f"logicc config set work_dir {self._source_repo_dir}",
             f"logicc config set build_dir {self._logicc_build_dir}",
             f"logicc config set image_dir {self._logicc_image_dir}",
@@ -64,7 +65,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
         block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": [], "start-vivado-gui": []}
         block_cmds["clean"].extend(
             [
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -76,7 +77,7 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             block_cmds["prepare"].extend(
                 [
                     self._build_validator.del_project_cfg,
-                    self.container_executor.build_container_image,
+                    self.container_executor.prepare_container_image,
                     self.init_logicc,
                     self.init_repo,
                     self.create_vivado_project,
@@ -87,12 +88,14 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             block_cmds["build"].extend(
                 [self.build_vivado_project, self.export_block_package, self._build_validator.save_project_cfg_build]
             )
-            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["start-container"].extend(
+                [self.container_executor.prepare_container_image, self.start_container]
+            )
             block_cmds["start-vivado-gui"].extend(
-                [self.container_executor.build_container_image, self.start_vivado_gui]
+                [self.container_executor.prepare_container_image, self.start_vivado_gui]
             )
         elif self.block_cfg.source == "import":
-            block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
+            block_cmds["build"].extend([self.container_executor.prepare_container_image, self.import_prebuilt])
         return block_cmds
 
     def init_logicc(self):
@@ -106,7 +109,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             None
 
         Raises:
-            None
+            ValueError:
+                If an unexpected container tool is specified
         """
 
         # Skip all operations if the repo config hasn't changed
@@ -126,21 +130,35 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
 
         pretty_print.print_build("Installing logicc...")
 
-        install_logicc_commands = [
-            # Create SSH directory to simplify subsequently adding known hosts
-            "mkdir -p -m 0700 ~/.ssh",
-            # Manually add Git host to list of known hosts to prevent being prompted for confirmation
-            "ssh-keyscan gitlab.kit.edu >> ~/.ssh/known_hosts",
-            f"git clone --depth 1 --branch {self.block_cfg.project.logicc_branch} "  # Intentionally no comma here
-            f"git@gitlab.kit.edu:kit/ipe-sdr/ipe-sdr-dev/hardware/logicc.git {self._logicc_install_dir}/logicc",
-            f"mkdir -p {self._logicc_install_dir}/py_envs",
-            f"python3 -m venv {self._logicc_install_dir}/py_envs/logicc",
-            f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
-            # Install logicc
-            f"cd {self._logicc_install_dir}/logicc",
-            "pip install -U .",
-            "./install_toml_parser",
-        ]
+        if self.project_cfg.external_tools.container_tool in ["docker", "podman"]:
+            # If a build container is used, a Python environment is required for logicc
+            install_logicc_commands = [
+                f"mkdir -p {self._logicc_install_dir}/py_envs",
+                f"python3 -m venv {self._logicc_install_dir}/py_envs/logicc",
+                f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
+            ]
+        elif self.project_cfg.external_tools.container_tool == "none":
+            # If no build container is used (e.g., in a CI pipeline), there is no need to set up a Python environment,
+            # since logicc can be installed in the same Python environment in which SoCKs is already running.
+            install_logicc_commands = []
+        else:
+            raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
+        install_logicc_commands.extend(
+            [
+                # Create SSH directory to simplify subsequently adding known hosts
+                "mkdir -p -m 0700 ~/.ssh",
+                # Manually add Git host to list of known hosts to prevent being prompted for confirmation
+                "ssh-keyscan gitlab.kit.edu >> ~/.ssh/known_hosts",
+                # Clone logicc repo
+                f"git clone --depth 1 --branch {self.block_cfg.project.logicc_branch} "  # Intentionally no comma here
+                f"git@gitlab.kit.edu:kit/ipe-sdr/ipe-sdr-dev/hardware/logicc.git {self._logicc_install_dir}/logicc",
+                # Install logicc
+                f"cd {self._logicc_install_dir}/logicc",
+                "./install_toml_parser",
+                "pip install -U .",
+            ]
+        )
 
         self.container_executor.exec_sh_commands(
             commands=install_logicc_commands,
@@ -160,7 +178,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             None
 
         Raises:
-            None
+            ValueError:
+                If an unexpected container tool is specified
         """
 
         # Check if the Vivado project needs to be created
@@ -193,12 +212,20 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
 
             pretty_print.print_build("Creating the Vivado Project...")
 
-            create_vivado_project_commands = (
+            if self.project_cfg.external_tools.container_tool in ["docker", "podman"]:
+                # If a build container is used, the Python environment must be enabled
+                create_vivado_project_commands = [f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate"]
+            elif self.project_cfg.external_tools.container_tool == "none":
+                # If no build container is used, we use the Python environment in which SoCKs is already running
+                create_vivado_project_commands = []
+            else:
+                raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
+            create_vivado_project_commands.extend(
                 [
                     f"export XILINXD_LICENSE_FILE={self._amd_license}",
                     f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
                     f"source {self._amd_vivado_path}/settings64.sh",
-                    f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
                 ]
                 + self._logicc_cfg_cmds
                 + [
@@ -228,7 +255,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             None
 
         Raises:
-            None
+            ValueError:
+                If an unexpected container tool is specified
         """
 
         # Find vivado build directory
@@ -262,12 +290,20 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
 
             pretty_print.print_build("Building the Vivado Project...")
 
-            vivado_build_commands = (
+            if self.project_cfg.external_tools.container_tool in ["docker", "podman"]:
+                # If a build container is used, the Python environment must be enabled
+                vivado_build_commands = [f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate"]
+            elif self.project_cfg.external_tools.container_tool == "none":
+                # If no build container is used, we use the Python environment in which SoCKs is already running
+                vivado_build_commands = []
+            else:
+                raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
+            vivado_build_commands.extend(
                 [
                     f"export XILINXD_LICENSE_FILE={self._amd_license}",
                     f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
                     f"source {self._amd_vivado_path}/settings64.sh",
-                    f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
                 ]
                 + self._logicc_cfg_cmds
                 + [
@@ -309,17 +345,26 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             None
 
         Raises:
-            None
+            ValueError:
+                If an unexpected container tool is specified
         """
 
         self.check_amd_tools(required_tools=["vivado"])
 
-        start_vivado_gui_commands = (
+        if self.project_cfg.external_tools.container_tool in ["docker", "podman"]:
+            # If a build container is used, the Python environment must be enabled
+            start_vivado_gui_commands = [f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate"]
+        elif self.project_cfg.external_tools.container_tool == "none":
+            # If no build container is used, we use the Python environment in which SoCKs is already running
+            start_vivado_gui_commands = []
+        else:
+            raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
+        start_vivado_gui_commands.extend(
             [
                 f"export XILINXD_LICENSE_FILE={self._amd_license}",
                 f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
                 f"source {self._amd_vivado_path}/settings64.sh",
-                f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
             ]
             + self._logicc_cfg_cmds
             + [f"logicc start {self.block_cfg.project.name}", "exit"]
@@ -346,7 +391,8 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             None
 
         Raises:
-            None
+            ValueError:
+                If an unexpected container tool is specified
         """
 
         self.check_amd_tools(required_tools=["vivado"])
@@ -359,12 +405,25 @@ class ZynqMP_AMD_Vivado_logicc_Builder(AMD_Builder):
             (self._output_dir, "Z"),
         ]
 
-        init_commands = [
-            f"export XILINXD_LICENSE_FILE={self._amd_license}",
-            f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
-            f"source {self._amd_vivado_path}/settings64.sh",
-            f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
-            'export PS1="${VIRTUAL_ENV_PROMPT}[\\u@\\h \\W]\\$ "',  # This is an ugly hack to fix the prompt in the container. It is needed because if the activated Python environment in the container.
-        ] + self._logicc_cfg_cmds
+        if self.project_cfg.external_tools.container_tool in ["docker", "podman"]:
+            # If a build container is used, the Python environment must be enabled
+            init_commands = [
+                f"source {self._logicc_install_dir}/py_envs/logicc/bin/activate",
+                'export PS1="${VIRTUAL_ENV_PROMPT}[\\u@\\h \\W]\\$ "',  # This is an ugly hack to fix the prompt in the container. It is needed because of the activated Python environment in the container.
+            ]
+        elif self.project_cfg.external_tools.container_tool == "none":
+            # If no build container is used, we use the Python environment in which SoCKs is already running
+            init_commands = []
+        else:
+            raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
+        init_commands.extend(
+            [
+                f"export XILINXD_LICENSE_FILE={self._amd_license}",
+                f"export SDR_BUILD_NUMBER_OF_CPUS={self.project_cfg.external_tools.xilinx.max_threads_vivado}",
+                f"source {self._amd_vivado_path}/settings64.sh",
+            ]
+            + self._logicc_cfg_cmds
+        )
 
         self.container_executor.start_container(potential_mounts=potential_mounts, init_commands=init_commands)

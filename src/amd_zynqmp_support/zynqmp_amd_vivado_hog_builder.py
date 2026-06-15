@@ -33,6 +33,8 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             model_class=model_class,
         )
 
+        self.check_amd_tools(required_tools=["vivado"], pre_action_check=True)
+
     @property
     def _block_deps(self):
         # Products of other blocks on which this block depends
@@ -50,7 +52,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
         block_cmds = {"prepare": [], "build": [], "clean": [], "start-container": [], "start-vivado-gui": []}
         block_cmds["clean"].extend(
             [
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.clean_download,
                 self.clean_work,
                 self.clean_repo,
@@ -62,7 +64,7 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             block_cmds["prepare"].extend(
                 [
                     self._build_validator.del_project_cfg,
-                    self.container_executor.build_container_image,
+                    self.container_executor.prepare_container_image,
                     self.init_repo,
                     self.create_vivado_project,
                     self._build_validator.save_project_cfg_prepare,
@@ -72,12 +74,14 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             block_cmds["build"].extend(
                 [self.build_vivado_project, self.export_block_package, self._build_validator.save_project_cfg_build]
             )
-            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["start-container"].extend(
+                [self.container_executor.prepare_container_image, self.start_container]
+            )
             block_cmds["start-vivado-gui"].extend(
-                [self.container_executor.build_container_image, self.start_vivado_gui]
+                [self.container_executor.prepare_container_image, self.start_vivado_gui]
             )
         elif self.block_cfg.source == "import":
-            block_cmds["build"].extend([self.container_executor.build_container_image, self.import_prebuilt])
+            block_cmds["build"].extend([self.container_executor.prepare_container_image, self.import_prebuilt])
         return block_cmds
 
     def create_vivado_project(self):
@@ -108,6 +112,8 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             f"source {self._amd_vivado_path}/settings64.sh",
             f"git config --global --add safe.directory {self._source_repo_dir}",
             f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
+            # With a shallow git history, the check for updates performed automatically by Hog fails
+            f"git -C {self._source_repo_dir}/Hog fetch --unshallow",
             # LD_PRELOAD is sometimes required to use Vivado in a container (see https://adaptivesupport.amd.com/s/article/000034450?language=en_US)
             f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}",
         ]

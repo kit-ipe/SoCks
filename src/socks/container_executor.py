@@ -1,6 +1,7 @@
 import os
 import pwd
 import pathlib
+import re
 import sys
 import inspect
 import subprocess
@@ -19,10 +20,12 @@ class Container_Executor:
     def __init__(
         self,
         container_tool: str,
-        container_file: pathlib.Path,
-        container_image: str,
-        container_image_tag: str,
         container_platform: str,
+        container_image_registry: str,
+        container_image: str,
+        container_image_namespace: str,
+        container_image_tag: str,
+        container_files_dir: pathlib.Path,
         container_log_file: pathlib.Path,
         prohibit_output_processing: bool = False,
         enforce_command_printing: bool = False,
@@ -75,6 +78,23 @@ class Container_Executor:
                     if results.returncode != 0:
                         pretty_print.print_error(f"Docker buildx is not available on the host system")
                         sys.exit(1)
+                    results = self._shell_executor.get_sh_results(
+                        command=[container_tool, "buildx", "inspect"], check=False
+                    )
+                    buildx_driver = ""
+                    for line in results.stdout.splitlines():
+                        if line.startswith("Driver:"):
+                            buildx_driver = line.split()[1]
+                            break
+                    if buildx_driver != "docker":
+                        # As far as I know only the 'docker' driver supports using local container base images.
+                        # With a different driver (e.g. 'docker-container'), buildx has always tried to fetch the
+                        # base image from docker hub.
+                        pretty_print.print_error(
+                            f"Docker buildx currently uses the '{buildx_driver}' driver, but SoCks only supports the "
+                            "'docker' driver. Please switch to a buildx builder that uses driver 'docker'."
+                        )
+                        sys.exit(1)
             elif container_tool == "podman":
                 installation_valid = results.returncode == 0 and any(
                     "podman version" in s for s in results.stdout.splitlines()
@@ -88,12 +108,20 @@ class Container_Executor:
 
         # The container tool to be used. 'none' if the command is to be run directly on the host system.
         self._container_tool = container_tool
-        # The container file to be user as source for building.
-        self._container_file = container_file
-        # Identifier of the container image in format <image name>:<image tag>.
-        self._container_image_tagged = f"{container_image}:{container_image_tag}"
         # The container platform to be used for building. Emulation may be required to run this platform.
         self._container_platform = container_platform
+        # Registry from which the image is to be retrieved. It can also specify that the image is to be built locally.
+        self._container_image_registry = container_image_registry
+        # Namespace in which the image is located. Only required if the image is pulled from a registry.
+        self._container_image_namespace = container_image_namespace
+        # Identifier of the container image in format <namespace>/<image name>[:<image tag>].
+        self._container_image_reference = f"{self._container_image_namespace}/{container_image}"
+        if container_image_tag != None:
+            self._container_image_reference = self._container_image_reference + f":{container_image_tag}"
+        # The container file to be user as source for building. None if the image is to be pulled.
+        self._container_file = None
+        if self._container_image_registry == "local":
+            self._container_file = container_files_dir / f"{container_image}.containerfile"
 
         # Enforce printing shell commands before they are executed in the container.
         # This setting overwrites all other shell command printing settings.
@@ -120,12 +148,125 @@ class Container_Executor:
         pretty_print.print_error(f"{feature} is only available if a containerization tool is used.")
         sys.exit(1)
 
-    def build_container_image(self):
+    def _get_base_image(self, container_file: pathlib.Path) -> tuple[str, pathlib.Path] | tuple[None, None]:
         """
-        Builds the container image for the selected container tool.
+        Extracts the base image from a container file by parsing the first FROM instruction
+        that references a socks-base-* image.
 
-        The container management tool (podman/docker) will restore everything that has not changed in the
-        containerfile from the cache.
+        Args:
+            container_file:
+                Path to the container file to parse
+
+        Returns:
+            The base image name and the base image container file or None if no base image was found
+
+        Raises:
+            FileNotFoundError:
+                If the base container file does not exist
+        """
+
+        if not container_file.is_file():
+            raise FileNotFoundError(f"Container file not found: {container_file}")
+
+        base_image_name = None
+        with open(container_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                # Match lines like: FROM socks-base-alma8:latest or FROM socks-local/socks-base-alma8:latest
+                # We only care about the base image name
+                # The socks-local/ prefix is optional
+                # The :latest tag (or any other tag) is optional
+                match = re.match(r"^FROM\s+(?:socks-local/)?(socks-base-[^:\s]+)(?::\S+)?", line, re.IGNORECASE)
+                if match:
+                    base_image_name = match.group(1)
+                    break
+
+        # Find associated base image container file
+        if base_image_name:
+            base_container_file = self._container_file.parent / "base" / f"{base_image_name}.containerfile"
+            if not base_container_file.is_file():
+                raise FileNotFoundError(f"Base container file not found: {base_container_file}")
+            return (base_image_name, base_container_file)
+        else:
+            return (None, None)
+
+    def _build_base_image(self, base_image_name: str, base_container_file: pathlib.Path):
+        """
+        Builds a base layer image.
+
+        Args:
+            base_image_name:
+                Name of the base image
+            base_container_file:
+                Path to the base container file
+
+        Returns:
+            None
+
+        Raises:
+            ValueError:
+                If an unexpected container tool is specified or if a container file is required but not specified
+        """
+
+        base_image_reference = f"socks-local/{base_image_name}"
+
+        # Check if base image needs to be built
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=[base_container_file, base_container_file.parent.parent / "entrypoint.sh"],
+            out_timestamp=self._container_log.get_logged_timestamp(
+                identifier=f"{self._container_tool}-image-{base_image_reference}-built"
+            ),
+        ):
+            pretty_print.print_build(f"No need to build {self._container_tool} image '{base_image_reference}'...")
+            return
+
+        with self._container_log.timestamp(identifier=f"{self._container_tool}-image-{base_image_reference}-built"):
+            if self._container_tool == "docker":
+                pretty_print.print_build(f"Building docker image '{base_image_reference}'...")
+
+                self._shell_executor.exec_sh_command(
+                    [
+                        "docker",
+                        "buildx",
+                        "build",
+                        "-t",
+                        base_image_reference,
+                        "-f",
+                        str(base_container_file),
+                        "--ssh",
+                        "default",
+                        "--build-context",
+                        f"container_srcs={str(base_container_file.parent.parent)}",
+                        "--load",
+                        ".",
+                    ]
+                )
+            elif self._container_tool == "podman":
+                pretty_print.print_build(f"Building podman image '{base_image_reference}'...")
+
+                self._shell_executor.exec_sh_command(
+                    [
+                        "podman",
+                        "build",
+                        "-t",
+                        base_image_reference,
+                        "-f",
+                        str(base_container_file),
+                        "--ssh",
+                        "default",
+                        "--build-context",
+                        f"container_srcs={str(base_container_file.parent.parent)}",
+                        ".",
+                    ]
+                )
+            else:
+                raise ValueError(f"Unexpected container tool: {self._container_tool}")
+
+    def prepare_container_image(self):
+        """
+        Builds or pulls the container image for the selected container tool.
+
+        When building, the container tool (Podman/Docker) takes care of reusing cached layers.
 
         Args:
             None
@@ -135,7 +276,7 @@ class Container_Executor:
 
         Raises:
             ValueError:
-                If an unexpected container tool is specified
+                If an unexpected container tool is specified or if a container file is required but not specified
         """
 
         # Skip this function if no container tool is used
@@ -143,26 +284,70 @@ class Container_Executor:
             pretty_print.print_info("Container image is not built in native mode.")
             return
 
-        # Check if the required container file exists
-        if not self._container_file.is_file():
-            pretty_print.print_error(f"File {self._container_file} not found.")
-            sys.exit(1)
+        # Check if the image is to be pulled from a registry
+        if self._container_image_registry != "local":
+            pretty_print.print_build(f"Pulling {self._container_tool} image '{self._container_image_reference}'...")
 
-        # Check whether the image needs to be built
-        if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[self._container_file, self._container_file.parent / "entrypoint.sh"],
-            out_timestamp=self._container_log.get_logged_timestamp(
-                identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
-            ),
-        ):
-            pretty_print.print_build(f"No need to build {self._container_tool} image {self._container_image_tagged}...")
+            self._shell_executor.exec_sh_command(
+                [
+                    self._container_tool,
+                    "image",
+                    "pull",
+                    f"{self._container_image_registry}/{self._container_image_reference}",
+                ]
+            )
+
             return
 
+        # Check if the required container file exists
+        if self._container_file is None:
+            raise ValueError(f"Container image source file undefined")
+        if not self._container_file.is_file():
+            available_container_files = self._container_file.parent.glob("*.containerfile")
+            available_local_images = sorted([f"- {file.stem}" for file in available_container_files])
+            pretty_print.print_error(
+                f"Source file for local container image '{self._container_file.stem}' not found.\n\n"
+                "The available local image options are:\n" + "\n".join(available_local_images)
+            )
+            sys.exit(1)
+
+        # Build base image first
+        base_image_name, base_container_file = self._get_base_image(self._container_file)
+        if base_image_name:
+            self._build_base_image(base_image_name=base_image_name, base_container_file=base_container_file)
+
+        # Check whether the image needs to be built
+        src_search_list = [self._container_file]
+        if base_container_file:
+            src_search_list.append(base_container_file)
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=src_search_list,
+            out_timestamp=self._container_log.get_logged_timestamp(
+                identifier=f"{self._container_tool}-image-{self._container_image_reference}-built"
+            ),
+        ):
+            pretty_print.print_build(
+                f"No need to build {self._container_tool} image '{self._container_image_reference}'..."
+            )
+            return
+
+        if self._container_image_namespace != "socks-local":
+            pretty_print.print_warning(
+                f"You are about to build a local container image that will be located in namespace "
+                f"'{self._container_image_namespace}' and not in the SoCks default namespace 'socks-local'. "
+                f"This is supported, but not recommended. Do you still want to proceed? (y/N) ",
+                end="",
+            )
+            answer = input("").strip().lower()
+            if answer not in ("y", "yes"):
+                pretty_print.print_clean("Building container image aborted...")
+                sys.exit(1)
+
         with self._container_log.timestamp(
-            identifier=f"{self._container_tool}-image-{self._container_image_tagged}-built"
+            identifier=f"{self._container_tool}-image-{self._container_image_reference}-built"
         ):
             if self._container_tool == "docker":
-                pretty_print.print_build(f"Building docker image {self._container_image_tagged}...")
+                pretty_print.print_build(f"Building docker image '{self._container_image_reference}'...")
 
                 self._shell_executor.exec_sh_command(
                     [
@@ -170,7 +355,7 @@ class Container_Executor:
                         "buildx",
                         "build",
                         "-t",
-                        self._container_image_tagged,
+                        self._container_image_reference,
                         "-f",
                         str(self._container_file),
                         "--platform",
@@ -183,16 +368,15 @@ class Container_Executor:
                         ".",
                     ]
                 )
-
             elif self._container_tool == "podman":
-                pretty_print.print_build(f"Building podman image {self._container_image_tagged}...")
+                pretty_print.print_build(f"Building podman image '{self._container_image_reference}'...")
 
                 self._shell_executor.exec_sh_command(
                     [
                         "podman",
                         "build",
                         "-t",
-                        self._container_image_tagged,
+                        self._container_image_reference,
                         "-f",
                         str(self._container_file),
                         "--platform",
@@ -205,7 +389,6 @@ class Container_Executor:
                         ".",
                     ]
                 )
-
             else:
                 raise ValueError(f"Unexpected container tool: {self._container_tool}")
 
@@ -227,16 +410,16 @@ class Container_Executor:
         if self._container_tool in ("docker", "podman"):
             # Clean image only if it exists
             results = self._shell_executor.get_sh_results(
-                [self._container_tool, "images", "-q", self._container_image_tagged]
+                [self._container_tool, "images", "-q", self._container_image_reference]
             )
             if results.stdout.splitlines():
-                pretty_print.print_build(f"Cleaning container image {self._container_image_tagged}...")
+                pretty_print.print_build(f"Cleaning container image {self._container_image_reference}...")
                 self._shell_executor.exec_sh_command(
-                    [self._container_tool, "image", "rm", self._container_image_tagged]
+                    [self._container_tool, "image", "rm", self._container_image_reference]
                 )
             else:
                 pretty_print.print_build(
-                    f"No need to clean container image {self._container_image_tagged}, " "the image doesn't exist..."
+                    f"No need to clean container image {self._container_image_reference}, " "the image doesn't exist..."
                 )
 
         elif self._container_tool == "none":
@@ -337,7 +520,7 @@ class Container_Executor:
                     mounts,
                 ]
                 + custom_params
-                + [self._container_image_tagged, "bash", "-c", comp_commands],
+                + [self._container_image_reference, "bash", "-c", comp_commands],
                 logfile=logfile,
                 output_scrolling=output_scrolling,
                 visible_lines=visible_lines,
@@ -491,7 +674,7 @@ class Container_Executor:
                         f"--env CONTAINER_UID={container_uid}",
                         f"--env CONTAINER_GID={container_gid}",
                         mounts,
-                        self._container_image_tagged,
+                        self._container_image_reference,
                         "bash",
                         "-c",
                         comp_commands,
@@ -511,7 +694,7 @@ class Container_Executor:
                         f"--env CONTAINER_UID={container_uid}",
                         f"--env CONTAINER_GID={container_gid}",
                         mounts,
-                        self._container_image_tagged,
+                        self._container_image_reference,
                     ],
                     check=False,
                 )
@@ -578,7 +761,7 @@ class Container_Executor:
                     f"--user={self._host_uid}:{self._host_gid}",  # Replaces the entrypoint script in GUI containers
                     "--no-entrypoint",  # The entrypoint script doesn't work if x11docker uses the docker backend
                     mounts,
-                    self._container_image_tagged,
+                    self._container_image_reference,
                     f"--runasuser={comp_commands}",
                 ]
             )
@@ -598,7 +781,7 @@ class Container_Executor:
                     f"--env CONTAINER_UID={self._host_uid}",
                     f"--env CONTAINER_GID={self._host_gid}",
                     mounts,
-                    self._container_image_tagged,
+                    self._container_image_reference,
                     f"--runasuser={comp_commands}",
                 ]
             )
