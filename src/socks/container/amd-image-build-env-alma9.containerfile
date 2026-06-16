@@ -1,4 +1,4 @@
-FROM socks-local/socks-base-alma9:latest
+FROM socks-local/socks-base-alma9:${TARGETARCH}-latest
 
 # Build-time variables
 ARG uboot_version=2024.01

@@ -1,4 +1,4 @@
-FROM socks-local/socks-base-alma8:latest AS busybox-toolchain
+FROM socks-local/socks-base-alma8:${TARGETARCH}-latest AS busybox-toolchain
 
 # Install cross-compilation toolchain
 #RUN dnf -y install wget
@@ -39,7 +39,7 @@ RUN mkdir /app/tools/crosstool-ng-workspace && \
     ct-ng olddefconfig && \
     ct-ng build
 
-FROM socks-local/socks-base-alma8:latest
+FROM socks-local/socks-base-alma8:${TARGETARCH}-latest
 
 # Install the toolchain in a location accessible to all users
 RUN mkdir /opt/crosstool-ng-toolchains && \

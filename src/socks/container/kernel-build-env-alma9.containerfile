@@ -1,4 +1,4 @@
-FROM socks-local/socks-base-alma9:latest
+FROM socks-local/socks-base-alma9:${TARGETARCH}-latest
 
 # Install packages required to build U-Boot
 RUN dnf -y install dtc

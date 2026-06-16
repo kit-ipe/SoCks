@@ -58,10 +58,12 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
         # Helpers
         self.container_executor = Container_Executor(
             container_tool=self.project_cfg.external_tools.container_tool,
+            container_platform="linux/arm64", # Use an emulated aarch64 container for this block
+            container_image_registry=self.block_cfg.container.registry,
             container_image=self.block_cfg.container.image,
+            container_image_namespace=self.block_cfg.container.namespace,
             container_image_tag=self.block_cfg.container.tag,
-            container_platform="linux/arm64/v8", # Use an emulated aarch64 container for this block
-            container_file=self._container_dir / f"{self.block_cfg.container.image}.containerfile",
+            container_files_dir=self._container_files_dir,
             container_log_file=self._project_temp_dir / ".container_log.csv",
         )
 
@@ -92,7 +94,7 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
             [
                 self._build_validator.del_project_cfg,
                 self.container_executor.enable_multiarch,
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.import_dependencies,
                 self.import_root_file_system,
                 self.import_kernel_modules,
@@ -102,7 +104,7 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
         block_cmds["clean"].extend(
             [
                 self.container_executor.enable_multiarch,
-                self.container_executor.build_container_image,
+                self.container_executor.prepare_container_image,
                 self.clean_work,
                 self.clean_dependencies,
                 self.clean_output,
@@ -118,16 +120,24 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            block_cmds["start-container"].extend([self.container_executor.build_container_image, self.start_container])
+            block_cmds["start-container"].extend([self.container_executor.prepare_container_image, self.start_container])
         elif self.block_cfg.source == "import":
             block_cmds["build"].extend(
                 [
                     self.container_executor.enable_multiarch,
-                    self.container_executor.build_container_image,
+                    self.container_executor.prepare_container_image,
                     self.import_prebuilt
                 ]
             )
         return block_cmds
+
+    @property
+    def _target_arch_dist(self):
+        return "aarch64"
+
+    @property
+    def _target_arch_qemu(self):
+        return None
 
     @property
     def _file_system_name(self):

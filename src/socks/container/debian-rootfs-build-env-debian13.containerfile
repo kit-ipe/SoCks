@@ -1,5 +1,5 @@
 FROM multiarch/qemu-user-static AS qemu
-FROM socks-local/socks-base-debian13:latest
+FROM socks-local/socks-base-debian13:${TARGETARCH}-latest
 
 # Install QEMU binaries to run binaries for the target architecture on an x86 system
 COPY --from=qemu /usr/bin/qemu-*-static /usr/bin

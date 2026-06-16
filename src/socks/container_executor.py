@@ -114,10 +114,11 @@ class Container_Executor:
         self._container_image_registry = container_image_registry
         # Namespace in which the image is located. Only required if the image is pulled from a registry.
         self._container_image_namespace = container_image_namespace
-        # Identifier of the container image in format <namespace>/<image name>[:<image tag>].
-        self._container_image_reference = f"{self._container_image_namespace}/{container_image}"
-        if container_image_tag != None:
-            self._container_image_reference = self._container_image_reference + f":{container_image_tag}"
+        # Identifier of the container image in format <namespace>/<image name>:<image tag>.
+        if container_image_tag is None:
+            # Set the default tag including the arch
+            container_image_tag = f"{self._container_platform.split('/', 1)[1].replace('/', '-')}-latest"
+        self._container_image_reference = f"{self._container_image_namespace}/{container_image}:{container_image_tag}"
         # The container file to be user as source for building. None if the image is to be pulled.
         self._container_file = None
         if self._container_image_registry == "local":
@@ -172,7 +173,7 @@ class Container_Executor:
         with open(container_file, "r") as f:
             for line in f:
                 line = line.strip()
-                # Match lines like: FROM socks-base-alma8:latest or FROM socks-local/socks-base-alma8:latest
+                # Match lines like: FROM socks-base-alma8:latest or FROM socks-local/socks-base-alma8:amd64-latest
                 # We only care about the base image name
                 # The socks-local/ prefix is optional
                 # The :latest tag (or any other tag) is optional
@@ -208,7 +209,7 @@ class Container_Executor:
                 If an unexpected container tool is specified or if a container file is required but not specified
         """
 
-        base_image_reference = f"socks-local/{base_image_name}"
+        base_image_reference = f"socks-local/{base_image_name}:{self._container_platform.split('/', 1)[1].replace('/', '-')}-latest"
 
         # Check if base image needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
@@ -233,6 +234,8 @@ class Container_Executor:
                         base_image_reference,
                         "-f",
                         str(base_container_file),
+                        "--platform",
+                        f"{self._container_platform}",
                         "--ssh",
                         "default",
                         "--build-context",
@@ -252,6 +255,8 @@ class Container_Executor:
                         base_image_reference,
                         "-f",
                         str(base_container_file),
+                        "--platform",
+                        f"{self._container_platform}",
                         "--ssh",
                         "default",
                         "--build-context",

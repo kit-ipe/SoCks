@@ -1,4 +1,4 @@
-FROM socks-local/socks-base-alma8:latest
+FROM socks-local/socks-base-alma8:${TARGETARCH}-latest
 
 # Install cross compiler
 RUN dnf -y install wget && \
