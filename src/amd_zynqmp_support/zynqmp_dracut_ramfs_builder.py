@@ -55,18 +55,6 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
         # expects the kernel modules to be located in the root filesystem.
         self._kmodules_symlink_in_rootfs = self._rootfs_dir / "tmp" / "socks_kernel_modules"
 
-        # Helpers
-        self.container_executor = Container_Executor(
-            container_tool=self.project_cfg.external_tools.container_tool,
-            container_platform="linux/arm64", # Use an emulated aarch64 container for this block
-            container_image_registry=self.block_cfg.container.registry,
-            container_image=self.block_cfg.container.image,
-            container_image_namespace=self.block_cfg.container.namespace,
-            container_image_tag=self.block_cfg.container.tag,
-            container_files_dir=self._container_files_dir,
-            container_log_file=self._project_temp_dir / ".container_log.csv",
-        )
-
     @property
     def _block_deps(self):
         # Products of other blocks on which this block depends

@@ -151,7 +151,6 @@ class Builder(ABC):
         self.shell_executor = Shell_Executor()
         self.container_executor = Container_Executor(
             container_tool=self.project_cfg.external_tools.container_tool,
-            container_platform="linux/amd64",
             container_image_registry=self.block_cfg.container.registry,
             container_image=self.block_cfg.container.image,
             container_image_namespace=self.block_cfg.container.namespace,

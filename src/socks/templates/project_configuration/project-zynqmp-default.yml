@@ -16,7 +16,7 @@ blocks:
         branch: "xilinx-v{{external_tools/xilinx/version}}"
       # If no 'import_src' property is specified, the block must be built locally
     container:
-      image: "atf-build-env-alma9"
+      image: "atf-build-env-alma9-amd64"
       registry: "local"
   devicetree:
     source: "build"
@@ -30,7 +30,7 @@ blocks:
       dependencies:
         vivado: "temp/vivado/output/bp_vivado_*.tar.gz"
     container:
-      image: "amd-xilinx-tools-env-alma8"
+      image: "amd-xilinx-tools-env-alma8-amd64"
       registry: "local"
   fsbl:
     source: "build"
@@ -40,7 +40,7 @@ blocks:
       dependencies:
         vivado: "temp/vivado/output/bp_vivado_*.tar.gz"
     container:
-      image: "amd-xilinx-tools-env-alma8"
+      image: "amd-xilinx-tools-env-alma8-amd64"
       registry: "local"
   kernel:
     source: "build"
@@ -53,7 +53,7 @@ blocks:
       defconfig_target: "xilinx_zynqmp_defconfig"
       add_build_info: false
     container:
-      image: "kernel-build-env-alma9"
+      image: "kernel-build-env-alma9-amd64"
       registry: "local"
   pmu_fw:
     source: "build"
@@ -63,7 +63,7 @@ blocks:
       dependencies:
         vivado: "temp/vivado/output/bp_vivado_*.tar.gz"
     container:
-      image: "amd-xilinx-tools-env-alma8"
+      image: "amd-xilinx-tools-env-alma8-amd64"
       registry: "local"
   ssbl:
     source: "build"
@@ -77,7 +77,7 @@ blocks:
       dependencies:
         atf: "temp/atf/output/bp_atf_*.tar.gz"
     container:
-      image: "kernel-build-env-alma9"
+      image: "kernel-build-env-alma9-amd64"
       registry: "local"
   vivado:
     source: "build"
@@ -86,7 +86,7 @@ blocks:
       # Property 'build_srcs' must be specified outside this default project configuration file
       # If no 'import_src' property is specified, the block must be built locally
     container:
-      image: "amd-xilinx-tools-env-alma8"
+      image: "amd-xilinx-tools-env-alma8-amd64"
       registry: "local"
   image:
     source: "build"
@@ -106,5 +106,5 @@ blocks:
         ssbl: "temp/ssbl/output/bp_ssbl_*.tar.gz"
         vivado: "temp/vivado/output/bp_vivado_*.tar.gz"
     container:
-      image: "amd-image-build-env-alma9"
+      image: "amd-image-build-env-alma9-amd64"
       registry: "local"

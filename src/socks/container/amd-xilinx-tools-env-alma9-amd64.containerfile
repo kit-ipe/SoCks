@@ -1,4 +1,6 @@
-FROM socks-local/socks-base-alma9:${TARGETARCH}-latest
+ARG TARGETARCH
+
+FROM socks-local/socks-base-alma9-multiarch:socks-${TARGETARCH}-latest
 
 # Install devicetree compiler
 RUN dnf -y install dtc && \

@@ -1,4 +1,6 @@
-FROM socks-local/socks-base-alma9:${TARGETARCH}-latest
+ARG TARGETARCH
+
+FROM socks-local/socks-base-alma8-multiarch:socks-${TARGETARCH}-latest
 
 # Build-time variables
 ARG uboot_version=2024.01
@@ -21,5 +23,5 @@ RUN dnf -y install dtc && \
     rm -f v${uboot_version}.tar.gz && \
     rm -rf u-boot-${uboot_version}/ && \
 # Install tools to build SD card image
-    dnf -y install guestfs-tools
+    dnf -y install libguestfs-tools
 ENV LIBGUESTFS_BACKEND=direct

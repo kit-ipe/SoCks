@@ -20,7 +20,6 @@ class Container_Executor:
     def __init__(
         self,
         container_tool: str,
-        container_platform: str,
         container_image_registry: str,
         container_image: str,
         container_image_namespace: str,
@@ -108,21 +107,30 @@ class Container_Executor:
 
         # The container tool to be used. 'none' if the command is to be run directly on the host system.
         self._container_tool = container_tool
-        # The container platform to be used for building. Emulation may be required to run this platform.
-        self._container_platform = container_platform
         # Registry from which the image is to be retrieved. It can also specify that the image is to be built locally.
         self._container_image_registry = container_image_registry
         # Namespace in which the image is located. Only required if the image is pulled from a registry.
         self._container_image_namespace = container_image_namespace
-        # Identifier of the container image in format <namespace>/<image name>:<image tag>.
-        if container_image_tag is None:
-            # Set the default tag including the arch
-            container_image_tag = f"{self._container_platform.split('/', 1)[1].replace('/', '-')}-latest"
-        self._container_image_reference = f"{self._container_image_namespace}/{container_image}:{container_image_tag}"
         # The container file to be user as source for building. None if the image is to be pulled.
         self._container_file = None
         if self._container_image_registry == "local":
             self._container_file = container_files_dir / f"{container_image}.containerfile"
+        # The container architecture to be used. Emulation may be required to run images for this architecture.
+        self._container_arch = container_image_tag.split("-")[1]
+        # The container platform to be used. Emulation may be required to run this platform.
+        self._container_platform = f"linux/{self._container_arch}"
+        # Whether the entire container is emulated. The emulation of individual commands within the container is independent of this value.
+        build_system_arch = os.uname().machine
+        # Various terms used to refer to the same ISAs. These must first be standardized before a comparison can be made.
+        if build_system_arch in ("x86_64", "x64"):
+            build_system_container_arch = "amd64"
+        elif build_system_arch in ("aarch64", "arm64"):
+            build_system_container_arch = "arm64"
+        else:
+            raise ValueError(f"Unexpected build system architecture: {build_system_arch}")
+        self._container_is_emulated = (self._container_arch != build_system_container_arch)
+        # Identifier of the container image in format <namespace>/<image name>:<image tag>.
+        self._container_image_reference = f"{self._container_image_namespace}/{container_image}:{container_image_tag}"
 
         # Enforce printing shell commands before they are executed in the container.
         # This setting overwrites all other shell command printing settings.
@@ -209,7 +217,7 @@ class Container_Executor:
                 If an unexpected container tool is specified or if a container file is required but not specified
         """
 
-        base_image_reference = f"socks-local/{base_image_name}:{self._container_platform.split('/', 1)[1].replace('/', '-')}-latest"
+        base_image_reference = f"socks-local/{base_image_name}:socks-{self._container_arch}-latest"
 
         # Check if base image needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
@@ -235,7 +243,7 @@ class Container_Executor:
                         "-f",
                         str(base_container_file),
                         "--platform",
-                        f"{self._container_platform}",
+                        self._container_platform,
                         "--ssh",
                         "default",
                         "--build-context",
@@ -256,7 +264,7 @@ class Container_Executor:
                         "-f",
                         str(base_container_file),
                         "--platform",
-                        f"{self._container_platform}",
+                        self._container_platform,
                         "--ssh",
                         "default",
                         "--build-context",
@@ -364,7 +372,7 @@ class Container_Executor:
                         "-f",
                         str(self._container_file),
                         "--platform",
-                        f"{self._container_platform}",
+                        self._container_platform,
                         "--ssh",
                         "default",
                         "--build-context",
@@ -385,7 +393,7 @@ class Container_Executor:
                         "-f",
                         str(self._container_file),
                         "--platform",
-                        f"{self._container_platform}",
+                        self._container_platform,
                         "--ssh",
                         "default",
                         "--build-context",
@@ -518,7 +526,7 @@ class Container_Executor:
                     "--rm",
                     "-it",
                     "--platform",
-                    f"{self._container_platform}",
+                    self._container_platform,
                     f"--env CONTAINER_USER={container_user}",
                     f"--env CONTAINER_UID={container_uid}",
                     f"--env CONTAINER_GID={container_gid}",
@@ -652,7 +660,7 @@ class Container_Executor:
                 comp_commands = comp_commands + "'"
 
             # Prepare user
-            if self._container_tool == "podman" or self._container_platform == "linux/arm64/v8":
+            if self._container_tool == "podman" or self._container_is_emulated:
                 # The root user should always be used in podman containers. Using a different user causes permission issues.
                 # Files created on the host via mounted directories belong to the user who started the container anyway.
                 # The root user should also be used in emulated Docker containers, as using sudo in emulated containers is complicated.
@@ -674,7 +682,7 @@ class Container_Executor:
                         "--rm",
                         "-it",
                         "--platform",
-                        f"{self._container_platform}",
+                        self._container_platform,
                         f"--env CONTAINER_USER={container_user}",
                         f"--env CONTAINER_UID={container_uid}",
                         f"--env CONTAINER_GID={container_gid}",
@@ -694,7 +702,7 @@ class Container_Executor:
                         "--rm",
                         "-it",
                         "--platform",
-                        f"{self._container_platform}",
+                        self._container_platform,
                         f"--env CONTAINER_USER={container_user}",
                         f"--env CONTAINER_UID={container_uid}",
                         f"--env CONTAINER_GID={container_gid}",
