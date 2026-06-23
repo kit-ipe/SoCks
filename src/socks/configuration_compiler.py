@@ -189,21 +189,25 @@ class Configuration_Compiler:
 
     @staticmethod
     def compile(
-        root_cfg_file: pathlib.Path, user_cfg_file: pathlib.Path, socks_dir: pathlib.Path, project_dir: pathlib.Path
+        socks_dir: pathlib.Path, project_dir: pathlib.Path, root_cfg_file: pathlib.Path, user_cfg_file: pathlib.Path = None, ci_cfg_file: pathlib.Path = None
     ) -> tuple[dict, list]:
         """
         Compile the project configuration.
 
         Args:
-            root_cfg_file:
-                Path of the top level project configuration file.
-            user_cfg_file:
-                Path of the user project configuration file that is applied on top of the regular project configuration
-                to enable user or host system specific adaptations.
             socks_dir:
-                Path of the SoCks tool.
+                Path to the SoCks tool.
             project_dir:
-                Path of the SoCks project.
+                Path to the SoCks project.
+            root_cfg_file:
+                Path to the top level project configuration file.
+            user_cfg_file:
+                Path to the user project configuration file, which is applied on top of the regular project
+                configuration to enable user or host system specific adaptations.
+            ci_cfg_file:
+                Path to the CI project configuration file, which is applied on top of the regular project
+                configuration to enable CI-specific adaptations. If this file exists, it will be applied to the
+                configuration. Therefore, only specify it if that is your intention, i.e. if we run in a CI pipeline.
 
         Returns:
             Fully assemble the project configuration.
@@ -217,11 +221,17 @@ class Configuration_Compiler:
             config_file=root_cfg_file.name, socks_dir=socks_dir, project_dir=project_dir
         )
 
-        # Apply user configuration file on top, if it exists
-        if user_cfg_file.is_file():
+        # Apply user configuration file on top, if available
+        if user_cfg_file is not None and user_cfg_file.is_file():
             with user_cfg_file.open("r") as f:
                 user_layer = yaml.safe_load(f)
             project_cfg = Configuration_Compiler._merge_dicts(target=project_cfg, source=user_layer)
+
+        # Apply CI configuration file on top, if available, and if SoCks is running in a GitLab CI pipeline
+        if ci_cfg_file is not None and ci_cfg_file.is_file():
+            with ci_cfg_file.open("r") as f:
+                ci_layer = yaml.safe_load(f)
+            project_cfg = Configuration_Compiler._merge_dicts(target=project_cfg, source=ci_layer)
 
         # Resolve placeholders
         project_cfg = Configuration_Compiler._resolve_placeholders(project_cfg=project_cfg, search_object=project_cfg)

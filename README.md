@@ -11,7 +11,8 @@ SoCks (short for SoC blocks) is a lightweight and modular framework to build com
   - [Building an image](#building-an-image)
 - [Development flow](#development-flow)
   - [Project Configuration](#project-configuration)
-    - [User Specific Extension](#user-specific-extension)
+    - [User-Specific Extension](#user-specific-extension)
+    - [CI Pipeline-Specific Extension](#ci-pipeline-specific-extension)
     - [Printing the Project Configuration](#printing-the-project-configuration)
   - [Creating patch files](#creating-patch-files)
   - [Using menuconfig and creating configuration snippets](#using-menuconfig-and-creating-configuration-snippets)
@@ -198,9 +199,14 @@ Key:
   - **socks_version**: Version of SoCks that must be used to build this project. Since SoCks is still in an early stage of development, breaking changes may occur at any time, requiring manual updates to the project configuration file. SoCks uses this setting to notify the user that the project configuration must be manually adjusted to be compatible with the version of SoCks being used (In most cases, only the version number in this field needs to be updated.). It is possible to set the value to `any` to skip this check.
 - **blocks**: List of blocks to be used in the project. For details see [Available Builders (ZynqMP)](#available-builders-zynqmp).
 
-#### User Specific Extension
+#### User-Specific Extension
 
 Sometimes it is necessary to adapt the project configuration to the user's specific host system. For example, by changing the containerization tool to be used or by adding additional packages to the SoC's file system for debugging purposes. For this purpose, one can create a file `project-user.yml` in the same directory as `project.yml`. The file `project-user.yml` is applied on top of the main project configuration described in `project.yml`. It is recommended that `project.yml` always contains a complete, buildable project configuration and `project-user.yml` is only used to overwrite already existing settings. It is therefore also not possible to import other YAML files into `project-user.yml`. The file `project-user.yml` should be listed in the `.gitignore` file so that it is excluded from version control.
+
+#### CI Pipeline-Specific Extension
+
+It is usually necessary to adapt the project configuration when the project is built in a CI pipeline, for example, to disable containerization. To do this, you can create the file `project-ci.yml` in the project's root directory.
+The file `project-ci.yml` is automatically applied on top of the main project configuration described in `project.yml` when SoCks detects that it is running in a CI pipeline. SoCks assumes it is running in a pipeline if the environment variable `CI` is set to `true`. This is the case for both GitLab and GitHub pipelines.
 
 #### Printing the Project Configuration
 
@@ -352,7 +358,7 @@ Key:
 #### External Source Files
 
 SoCks requires external files in order to build this block. The following template packages are available:
-- **AlmaLinux8**: Contains template files to build an AlmaLinux 8 root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional file `conclude_install.sh` allows to finalize the creation of the root file system. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer. The file `dnf_build_time.conf` is the dnf configuration used at build time. This file must contain all repositories that are required to build the root file system including all package specified.
+- **AlmaLinux8**: Contains template files to build an AlmaLinux 8 root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional file `conclude_install.sh` allows to finalize the creation of the root file system. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer. The file `dnf_build_time.conf` is the dnf configuration used at build time. This file must contain all repositories that are required to build the root file system including all package specified. The optional folder `rpm_gpg_keys_build_time` allows to add third-party GPG keys to the build environment. All files in this folder are copied to `/etc/pki/rpm-gpg/` in the build environment (usually the build container). Repositories specified in `dnf_build_time.conf` can use these GPG keys to verify the integrity of packages.
 - **AlmaLinux9**: Contains template files to build an AlmaLinux 9 root file system. The files and folders in this package are equivalent to the ones in the *AlmaLinux8* package.
 
 ### ZynqMP_AlpineLinux_RAMFS_Builder

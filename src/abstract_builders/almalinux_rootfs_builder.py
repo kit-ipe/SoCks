@@ -37,6 +37,7 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
         # Project files
         # dnf configuration file to be used to build the file system for the target architecture
         self._dnf_conf_file = self._resources_dir / "dnf_build_time.conf"
+        self._rpm_gpg_keys_dir = self._resources_dir / "rpm_gpg_keys_build_time"
 
     @property
     def _block_deps(self):
@@ -172,6 +173,10 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
                 f"fi",
+                # Copy RPM GPG keys to the default location
+                f"if [ -d {self._rpm_gpg_keys_dir} ]; then "
+                f"    find {self._rpm_gpg_keys_dir} -maxdepth 1 -type f -exec cp -t /etc/pki/rpm-gpg/ {{}} +; "
+                f"fi",
                 # Clean all cache files generated from repository metadata
                 dnf_base_command + "clean all",
                 # Update all the installed packages
@@ -210,6 +215,67 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
             self._build_log.del_logged_timestamp(identifier=f"function-add_pd_layers-success")
             self._build_log.del_logged_timestamp(identifier=f"function-add_bt_layer-success")
             self._build_log.del_logged_timestamp(identifier=f"function-add_users-success")
+
+    def _run_mod_script(self, mod_script: pathlib.Path, mod_script_params: list[str]):
+        """
+        Runs a user-defined shell script to modify the root file system.
+
+        Args:
+            mod_script_path:
+                Path of the script to be used.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        if not mod_script.is_file():
+            pretty_print.print_info(f"No user-defined file '{mod_script.name}' found. The file system is not modified.")
+            return
+
+        # Check whether the file system needs to be modified
+        if not Build_Validator.check_rebuild_bc_timestamp(
+            src_search_list=[mod_script],
+            out_timestamp=self._build_log.get_logged_timestamp(
+                identifier=f"function-{inspect.getouterframes(inspect.currentframe(), 2)[1][3]}-success"
+            ),
+        ):
+            pretty_print.print_build(f"No need to execute {mod_script.name}. No altered source files detected...")
+            return
+
+        with self._build_log.timestamp(
+            identifier=f"function-{inspect.getouterframes(inspect.currentframe(), 2)[1][3]}-success"
+        ):
+            pretty_print.print_build(f"Executing {mod_script.name}...")
+
+            run_mo_script_commands = [
+                # If a QEMU binary exists, it is likely needed to run binaries for the target architecture on an x86 system during build. So copy it to build_dir.
+                f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
+                f"    mkdir -p {self._build_dir}/usr/bin && "
+                f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
+                f"fi",
+                # Copy RPM GPG keys to the default location
+                f"if [ -d {self._rpm_gpg_keys_dir} ]; then "
+                f"    find {self._rpm_gpg_keys_dir} -maxdepth 1 -type f -exec cp -t /etc/pki/rpm-gpg/ {{}} +; "
+                f"fi",
+                # Call user-defined script
+                f"chmod a+x {mod_script}",
+                f"{mod_script} {' '.join(mod_script_params)}",
+                # The QEMU binary if only required during build, so delete it if it exists
+                f"rm -f {self._build_dir}/usr/bin/qemu-{self._target_arch_qemu}-static",
+            ]
+
+            # The root user is used in this container. This is necessary in order to build a RootFS image.
+            self.container_executor.exec_sh_commands(
+                commands=run_mo_script_commands,
+                dirs_to_mount=[(self._resources_dir, "Z"), (self._work_dir, "Z")],
+                print_commands=True,
+                run_as_root=True,
+                logfile=self._block_temp_dir / f"{mod_script.stem}.log",
+                output_scrolling=True,
+            )
 
     def run_base_install_mod_script(self):
         """
@@ -309,6 +375,10 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
+                f"fi",
+                # Copy RPM GPG keys to the default location
+                f"if [ -d {self._rpm_gpg_keys_dir} ]; then "
+                f"    find {self._rpm_gpg_keys_dir} -maxdepth 1 -type f -exec cp -t /etc/pki/rpm-gpg/ {{}} +; "
                 f"fi",
                 # Update all the installed packages
                 dnf_base_command + "update",
@@ -471,6 +541,10 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
                 f"if [ -e /usr/bin/qemu-{self._target_arch_qemu}-static ]; then "
                 f"    mkdir -p {self._build_dir}/usr/bin && "
                 f"    cp -a /usr/bin/qemu-{self._target_arch_qemu}-static {self._build_dir}/usr/bin/; "
+                f"fi",
+                # Copy RPM GPG keys to the default location
+                f"if [ -d {self._rpm_gpg_keys_dir} ]; then "
+                f"    find {self._rpm_gpg_keys_dir} -maxdepth 1 -type f -exec cp -t /etc/pki/rpm-gpg/ {{}} +; "
                 f"fi",
                 # Update all the installed packages
                 dnf_base_command + "update",
@@ -639,3 +713,33 @@ class AlmaLinux_RootFS_Builder(File_System_Builder):
             archive_name = self._file_system_name
 
         self._build_archive(archive_name=archive_name, file_extension="tar.xz", tar_compress_param="-I pxz")
+
+    def start_container(self):
+        """
+        Starts an interactive container with which the block can be built.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+
+        potential_mounts = [
+            (self._dependencies_dir, "Z"),
+            (self._block_src_dir, "Z"),
+            (self._work_dir, "Z"),
+            (self._output_dir, "Z"),
+        ]
+
+        init_commands = [
+            # Copy RPM GPG keys to the default location
+            f"if [ -d {self._rpm_gpg_keys_dir} ]; then "
+            f"    find {self._rpm_gpg_keys_dir} -maxdepth 1 -type f -exec sudo cp -t /etc/pki/rpm-gpg/ {{}} +; "
+            f"fi"
+        ]
+
+        self.container_executor.start_container(potential_mounts=potential_mounts, init_commands=init_commands)

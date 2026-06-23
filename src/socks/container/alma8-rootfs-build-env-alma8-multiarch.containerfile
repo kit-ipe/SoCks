@@ -12,6 +12,3 @@ RUN dnf -y install make wget git python3 && \
     dnf -y install rsync && \
 # Install required packages to package the RootFS
     dnf -y install pigz pxz
-
-# Install GPG key for CERN repos
-RUN curl -o "/etc/pki/rpm-gpg/RPM-GPG-KEY-kojiv2" "https://gitlab.cern.ch/api/v4/projects/141918/repository/files/src%2FRPM-GPG-KEY-kojiv2/raw?ref=main"
