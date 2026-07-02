@@ -42,18 +42,12 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
 
         # Project directories
         self._rootfs_dir = self._work_dir / "rootfs"
-        self._kmodules_dir = self._work_dir / "kernel_modules"
 
         # Project files
         # Dracut configuration file
         self._dracut_conf_file = self._resources_dir / "dracut.conf"
-        # File for saving the checksum of the Kernel module archive used
-        self._source_kmods_md5_file = self._work_dir / "source_kmodules.md5"
         # File for saving the checksum of the RootFS archive used
         self._source_rootfs_md5_file = self._work_dir / "source_rootfs.md5"
-        # Symlink to the Kernel modules in the root filesystem directory. This symlink is required because dracut
-        # expects the kernel modules to be located in the root filesystem.
-        self._kmodules_symlink_in_rootfs = self._rootfs_dir / "tmp" / "socks_kernel_modules"
 
     @property
     def _block_deps(self):
@@ -63,7 +57,6 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
         # Optional dependencies can also be listed here. They will be ignored if
         # they are not listed in the project configuration.
         block_deps = {
-            "kernel": [".*"],
             "rootfs": [".*.tar.xz"]
         }
         return block_deps
@@ -85,7 +78,6 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
                 self.container_executor.prepare_container_image,
                 self.import_dependencies,
                 self.import_root_file_system,
-                self.import_kernel_modules,
                 self._build_validator.save_project_cfg_prepare,
             ]
         )
@@ -203,83 +195,6 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
         with self._source_rootfs_md5_file.open("w") as f:
             print(md5_new_file, file=f, end="")
 
-    def import_kernel_modules(self):
-        """
-        Unpacks the kernel modules.
-
-        Args:
-            None
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-
-        kmods_archive = self._dependencies_dir / "kernel" / "kernel_modules.tar.gz"
-
-        # Skip this function if no kernel modules are available
-        if not kmods_archive.is_file():
-            pretty_print.print_info(f"File {kmods_archive} not found. No kernel modules are imported.")
-            if self._kmodules_dir.is_dir() or self._kmodules_symlink_in_rootfs.exists():
-                delete_old_kmodules_commands = [
-                    f"rm -rf {self._kmodules_dir}",
-                    f"rm -f {self._kmodules_symlink_in_rootfs}",
-                ]
-                # The root user is used in this container. This is necessary in order to build a file system image.
-                self.container_executor.exec_sh_commands(
-                    commands=delete_old_kmodules_commands,
-                    dirs_to_mount=[(self._work_dir, "Z")],
-                    run_as_root=True,
-                )
-            return
-
-        # Check whether a root file system is present
-        if not self._rootfs_dir.is_dir():
-            pretty_print.print_error(f"File system at {self._rootfs_dir} not found.")
-            sys.exit(1)
-
-        # Calculate md5 of the provided file
-        md5_new_file = hashlib.md5(kmods_archive.read_bytes()).hexdigest()
-        # Read md5 of previously used Kernel module archive, if any
-        md5_existsing_file = 0
-        if self._source_kmods_md5_file.is_file():
-            with self._source_kmods_md5_file.open("r") as f:
-                md5_existsing_file = f.read()
-
-        # Check whether the Kernel modules need to be added
-        if md5_existsing_file == md5_new_file:
-            pretty_print.print_build("No need to import Kernel modules. No altered source files detected...")
-            return
-
-        self._work_dir.mkdir(parents=True, exist_ok=True)
-
-        pretty_print.print_build("Importing Kernel Modules...")
-
-        unpack_kmodules_commands = [
-            f"rm -rf {self._kmodules_dir}",
-            f"mkdir {self._kmodules_dir}",
-            f"tar -xf {kmods_archive} -C {self._kmodules_dir}",
-            f"chown -R root:root {self._kmodules_dir}/lib",
-            f"chmod -R 000 {self._kmodules_dir}/lib",
-            f"chmod -R u=rwX,go=rX {self._kmodules_dir}/lib",
-            # This symlink is required because dracut expects the kernel modules to be located in the root filesystem
-            f"ln -s {self._kmodules_dir} {self._kmodules_symlink_in_rootfs}",
-        ]
-
-        # The root user is used in this container. This is necessary in order to build a file system image.
-        self.container_executor.exec_sh_commands(
-            commands=unpack_kmodules_commands,
-            dirs_to_mount=[(self._dependencies_dir, "Z"), (self._work_dir, "Z")],
-            print_commands=True,
-            run_as_root=True,
-        )
-
-        # Save checksum in file
-        with self._source_kmods_md5_file.open("w") as f:
-            print(md5_new_file, file=f, end="")
-
 
     def build_base_file_system(self):
         """
@@ -299,8 +214,7 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
         if not Build_Validator.check_rebuild_bc_timestamp(
             src_search_list=[
                 self._dracut_conf_file,
-                self._rootfs_dir,
-                self._kmodules_dir
+                self._rootfs_dir
             ],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
@@ -315,19 +229,17 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
 
             pretty_print.print_build("Building the RAM file system...")
 
-            kmodules_dir_param = ""
-            kversion_param = ""
-            if self._kmodules_dir.is_dir():
-                kernel_module_dirs = list((self._kmodules_dir / "lib" / "modules").glob("*"))
-                if len(kernel_module_dirs) != 1:
-                    pretty_print.print_error(f'Kernel modules for more than one kernel version in {self._kmodules_dir / "lib" / "modules"}/')
-                    sys.exit(1)
+            kernel_module_dirs = list((self._rootfs_dir / "lib" / "modules").glob("*"))
+            if len(kernel_module_dirs) > 1:
+                pretty_print.print_error(f'Kernel modules for more than one kernel version in {self._rootfs_dir / "lib" / "modules"}/')
+                sys.exit(1)
+            if len(kernel_module_dirs) == 1:
                 kversion_param = kernel_module_dirs[0].name
-                # Use the symlink because dracut expects the kernel modules to be located in the root filesystem (specified in --sysroot)
-                kmodules_dir_param = f"--kmoddir {self._kmodules_symlink_in_rootfs}/lib/modules/{kversion_param}"
+            else:
+                kversion_param = ""
 
             ramfs_build_commands = [
-                f"dracut --sysroot {self._rootfs_dir} {kmodules_dir_param} --conf {self._dracut_conf_file} --gzip --force {self._output_dir / self._file_system_name}.cpio.gz {kversion_param}",
+                f"dracut --sysroot {self._rootfs_dir} --conf {self._dracut_conf_file} --gzip --force {self._output_dir / self._file_system_name}.cpio.gz {kversion_param}",
                 f"chmod 644 {self._output_dir / self._file_system_name}.cpio.gz",
             ]
 

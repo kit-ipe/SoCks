@@ -13,7 +13,6 @@ from amd_zynqmp_support.zynqmp_base_model import ZynqMP_Base_Model
 class ZynqMP_Dracut_RAMFS_Dependencies_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    kernel: str
     rootfs: str
 
 

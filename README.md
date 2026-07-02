@@ -1337,7 +1337,7 @@ SoCks requires external files in order to build this block. The following templa
 
 ### ZynqMP_Dracut_RAMFS_Builder
 
-This builder is designed to build an initramfs with dracut. Kernel modules are automatically added unless explicitly configured otherwise.
+This builder is designed to build an initramfs with dracut. Sources like kernel modules and dracut modules should be located in the rootfs that serve as the basis for the dracut initramfs. This is due to the close connection between a dracut initramfs and the systems rootfs.
 
 #### Block Configuration
 
@@ -1350,11 +1350,10 @@ ramfs:
   builder: "ZynqMP_Dracut_RAMFS_Builder"
   project:
     dependencies:
-      kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
       rootfs: "temp/rootfs/output/bp_rootfs_*.tar.gz"
   container:
     image: "dracut-ramfs-builder-alma9"
-    tag: "socks"
+    registry: "local"
 ```
 
 Key:
@@ -1363,9 +1362,13 @@ Key:
   - **import**: Import an already built block package
 - **builder**: The builder to be used to build this block. For this builder always `ZynqMP_Dracut_RAMFS_Builder`.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
-- **container -> image**: The container image to be used for building. The following images are available for this block:
+- **container -> image**: The container image to be used for building. The selection should be compatible with the rootfs that serves as the basis for the initramfs. The following images are available for this block:
   - `dracut-ramfs-builder-alma9`
-- **container -> tag**: The tag of the container image in the database of the containerization tool. This should always be set to `socks`.
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
 
 #### External Source Files
 
