@@ -113,7 +113,9 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             f"git config --global --add safe.directory {self._source_repo_dir}",
             f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
             # With a shallow git history, the check for updates performed automatically by Hog fails
-            f"git -C {self._source_repo_dir}/Hog fetch --unshallow",
+            f'if git -C {self._source_repo_dir}/Hog rev-parse --is-shallow-repository | grep -q "true"; then '
+            f"   git -C {self._source_repo_dir}/Hog fetch --unshallow "
+            f"fi",
             # LD_PRELOAD is sometimes required to use Vivado in a container (see https://adaptivesupport.amd.com/s/article/000034450?language=en_US)
             f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}",
         ]
