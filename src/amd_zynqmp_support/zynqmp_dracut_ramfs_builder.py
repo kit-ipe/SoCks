@@ -180,7 +180,9 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
 
         unpack_rootfs_commands = [
             f"mkdir {self._rootfs_dir}",
-            f"tar --numeric-owner -p -xf {rootfs_archives[0]} -C {self._rootfs_dir}",
+            # '--absolute-names' is required for tar 1.30 in AlmaLinux 8. tar 1.34 in AlmaLinux 9 works without this
+            # option. I think using '--absolute-names' is fine as long as the rootfs archive was created with SoCks.
+            f"tar --absolute-names --numeric-owner --preserve-permissions -xf {rootfs_archives[0]} -C {self._rootfs_dir}",
         ]
 
         # The root user is used in this container. This is necessary in order to build a file system image.
@@ -190,6 +192,11 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
             print_commands=True,
             run_as_root=True,
         )
+
+        # Check if dracut is installed in the rootfs
+        if not (self._rootfs_dir / "usr" / "bin" / "dracut").is_file():
+            pretty_print.print_error(f"The imported rootfs does not contain dracut, but this is a prerequisite for this builder.")
+            sys.exit(1)
 
         # Save checksum in file
         with self._source_rootfs_md5_file.open("w") as f:
@@ -239,7 +246,9 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
                 kversion_param = ""
 
             ramfs_build_commands = [
-                f"dracut --sysroot {self._rootfs_dir} --conf {self._dracut_conf_file} --gzip --force {self._output_dir / self._file_system_name}.cpio.gz {kversion_param}",
+                f"cp {self._dracut_conf_file} {self._rootfs_dir}/tmp/{self._dracut_conf_file.name}",
+                f'chroot {self._rootfs_dir} /bin/sh -c "dracut --conf /tmp/{self._dracut_conf_file.name} --gzip --no-early-microcode --force /tmp/{self._file_system_name}.cpio.gz {kversion_param}"',
+                f"mv {self._rootfs_dir}/tmp/{self._file_system_name}.cpio.gz {self._output_dir}/",
                 f"chmod 644 {self._output_dir / self._file_system_name}.cpio.gz",
             ]
 

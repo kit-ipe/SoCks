@@ -1352,7 +1352,7 @@ ramfs:
     dependencies:
       rootfs: "temp/rootfs/output/bp_rootfs_*.tar.gz"
   container:
-    image: "dracut-ramfs-builder-alma9"
+    image: "{{blocks/rootfs/container/image}}"
     registry: "local"
 ```
 
@@ -1362,8 +1362,7 @@ Key:
   - **import**: Import an already built block package
 - **builder**: The builder to be used to build this block. For this builder always `ZynqMP_Dracut_RAMFS_Builder`.
 - **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
-- **container -> image**: The container image to be used for building. The selection should be compatible with the rootfs that serves as the basis for the initramfs. The following images are available for this block:
-  - `dracut-ramfs-builder-alma9`
+- **container -> image**: The container image to be used for building. Because of the close relationship between a dracut initramfs and the rootfs (the rootfs serves as the basis for the initramfs), it is recommended to use the same image for both. This can be enforced by using a link to the image used for the rootfs.
 - **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
 - **container -> registry**: The registry from which the container image is to be retrieved. Options are:
