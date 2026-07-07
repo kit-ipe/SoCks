@@ -35,6 +35,16 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
 
         self.check_amd_tools(required_tools=["vivado"], pre_action_check=True)
 
+        if self.project_cfg.external_tools.container_tool != "none" and self._local_source_dir is not None:
+            # When using local project sources, self._repo_dir and self._source_repo_dir usually point to the same
+            # directory. However, this does not work with Hog, since it creates a *.gen folder at the same level
+            # as the repo. Therefore, the parent folder of the repo must be mounted.
+            self._repo_dir = self._source_repo_dir.parent
+            self.pre_action_warnings.append(
+                f"The parent folder of the local Hog repo ({self._repo_dir}) will be mounted into the build container "
+                "because Hog creates a *.gen folder at the same level as the Hog repo."
+            )
+
     @property
     def _block_deps(self):
         # Products of other blocks on which this block depends
@@ -113,7 +123,9 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
             f"git config --global --add safe.directory {self._source_repo_dir}",
             f"git config --global --add safe.directory {self._source_repo_dir}/Hog",
             # With a shallow git history, the check for updates performed automatically by Hog fails
-            f"git -C {self._source_repo_dir}/Hog fetch --unshallow",
+            f'if git -C {self._source_repo_dir}/Hog rev-parse --is-shallow-repository | grep -q "true"; then '
+            f"  git -C {self._source_repo_dir}/Hog fetch --unshallow; "
+            f"fi",
             # LD_PRELOAD is sometimes required to use Vivado in a container (see https://adaptivesupport.amd.com/s/article/000034450?language=en_US)
             f"LD_PRELOAD=/lib64/libudev.so.1 {self._source_repo_dir}/Hog/Do CREATE {self.block_cfg.project.name}",
         ]
