@@ -35,6 +35,16 @@ class ZynqMP_AMD_Vivado_Hog_Builder(AMD_Builder):
 
         self.check_amd_tools(required_tools=["vivado"], pre_action_check=True)
 
+        if self.project_cfg.external_tools.container_tool != "none" and self._local_source_dir is not None:
+            # When using local project sources, self._repo_dir and self._source_repo_dir usually point to the same
+            # directory. However, this does not work with Hog, since it creates a *.gen folder at the same level
+            # as the repo. Therefore, the parent folder of the repo must be mounted.
+            self._repo_dir = self._source_repo_dir.parent
+            self.pre_action_warnings.append(
+                f"The parent folder of the local Hog repo ({self._repo_dir}) will be mounted into the build container "
+                "because Hog creates a *.gen folder at the same level as the Hog repo."
+            )
+
     @property
     def _block_deps(self):
         # Products of other blocks on which this block depends
