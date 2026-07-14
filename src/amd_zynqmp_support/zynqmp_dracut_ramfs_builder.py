@@ -247,7 +247,7 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
 
             ramfs_build_commands = [
                 f"cp {self._dracut_conf_file} {self._rootfs_dir}/tmp/{self._dracut_conf_file.name}",
-                f'chroot {self._rootfs_dir} /bin/sh -c "dracut --conf /tmp/{self._dracut_conf_file.name} --gzip --no-early-microcode --force /tmp/{self._file_system_name}.cpio.gz {kversion_param}"',
+                f'chroot {self._rootfs_dir} /bin/sh -c "dracut --conf /tmp/{self._dracut_conf_file.name} --gzip --no-early-microcode --force --stdlog 0 /tmp/{self._file_system_name}.cpio.gz {kversion_param}"',
                 f"mv {self._rootfs_dir}/tmp/{self._file_system_name}.cpio.gz {self._output_dir}/",
                 f"chmod 644 {self._output_dir / self._file_system_name}.cpio.gz",
             ]
