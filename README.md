@@ -64,9 +64,12 @@ SoCks (short for SoC blocks) is a lightweight and modular framework to build com
   - [ZynqMP_Debian_RootFS_Builder](#zynqmp_debian_rootfs_builder)
     - [Block Configuration](#block-configuration-14)
     - [External Source Files](#external-source-files-14)
-  - [ZynqMP_Ubuntu_RootFS_Builder](#zynqmp_ubuntu_rootfs_builder)
+  - [ZynqMP_Dracut_RAMFS_Builder](#zynqmp_dracut_ramfs_builder)
     - [Block Configuration](#block-configuration-15)
     - [External Source Files](#external-source-files-15)
+  - [ZynqMP_Ubuntu_RootFS_Builder](#zynqmp_ubuntu_rootfs_builder)
+    - [Block Configuration](#block-configuration-16)
+    - [External Source Files](#external-source-files-16)
 - [Background](#background)
   - [Basics](#basics)
   - [Builders](#builders)
@@ -1331,6 +1334,45 @@ Key:
 
 SoCks requires external files in order to build this block. The following template packages are available:
 - **universal**: Contains universal template files to build a Debian root file system. The optional file `mod_base_install.sh` allows to modify the base root file system after all packages have been added, but before any other modifications have been made to it. The optional file `conclude_install.sh` allows to finalize the creation of the root file system. The optional folder `predefined_fs_layers` allows to add static layers that are added to the base root file system. Every layer requires a shell script that is used to add the layer.
+
+### ZynqMP_Dracut_RAMFS_Builder
+
+This builder is designed to build an initramfs with dracut. Sources like kernel modules and dracut modules should be located in the rootfs that serve as the basis for the dracut initramfs. This is due to the close connection between a dracut initramfs and the systems rootfs.
+
+#### Block Configuration
+
+The default configuration `project-zynqmp-default` does not contain any configuration for this block. The entire configuration must be carried out in the project configuration file.
+
+Configuration example:
+```
+ramfs:
+  source: "build"
+  builder: "ZynqMP_Dracut_RAMFS_Builder"
+  project:
+    dependencies:
+      rootfs: "temp/rootfs/output/bp_rootfs_*.tar.gz"
+  container:
+    image: "{{blocks/rootfs/container/image}}"
+    registry: "local"
+```
+
+Key:
+- **source**: The source of the block. Options are:
+  - **build**: Build the block locally
+  - **import**: Import an already built block package
+- **builder**: The builder to be used to build this block. For this builder always `ZynqMP_Dracut_RAMFS_Builder`.
+- **project -> dependencies**: A dict with all dependencies required by this builder to build this block. The keys of the dict are block IDs. The values of the dict are paths to the respective block packages. All paths are relative to the SoCks project directory. In almost all cases, the values from the example configuration can be used.
+- **container -> image**: The container image to be used for building. Because of the close relationship between a dracut initramfs and the rootfs (the rootfs serves as the basis for the initramfs), it is recommended to use the same image for both. This can be enforced by using a link to the image used for the rootfs.
+- **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
+- **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
+- **container -> registry**: The registry from which the container image is to be retrieved. Options are:
+  - **local**: Build the image locally
+  - **docker.io**: Pull the image from [Docker Hub](https://hub.docker.com/u/marvinfuchs)
+
+#### External Source Files
+
+SoCks requires external files in order to build this block. The following template packages are available:
+- **rootfs-on-block-device**: Contains an example configuration file for dracut to mount the root filesystem from a block device, such as an SSD or an SD card.
 
 ### ZynqMP_Ubuntu_RootFS_Builder
 

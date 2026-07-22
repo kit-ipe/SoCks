@@ -58,7 +58,7 @@ class ZynqMP_BusyBox_RAMFS_Blocks_Model(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     ramfs: ZynqMP_BusyBox_RAMFS_Block_Model = Field(
-        default=..., description="Configuration of the AMD U-Boot block for ZynqMP devices"
+        default=..., description="Configuration of the BusyBox RAM file system block"
     )
 
 

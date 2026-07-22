@@ -55,7 +55,7 @@ def add_active_blocks(block: str, active_blocks: list[str], project_cfg: dict):
         if "project" in project_cfg["blocks"][block_i] and "dependencies" in project_cfg["blocks"][block_i]["project"]:
             for dep, dep_path in project_cfg["blocks"][block_i]["project"]["dependencies"].items():
                 if dep not in active_blocks:
-                    active_blocks = add_active_blocks(active_blocks, dep)
+                    active_blocks = add_active_blocks(block=dep, active_blocks=active_blocks, project_cfg=project_cfg)
     # Remove duplicates
     active_blocks = [i for n, i in enumerate(active_blocks) if i not in active_blocks[:n]]
     return active_blocks

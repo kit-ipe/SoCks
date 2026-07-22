@@ -112,14 +112,26 @@ class Container_Executor:
         self._container_image_registry = container_image_registry
         # Namespace in which the image is located. Only required if the image is pulled from a registry.
         self._container_image_namespace = container_image_namespace
-        # Identifier of the container image in format <namespace>/<image name>[:<image tag>].
-        self._container_image_reference = f"{self._container_image_namespace}/{container_image}"
-        if container_image_tag != None:
-            self._container_image_reference = self._container_image_reference + f":{container_image_tag}"
         # The container file to be user as source for building. None if the image is to be pulled.
         self._container_file = None
         if self._container_image_registry == "local":
             self._container_file = container_files_dir / f"{container_image}.containerfile"
+        # The container architecture to be used. Emulation may be required to run images for this architecture.
+        self._container_arch = container_image_tag.split("-")[1]
+        # The container platform to be used. Emulation may be required to run this platform.
+        self._container_platform = f"linux/{self._container_arch}"
+        # Whether the entire container is emulated. The emulation of individual commands within the container is independent of this value.
+        build_system_arch = os.uname().machine
+        # Various terms used to refer to the same ISAs. These must first be standardized before a comparison can be made.
+        if build_system_arch in ("x86_64", "x64"):
+            build_system_container_arch = "amd64"
+        elif build_system_arch in ("aarch64", "arm64"):
+            build_system_container_arch = "arm64"
+        else:
+            raise ValueError(f"Unexpected build system architecture: {build_system_arch}")
+        self._container_is_emulated = (self._container_arch != build_system_container_arch)
+        # Identifier of the container image in format <namespace>/<image name>:<image tag>.
+        self._container_image_reference = f"{self._container_image_namespace}/{container_image}:{container_image_tag}"
 
         # Enforce printing shell commands before they are executed in the container.
         # This setting overwrites all other shell command printing settings.
@@ -170,7 +182,7 @@ class Container_Executor:
         with open(container_file, "r") as f:
             for line in f:
                 line = line.strip()
-                # Match lines like: FROM socks-base-alma8:latest or FROM socks-local/socks-base-alma8:latest
+                # Match lines like: FROM socks-base-alma8:latest or FROM socks-local/socks-base-alma8:amd64-latest
                 # We only care about the base image name
                 # The socks-local/ prefix is optional
                 # The :latest tag (or any other tag) is optional
@@ -206,7 +218,7 @@ class Container_Executor:
                 If an unexpected container tool is specified or if a container file is required but not specified
         """
 
-        base_image_reference = f"socks-local/{base_image_name}"
+        base_image_reference = f"socks-local/{base_image_name}:socks-{self._container_arch}-latest"
 
         # Check if base image needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
@@ -231,6 +243,8 @@ class Container_Executor:
                         base_image_reference,
                         "-f",
                         str(base_container_file),
+                        "--platform",
+                        self._container_platform,
                         "--ssh",
                         "default",
                         "--build-context",
@@ -250,6 +264,8 @@ class Container_Executor:
                         base_image_reference,
                         "-f",
                         str(base_container_file),
+                        "--platform",
+                        self._container_platform,
                         "--ssh",
                         "default",
                         "--build-context",
@@ -356,6 +372,8 @@ class Container_Executor:
                         self._container_image_reference,
                         "-f",
                         str(self._container_file),
+                        "--platform",
+                        self._container_platform,
                         "--ssh",
                         "default",
                         "--build-context",
@@ -375,6 +393,8 @@ class Container_Executor:
                         self._container_image_reference,
                         "-f",
                         str(self._container_file),
+                        "--platform",
+                        self._container_platform,
                         "--ssh",
                         "default",
                         "--build-context",
@@ -508,6 +528,8 @@ class Container_Executor:
                     "run",
                     "--rm",
                     "-it",
+                    "--platform",
+                    self._container_platform,
                     "--env",
                     f"CONTAINER_USER={container_user}",
                     "--env",
@@ -644,9 +666,10 @@ class Container_Executor:
                         comp_commands = comp_commands + command + " && "
 
             # Prepare user
-            if self._container_tool == "podman":
+            if self._container_tool == "podman" or self._container_is_emulated:
                 # The root user should always be used in podman containers. Using a different user causes permission issues.
                 # Files created on the host via mounted directories belong to the user who started the container anyway.
+                # The root user should also be used in emulated Docker containers, as using sudo in emulated containers is complicated.
                 container_user = "root"
                 container_uid = "0"
                 container_gid = "0"
@@ -664,6 +687,8 @@ class Container_Executor:
                         "run",
                         "--rm",
                         "-it",
+                        "--platform",
+                        self._container_platform,
                         "--env",
                         f"CONTAINER_USER={container_user}",
                         "--env",
@@ -687,6 +712,8 @@ class Container_Executor:
                         "run",
                         "--rm",
                         "-it",
+                        "--platform",
+                        self._container_platform,
                         "--env",
                         f"CONTAINER_USER={container_user}",
                         "--env",
