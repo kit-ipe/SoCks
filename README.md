@@ -136,6 +136,10 @@ In such a directory you can run the following command to build the full image:
 ```
 $ socks all build
 ```
+While a regular full image build exports individual files that can be transferred to any boot medium, it is also possible to create a ready-to-use SD card image:
+```
+$ socks image -g build-sd-card
+```
 It is also possible to build individual blocks with:
 ```
 $ socks <BLOCK> build
