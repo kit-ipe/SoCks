@@ -54,7 +54,12 @@ class Zynq_AMD_Kernel_Builder(Linux_Kernel_Builder):
 
         menuconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=arm-none-linux-gnueabihf-",
+            # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+            'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+            '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+            "    exit 1; "
+            "fi",
+            "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE; ",
             "export ARCH=arm",
             "make menuconfig",
         ]
@@ -79,7 +84,12 @@ class Zynq_AMD_Kernel_Builder(Linux_Kernel_Builder):
 
         create_defconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=arm-none-linux-gnueabihf-",
+            # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+            'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+            '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+            "    exit 1; "
+            "fi",
+            "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
             "export ARCH=arm",
             f"make {self.block_cfg.project.defconfig_target}",
         ]
@@ -109,8 +119,15 @@ class Zynq_AMD_Kernel_Builder(Linux_Kernel_Builder):
         """
 
         self._create_config_snippet(
-            cross_comp_prefix="arm-none-linux-gnueabihf-",
-            arch="arm",
+            prep_env_commands=[
+                # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
+                "export ARCH=arm",
+            ],
             defconfig_target=self.block_cfg.project.defconfig_target,
         )
 
@@ -128,7 +145,17 @@ class Zynq_AMD_Kernel_Builder(Linux_Kernel_Builder):
             None
         """
 
-        self._attach_config_snippets(cross_comp_prefix="arm-none-linux-gnueabihf-", arch="arm")
+        self._attach_config_snippets(
+            prep_env_commands=[
+                # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
+                "export ARCH=arm",
+            ]
+        )
 
     def build_kernel(self):
         """
@@ -182,7 +209,12 @@ class Zynq_AMD_Kernel_Builder(Linux_Kernel_Builder):
 
             kernel_build_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=arm-none-linux-gnueabihf-",
+                # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
                 "export ARCH=arm",
                 "make olddefconfig",
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
@@ -269,7 +301,12 @@ class Zynq_AMD_Kernel_Builder(Linux_Kernel_Builder):
 
             ext_mod_build_commands = [
                 f"cd {self._ext_modules_build_dir}",
-                "export CROSS_COMPILE=arm-none-linux-gnueabihf-",
+                # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
                 "export ARCH=arm",
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads} MAKE=make KERNEL_SRC={self._source_repo_dir}",
             ]
@@ -336,7 +373,12 @@ class Zynq_AMD_Kernel_Builder(Linux_Kernel_Builder):
 
             export_modules_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=arm-none-linux-gnueabihf-",
+                # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
                 "export ARCH=arm",
                 f"make modules_install INSTALL_MOD_PATH={self._output_dir}",
             ]
@@ -404,7 +446,12 @@ class Zynq_AMD_Kernel_Builder(Linux_Kernel_Builder):
 
             export_headers_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=arm-none-linux-gnueabihf-",
+                # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
                 "export ARCH=arm",
                 f"make headers_install INSTALL_HDR_PATH={self._output_dir}",
                 f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._headers_out_file} {self._output_dir}/include",

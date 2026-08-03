@@ -230,7 +230,8 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
         """
 
         self._create_config_snippet(
-            cross_comp_prefix=f"{self._target_arch_dist}-unknown-linux-uclibc-", defconfig_target="defconfig"
+            prep_env_commands=[f"export CROSS_COMPILE={self._target_arch_dist}-unknown-linux-uclibc-"],
+            defconfig_target="defconfig",
         )
 
     def attach_config_snippets(self):
@@ -247,7 +248,9 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
             None
         """
 
-        self._attach_config_snippets(cross_comp_prefix=f"{self._target_arch_dist}-unknown-linux-uclibc-")
+        self._attach_config_snippets(
+            prep_env_commands=[f"export CROSS_COMPILE={self._target_arch_dist}-unknown-linux-uclibc-"]
+        )
 
     def build_base_file_system(self):
         """

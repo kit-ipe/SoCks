@@ -189,7 +189,11 @@ class Configuration_Compiler:
 
     @staticmethod
     def compile(
-        socks_dir: pathlib.Path, project_dir: pathlib.Path, root_cfg_file: pathlib.Path, user_cfg_file: pathlib.Path = None, ci_cfg_file: pathlib.Path = None
+        socks_dir: pathlib.Path,
+        project_dir: pathlib.Path,
+        root_cfg_file: pathlib.Path,
+        user_cfg_file: pathlib.Path = None,
+        ci_cfg_file: pathlib.Path = None,
     ) -> tuple[dict, list]:
         """
         Compile the project configuration.

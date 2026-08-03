@@ -87,5 +87,11 @@ fi
 # Set the home directory as the working directory
 cd /home/$CONTAINER_USER
 
+# Run image-specific init scripts
+for script in /usr/local/bin/entrypoint.d/*.sh; do
+    [ -f "$script" ] || continue
+    source "$script"
+done
+
 # Execute the command as the specified user
 exec /usr/local/bin/gosu $CONTAINER_USER "$@"

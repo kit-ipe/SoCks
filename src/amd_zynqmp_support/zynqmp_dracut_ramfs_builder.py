@@ -52,9 +52,7 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
         # all the required files. Regex can be used to describe the expected files.
         # Optional dependencies can also be listed here. They will be ignored if
         # they are not listed in the project configuration.
-        block_deps = {
-            "rootfs": [".*.tar.xz"]
-        }
+        block_deps = {"rootfs": [".*.tar.xz"]}
         return block_deps
 
     @property
@@ -96,13 +94,15 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
                     self._build_validator.save_project_cfg_build,
                 ]
             )
-            block_cmds["start-container"].extend([self.container_executor.prepare_container_image, self.start_container])
+            block_cmds["start-container"].extend(
+                [self.container_executor.prepare_container_image, self.start_container]
+            )
         elif self.block_cfg.source == "import":
             block_cmds["build"].extend(
                 [
                     self.container_executor.enable_multiarch,
                     self.container_executor.prepare_container_image,
-                    self.import_prebuilt
+                    self.import_prebuilt,
                 ]
             )
         return block_cmds
@@ -191,13 +191,14 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
 
         # Check if dracut is installed in the rootfs
         if not (self._rootfs_dir / "usr" / "bin" / "dracut").is_file():
-            pretty_print.print_error(f"The imported rootfs does not contain dracut, but this is a prerequisite for this builder.")
+            pretty_print.print_error(
+                f"The imported rootfs does not contain dracut, but this is a prerequisite for this builder."
+            )
             sys.exit(1)
 
         # Save checksum in file
         with self._source_rootfs_md5_file.open("w") as f:
             print(md5_new_file, file=f, end="")
-
 
     def build_base_file_system(self):
         """
@@ -215,10 +216,7 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
 
         # Check whether the RAM file system needs to be built
         if not Build_Validator.check_rebuild_bc_timestamp(
-            src_search_list=[
-                self._dracut_conf_file,
-                self._rootfs_dir
-            ],
+            src_search_list=[self._dracut_conf_file, self._rootfs_dir],
             out_timestamp=self._build_log.get_logged_timestamp(
                 identifier=f"function-{inspect.currentframe().f_code.co_name}-success"
             ),
@@ -234,7 +232,9 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
 
             kernel_module_dirs = list((self._rootfs_dir / "lib" / "modules").glob("*"))
             if len(kernel_module_dirs) > 1:
-                pretty_print.print_error(f'Kernel modules for more than one kernel version in {self._rootfs_dir / "lib" / "modules"}/')
+                pretty_print.print_error(
+                    f'Kernel modules for more than one kernel version in {self._rootfs_dir / "lib" / "modules"}/'
+                )
                 sys.exit(1)
             if len(kernel_module_dirs) == 1:
                 kversion_param = kernel_module_dirs[0].name

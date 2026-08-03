@@ -129,7 +129,7 @@ class Container_Executor:
             build_system_container_arch = "arm64"
         else:
             raise ValueError(f"Unexpected build system architecture: {build_system_arch}")
-        self._container_is_emulated = (self._container_arch != build_system_container_arch)
+        self._container_is_emulated = self._container_arch != build_system_container_arch
         # Identifier of the container image in format <namespace>/<image name>:<image tag>.
         self._container_image_reference = f"{self._container_image_namespace}/{container_image}:{container_image_tag}"
 

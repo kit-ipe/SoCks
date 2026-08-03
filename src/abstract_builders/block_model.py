@@ -5,6 +5,7 @@ from typing import Optional, Literal
 import os
 import re
 
+
 class Build_Srcs_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -22,9 +23,12 @@ class Container_Settings_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     namespace: str = Field(default="socks-local", description="Namespace of the container image.")
-    image: Annotated[str, StringConstraints(pattern=r"^[a-zA-Z0-9-]+-(alma8|alma9|debian12|debian13|alpine3\.22)-(amd64|arm64|multiarch)$")] = Field(
-        default=..., description="Container image to build the block"
-    )
+    image: Annotated[
+        str,
+        StringConstraints(
+            pattern=r"^[a-zA-Z0-9-]+-(alma8|alma9|debian12|debian13|alpine3\.22)-(amd64|arm64|multiarch)$"
+        ),
+    ] = Field(default=..., description="Container image to build the block")
     tag: Optional[Annotated[str, StringConstraints(pattern=r"^socks-(amd64|arm64)-[a-zA-Z0-9\.-]+$")]] = Field(
         default=None, description="Container image tag"
     )
@@ -73,6 +77,7 @@ class Container_Settings_Model(BaseModel):
                 f"specified in the tag, is '{tag_arch}'. These architectures must match, unless the image is 'multiarch'."
             )
         return self
+
 
 class Block_Model(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
