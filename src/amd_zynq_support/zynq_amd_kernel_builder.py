@@ -59,7 +59,7 @@ class Zynq_AMD_Kernel_Builder(Linux_Kernel_Builder):
             '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
             "    exit 1; "
             "fi",
-            "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE; ",
+            "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
             "export ARCH=arm",
             "make menuconfig",
         ]
@@ -133,7 +133,7 @@ class Zynq_AMD_Kernel_Builder(Linux_Kernel_Builder):
 
     def attach_config_snippets(self):
         """
-        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+        Iterates over all snippets listed in the project configuration file and attaches them to .config.
 
         Args:
             None
