@@ -505,8 +505,7 @@ Key:
   - The file URI of a local file. In this case the string must start with `file://`.
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/atf/patches`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `atf-build-env-alma8`
-  - `atf-build-env-alma9`
+  - `atf-build-env-alma9-multiarch`
 - **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
 - **container -> registry**: The registry from which the container image is to be retrieved. Options are:
@@ -765,8 +764,7 @@ Key:
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/kernel/patches`.
 - **project -> config_snippets**: A list of configuration snippet files that are automatically attached to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add a new configuration snippets here if you create it with the command `create-cfg-snippet`. Configuration snippet files must be located in `src/ramfs/config`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `kernel-build-env-alma8`
-  - `kernel-build-env-alma9`
+  - `kernel-build-env-alma9-multiarch`
 - **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
 - **container -> registry**: The registry from which the container image is to be retrieved. Options are:
@@ -947,8 +945,7 @@ Key:
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/ssbl/patches`.
 - **project -> config_snippets**: A list of configuration snippet files that are automatically attached to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add a new configuration snippets here if you create it with the command `create-cfg-snippet`. Configuration snippet files must be located in `src/ramfs/config`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `kernel-build-env-alma8`
-  - `kernel-build-env-alma9`
+  - `kernel-build-env-alma9-multiarch`
 - **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
 - **container -> registry**: The registry from which the container image is to be retrieved. Options are:
@@ -1225,8 +1222,8 @@ Key:
 - **project -> patches**: A list of patch files that are automatically applied to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add new patches here if you create them with the command `create-patches`. Patch files must be located in `src/ramfs/patches`.
 - **project -> config_snippets**: A list of configuration snippet files that are automatically attached to the build sources (*project -> build_srcs*) by SoCks. SoCks will automatically add a new configuration snippets here if you create it with the command `create-cfg-snippet`. Configuration snippet files must be located in `src/ramfs/config`.
 - **container -> image**: The container image to be used for building. The selection should be compatible with the version of the Vivado toolset you are using. The following images are available for this block:
-  - `busybox-ramfs-build-env-alma8`
-  - `busybox-ramfs-build-env-alma9`
+  - `busybox-ramfs-uclibc-build-env-alma9-multiarch`
+  - `busybox-ramfs-glibc-build-env-alma9-amd64`
 - **container -> namespace**: The namespace of the container image. If not specified, the default value is `socks-local`. This only needs to be changed if the image is to be retrieved from an online registry.
 - **container -> tag**: The tag of the container image in the database of the containerization tool. This only needs to be specified if the image is to be retrieved from an online registry.
 - **container -> registry**: The registry from which the container image is to be retrieved. Options are:

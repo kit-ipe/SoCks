@@ -16,7 +16,7 @@ blocks:
         branch: "xilinx-v{{external_tools/xilinx/version}}"
       # If no 'import_src' property is specified, the block must be built locally
     container:
-      image: "atf-build-env-alma9-amd64"
+      image: "atf-build-env-alma9-multiarch"
       registry: "local"
   devicetree:
     source: "build"
@@ -53,7 +53,7 @@ blocks:
       defconfig_target: "xilinx_zynqmp_defconfig"
       add_build_info: false
     container:
-      image: "kernel-build-env-alma9-amd64"
+      image: "kernel-build-env-alma9-multiarch"
       registry: "local"
   pmu_fw:
     source: "build"
@@ -77,7 +77,7 @@ blocks:
       dependencies:
         atf: "temp/atf/output/bp_atf_*.tar.gz"
     container:
-      image: "kernel-build-env-alma9-amd64"
+      image: "{{blocks/kernel/container/image}}"
       registry: "local"
   vivado:
     source: "build"

@@ -42,7 +42,7 @@ blocks:
       defconfig_target: "xilinx_zynq_defconfig"
       add_build_info: false
     container:
-      image: "kernel-build-env-alma9-amd64"
+      image: "kernel-build-env-alma9-multiarch"
       registry: "local"
   ssbl:
     source: "build"
@@ -54,7 +54,7 @@ blocks:
       # If no 'import_src' property is specified, the block must be built locally
       add_build_info: false
     container:
-      image: "kernel-build-env-alma9-amd64"
+      image: "{{blocks/kernel/container/image}}"
       registry: "local"
   vivado:
     source: "build"

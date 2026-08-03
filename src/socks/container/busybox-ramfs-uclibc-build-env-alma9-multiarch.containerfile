@@ -2,12 +2,6 @@ ARG TARGETARCH
 
 FROM socks-local/socks-base-alma9-multiarch:socks-${TARGETARCH}-latest AS busybox-toolchain
 
-# Install cross-compilation toolchain
-#RUN dnf -y install wget
-#RUN wget -P /app/tools/ https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/binrel/gcc-arm-11.2-2022.02-x86_64-aarch64-none-linux-gnu.tar.xz
-#RUN tar -xJf /app/tools/gcc-arm-11.2-2022.02-x86_64-aarch64-none-linux-gnu.tar.xz -C /app/tools
-#ENV PATH="$PATH:/app/tools/gcc-arm-11.2-2022.02-x86_64-aarch64-none-linux-gnu/bin"
-
 # Install crosstool-NG dependencies (https://crosstool-ng.github.io/docs/os-setup/)
 RUN dnf -y install autoconf gperf bison file flex texinfo help2man gcc-c++ libtool make patch ncurses-devel \
     python3-devel perl-Thread-Queue bzip2 git wget which xz unzip rsync diffutils
@@ -48,6 +42,7 @@ RUN mkdir /opt/crosstool-ng-toolchains && \
     chmod 777 /opt/crosstool-ng-toolchains
 COPY --from=busybox-toolchain /root/x-tools/aarch64-unknown-linux-uclibc /opt/crosstool-ng-toolchains/aarch64-unknown-linux-uclibc
 ENV PATH="$PATH:/opt/crosstool-ng-toolchains/aarch64-unknown-linux-uclibc/bin/"
+ENV SOCKS_AARCH64_CROSS_COMPILE="aarch64-unknown-linux-uclibc-"
 
 # Install busybox dependencies
 RUN dnf -y install perl-Pod-Html ncurses-devel && \

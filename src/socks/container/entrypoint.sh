@@ -1,7 +1,16 @@
 #!/bin/bash
 
+run_addl_init_scripts(){
+    # Run image-specific init scripts
+    for script in /usr/local/bin/entrypoint.d/*.sh; do
+        [ -f "$script" ] || continue
+        source "$script"
+    done
+}
+
 # If the root user is to be used, there is not much to do
 if [ "$CONTAINER_USER" = "root" ] || [ "$CONTAINER_UID" = "0" ]; then
+    run_addl_init_scripts
     exec "$@"
 fi
 
@@ -87,11 +96,7 @@ fi
 # Set the home directory as the working directory
 cd /home/$CONTAINER_USER
 
-# Run image-specific init scripts
-for script in /usr/local/bin/entrypoint.d/*.sh; do
-    [ -f "$script" ] || continue
-    source "$script"
-done
+run_addl_init_scripts
 
 # Execute the command as the specified user
 exec /usr/local/bin/gosu $CONTAINER_USER "$@"

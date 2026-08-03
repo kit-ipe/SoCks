@@ -184,7 +184,12 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
 
         menuconfig_commands = [
             f"cd {self._source_repo_dir}",
-            f"export CROSS_COMPILE={self._target_arch_dist}-unknown-linux-uclibc-",
+            # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+            'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+            '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+            "    exit 1; "
+            "fi",
+            "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
             "make menuconfig",
         ]
 
@@ -208,7 +213,12 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
 
         create_defconfig_commands = [
             f"cd {self._source_repo_dir}",
-            f"export CROSS_COMPILE={self._target_arch_dist}-unknown-linux-uclibc-",
+            # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+            'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+            '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+            "    exit 1; "
+            "fi",
+            "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
             "make defconfig",
             'sed -i "s%^# CONFIG_STATIC is not set$%CONFIG_STATIC=y%" .config',
         ]
@@ -230,7 +240,14 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
         """
 
         self._create_config_snippet(
-            prep_env_commands=[f"export CROSS_COMPILE={self._target_arch_dist}-unknown-linux-uclibc-"],
+            prep_env_commands=[
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
+            ],
             defconfig_target="defconfig",
         )
 
@@ -249,7 +266,14 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
         """
 
         self._attach_config_snippets(
-            prep_env_commands=[f"export CROSS_COMPILE={self._target_arch_dist}-unknown-linux-uclibc-"]
+            prep_env_commands=[
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
+            ],
         )
 
     def build_base_file_system(self):
@@ -289,7 +313,12 @@ class ZynqMP_BusyBox_RAMFS_Builder(File_System_Builder):
 
             base_ramfs_build_commands = [
                 f"cd {self._source_repo_dir}",
-                f"export CROSS_COMPILE={self._target_arch_dist}-unknown-linux-uclibc-",
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
                 f'sed -i "s%^CONFIG_PREFIX=.*$%CONFIG_PREFIX=\\"{self._build_dir}\\"%" .config',
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
                 f"mkdir -p {self._build_dir}",
