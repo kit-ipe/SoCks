@@ -552,11 +552,14 @@ class Container_Executor:
             command = ["bash", "-c", comp_commands]
             if run_as_root:
                 pretty_print.print_warning(
-                    "SoCks will use 'sudo --preserve-env=PATH' to execute build commands. "
-                    "Enable the containerization feature of SoCks to prevent this, "
-                    "or run SoCks entirely in a container to limit the risk."
+                    "SoCks will use 'sudo --preserve-env=list' to preserve 'PATH' and all environment variables that "
+                    "begin with 'SOCKS_' when executing build commands. Enable the containerization feature of SoCks "
+                    "to prevent this, or run SoCks entirely in a container to limit the risk."
                 )
-                command = ["sudo", "--preserve-env=PATH"] + command
+                command = [
+                    "sudo",
+                    "--preserve-env=PATH,$(printenv | grep '^SOCKS_' | cut -d= -f1 | paste -sd, -)",
+                ] + command
 
             self._shell_executor.exec_sh_command(
                 command=command,
