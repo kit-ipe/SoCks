@@ -556,9 +556,10 @@ class Container_Executor:
                     "begin with 'SOCKS_' when executing build commands. Enable the containerization feature of SoCks "
                     "to prevent this, or run SoCks entirely in a container to limit the risk."
                 )
+                socks_env_vars = ",".join(var for var in os.environ if var.startswith("SOCKS_"))
                 command = [
                     "sudo",
-                    "--preserve-env=PATH,$(printenv | grep '^SOCKS_' | cut -d= -f1 | paste -sd, -)",
+                    f"--preserve-env=PATH,{socks_env_vars}",
                 ] + command
 
             self._shell_executor.exec_sh_command(
