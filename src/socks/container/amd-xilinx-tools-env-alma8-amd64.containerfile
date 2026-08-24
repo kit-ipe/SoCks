@@ -1,4 +1,6 @@
-FROM socks-local/socks-base-alma8:latest
+ARG TARGETARCH
+
+FROM socks-local/socks-base-alma8-multiarch:socks-${TARGETARCH}-latest
 
 # Install devicetree compiler
 RUN dnf -y install dtc && \
@@ -6,6 +8,4 @@ RUN dnf -y install dtc && \
     dnf -y install glibc-locale-source glibc-langpack-en && \
     dnf -y install ncurses-libs ncurses-compat-libs && \
 # Install dependencies for the Vivado GUI
-    dnf -y install libXtst && \
-# Install logicc dependencies
-    dnf -y install cmake libstdc++-static glibc-static
+    dnf -y install libXtst

@@ -14,7 +14,7 @@ blocks:
       # If no 'import_src' property is specified, the block must be built locally
       add_build_info: false
     container:
-      image: "kernel-build-env-alma9"
+      image: "kernel-build-env-alma9-amd64"
       registry: "local"
   image:
     source: "build"
@@ -26,5 +26,5 @@ blocks:
       dependencies:
         kernel: "temp/kernel/output/bp_kernel_*.tar.gz"
     container:
-      image: "amd-image-build-env-alma9"
+      image: "amd-image-build-env-alma9-amd64"
       registry: "local"

@@ -92,7 +92,12 @@ class RaspberryPi_Kernel_Builder(ZynqMP_AMD_Kernel_Builder):
 
             kernel_build_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
                 "export ARCH=arm64",
                 "make olddefconfig",
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads}",

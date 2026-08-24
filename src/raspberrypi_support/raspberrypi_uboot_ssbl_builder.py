@@ -187,11 +187,13 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
 
         if self.project_cfg.project.rpi_model == "RPi_4B":
             self._create_config_snippet(
-                cross_comp_prefix="aarch64-linux-gnu-", arch="arm64", defconfig_target="rpi_4_defconfig"
+                prep_env_commands=["export CROSS_COMPILE=aarch64-linux-gnu-", "export ARCH=arm64"],
+                defconfig_target="rpi_4_defconfig",
             )
         elif self.project_cfg.project.rpi_model == "RPi_5":
             self._create_config_snippet(
-                cross_comp_prefix="aarch64-linux-gnu-", arch="arm64", defconfig_target="rpi_arm64_defconfig"
+                prep_env_commands=["export CROSS_COMPILE=aarch64-linux-gnu-", "export ARCH=arm64"],
+                defconfig_target="rpi_arm64_defconfig",
             )  # Maybe there will be an update with newer releases
         else:
             raise ValueError(
@@ -200,7 +202,7 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
 
     def attach_config_snippets(self):
         """
-        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+        Iterates over all snippets listed in the project configuration file and attaches them to .config.
 
         Args:
             None
@@ -212,7 +214,7 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
             None
         """
 
-        self._attach_config_snippets(cross_comp_prefix="aarch64-linux-gnu-", arch="arm64")
+        self._attach_config_snippets(prep_env_commands=["export CROSS_COMPILE=aarch64-linux-gnu-", "export ARCH=arm64"])
 
     def build_uboot(self):
         """

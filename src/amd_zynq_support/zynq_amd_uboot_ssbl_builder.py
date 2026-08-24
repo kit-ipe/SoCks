@@ -110,7 +110,12 @@ class Zynq_AMD_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
 
         menuconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=arm-none-linux-gnueabihf-",
+            # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+            'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+            '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+            "    exit 1; "
+            "fi",
+            "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
             "export ARCH=arm",
             "make menuconfig",
         ]
@@ -135,7 +140,12 @@ class Zynq_AMD_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
 
         create_defconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=arm-none-linux-gnueabihf-",
+            # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+            'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+            '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+            "    exit 1; "
+            "fi",
+            "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
             "export ARCH=arm",
             "make xilinx_zynq_virt_defconfig",
         ]
@@ -157,7 +167,16 @@ class Zynq_AMD_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
         """
 
         self._create_config_snippet(
-            cross_comp_prefix="arm-none-linux-gnueabihf-", arch="arm", defconfig_target="xilinx_zynq_virt_defconfig"
+            prep_env_commands=[
+                # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
+                "export ARCH=arm",
+            ],
+            defconfig_target="xilinx_zynq_virt_defconfig",
         )
 
     def attach_config_snippets(self):
@@ -174,7 +193,17 @@ class Zynq_AMD_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
             None
         """
 
-        self._attach_config_snippets(cross_comp_prefix="arm-none-linux-gnueabihf-", arch="arm")
+        self._attach_config_snippets(
+            prep_env_commands=[
+                # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
+                "export ARCH=arm",
+            ]
+        )
 
     def build_uboot(self):
         """
@@ -222,7 +251,12 @@ class Zynq_AMD_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
 
             uboot_build_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=arm-none-linux-gnueabihf-",
+                # Environment variable SOCKS_ARM_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_ARM_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_ARM_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_ARM_CROSS_COMPILE",
                 "export ARCH=arm",
                 "make olddefconfig",
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads}",

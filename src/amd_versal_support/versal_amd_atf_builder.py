@@ -65,7 +65,12 @@ class Versal_AMD_ATF_Builder(ZynqMP_AMD_ATF_Builder):
 
             atf_build_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=aarch64-none-elf-",
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
                 "make distclean",
                 "make PLAT=versal RESET_TO_BL31=1 ZYNQMP_CONSOLE=pl011_0",
             ]

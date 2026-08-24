@@ -1,4 +1,6 @@
-FROM socks-local/socks-base-alma8:latest
+ARG TARGETARCH
+
+FROM socks-local/socks-base-alma8-multiarch:socks-${TARGETARCH}-latest
 
 # Install tools required by yocto
 RUN dnf -y install glibc-locale-source glibc-langpack-en && \

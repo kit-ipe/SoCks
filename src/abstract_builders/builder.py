@@ -619,7 +619,7 @@ class Builder(ABC):
 
     def apply_patches(self):
         """
-        This function iterates over all patches listed in the project configuration file and applies them to the repo.
+        Iterates over all patches listed in the project configuration file and applies them to the repo.
 
         Args:
             None
@@ -666,17 +666,16 @@ class Builder(ABC):
                 ["git", "-C", str(self._source_repo_dir), "checkout", self._git_local_dev_branch], visible_lines=0
             )
 
-    def _create_config_snippet(self, defconfig_target: str, cross_comp_prefix: str = None, arch: str = None):
+    def _create_config_snippet(self, defconfig_target: str, prep_env_commands: list[str] = None):
         """
         Creates snippets from changes in .config.
 
         Args:
             defconfig_target:
                 The Makefile target to create the desired default configuration.
-            cross_comp_prefix:
-                Prefix of the cross compilation toolchain to be used. Used to set the CROSS_COMPILE environment variable.
-            arch:
-                Architecture of the target processor. Used to set the ARCH environment variable.
+            prep_env_commands:
+                Shell commands to be used to set up the environment. This typically includes defining the
+                ARCH and CROSS_COMPILE environment variables.
 
         Returns:
             None
@@ -715,10 +714,8 @@ class Builder(ABC):
             f"cd {self._source_repo_dir}",
             "mv .config .config_temp_socks",  # Move new configuration file to make room for recreating the previous configuration
         ]
-        if cross_comp_prefix is not None:
-            create_config_snippet_commands.append(f"export CROSS_COMPILE={cross_comp_prefix}")
-        if arch is not None:
-            create_config_snippet_commands.append(f"export ARCH={arch}")
+        if prep_env_commands:
+            create_config_snippet_commands.extend(prep_env_commands)
         create_config_snippet_commands.append(f"make {defconfig_target}")
 
         if self.block_cfg.project.config_snippets is not None:
@@ -793,15 +790,14 @@ class Builder(ABC):
         else:
             pretty_print.print_warning("No changes detected in .config.")
 
-    def _attach_config_snippets(self, cross_comp_prefix: str = None, arch: str = None):
+    def _attach_config_snippets(self, prep_env_commands: list[str] = None):
         """
-        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+        Iterates over all snippets listed in the project configuration file and attaches them to .config.
 
         Args:
-            cross_comp_prefix:
-                Prefix of the cross compilation toolchain to be used. Used to set the CROSS_COMPILE environment variable.
-            arch:
-                Architecture of the target processor. Used to set the ARCH environment variable.
+            prep_env_commands:
+                Shell commands to be used to set up the environment. This typically includes defining the
+                ARCH and CROSS_COMPILE environment variables.
 
         Returns:
             None
@@ -837,10 +833,8 @@ class Builder(ABC):
                     sys.exit(1)
 
             attach_snippet_commands = [f"cd {self._source_repo_dir}"]
-            if cross_comp_prefix is not None:
-                attach_snippet_commands.append(f"export CROSS_COMPILE={cross_comp_prefix}")
-            if arch is not None:
-                attach_snippet_commands.append(f"export ARCH={arch}")
+            if prep_env_commands:
+                attach_snippet_commands.extend(prep_env_commands)
 
             # Make snippets available in the container and add commands to attach snippets to config
             temp_snippet_dir = self._work_dir / "config_snippets_temp"
@@ -1265,8 +1259,8 @@ class Builder(ABC):
 
     def import_req_src_tpl(self):
         """
-        This function checks whether there are already sources for this block
-        and, if not, asks the user to import a source code template.
+        Checks whether there are already sources for this block and, if not,
+        asks the user to import a source code template.
 
         Args:
             None
@@ -1319,10 +1313,10 @@ class Builder(ABC):
 
     def import_opt_src_tpl(self):
         """
-        This function checks whether there are already sources for this block
-        and, if not, offers the user to import an optional source code template.
-        To avoid bothering the user with this question with every build, it is
-        only asked if there are no temp files for this block yet.
+        Checks whether there are already sources for this block and, if not,
+        offers the user to import an optional source code template. To avoid
+        bothering the user with this question with every build, it is only
+        asked if there are no temp files for this block yet.
 
         Args:
             None
@@ -1377,7 +1371,7 @@ class Builder(ABC):
 
     def clean_repo(self, as_root: bool = False):
         """
-        This function cleans the git repo directory.
+        Cleans the git repo directory.
 
         Args:
             as_root:
@@ -1434,7 +1428,7 @@ class Builder(ABC):
 
     def clean_output(self):
         """
-        This function cleans the output directory.
+        Cleans the output directory.
 
         Args:
             None
@@ -1461,7 +1455,7 @@ class Builder(ABC):
 
     def clean_work(self, as_root: bool = False):
         """
-        This function cleans the work directory.
+        Cleans the work directory.
 
         Args:
             as_root:
@@ -1494,7 +1488,7 @@ class Builder(ABC):
 
     def clean_download(self):
         """
-        This function cleans the download directory.
+        Cleans the download directory.
 
         Args:
             None
@@ -1521,7 +1515,7 @@ class Builder(ABC):
 
     def clean_dependencies(self, dependency: str = ""):
         """
-        This function cleans the dependencies directory.
+        Cleans the dependencies directory.
 
         Args:
             dependency:
@@ -1561,7 +1555,7 @@ class Builder(ABC):
 
     def clean_block_temp(self):
         """
-        This function cleans the temp directory of a block.
+        Cleans the temp directory of a block.
 
         Args:
             None

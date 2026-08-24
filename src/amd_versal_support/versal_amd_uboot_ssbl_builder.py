@@ -47,7 +47,12 @@ class Versal_AMD_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
 
         create_defconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+            'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+            '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+            "    exit 1; "
+            "fi",
+            "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
             "export ARCH=aarch64",
             "make xilinx_versal_virt_defconfig",
         ]
@@ -69,12 +74,21 @@ class Versal_AMD_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
         """
 
         self._create_config_snippet(
-            cross_comp_prefix="aarch64-linux-gnu-", arch="aarch64", defconfig_target="xilinx_versal_virt_defconfig"
+            prep_env_commands=[
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
+                "export ARCH=aarch64",
+            ],
+            defconfig_target="xilinx_versal_virt_defconfig",
         )
 
     def attach_config_snippets(self):
         """
-        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+        Iterates over all snippets listed in the project configuration file and attaches them to .config.
 
         Args:
             None
@@ -86,4 +100,14 @@ class Versal_AMD_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
             None
         """
 
-        self._attach_config_snippets(cross_comp_prefix="aarch64-linux-gnu-", arch="aarch64")
+        self._attach_config_snippets(
+            prep_env_commands=[
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
+                "export ARCH=aarch64",
+            ]
+        )

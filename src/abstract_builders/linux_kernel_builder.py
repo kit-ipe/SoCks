@@ -162,7 +162,12 @@ class Linux_Kernel_Builder(Builder):
 
         menuconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+            'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+            '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+            "    exit 1; "
+            "fi",
+            "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
             "export ARCH=arm64",
             "make menuconfig",
         ]
@@ -187,7 +192,12 @@ class Linux_Kernel_Builder(Builder):
 
         create_defconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+            'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+            '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+            "    exit 1; "
+            "fi",
+            "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
             "export ARCH=arm64",
             f"make {self.block_cfg.project.defconfig_target}",
         ]
@@ -217,14 +227,21 @@ class Linux_Kernel_Builder(Builder):
         """
 
         self._create_config_snippet(
-            cross_comp_prefix="aarch64-linux-gnu-",
-            arch="arm64",
+            prep_env_commands=[
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
+                "export ARCH=arm64",
+            ],
             defconfig_target=self.block_cfg.project.defconfig_target,
         )
 
     def attach_config_snippets(self):
         """
-        This function iterates over all snippets listed in the project configuration file and attaches them to .config.
+        Iterates over all snippets listed in the project configuration file and attaches them to .config.
 
         Args:
             None
@@ -236,7 +253,17 @@ class Linux_Kernel_Builder(Builder):
             None
         """
 
-        self._attach_config_snippets(cross_comp_prefix="aarch64-linux-gnu-", arch="arm64")
+        self._attach_config_snippets(
+            prep_env_commands=[
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
+                "export ARCH=arm64",
+            ]
+        )
 
     def build_kernel(self):
         """
@@ -290,7 +317,12 @@ class Linux_Kernel_Builder(Builder):
 
             kernel_build_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
                 "export ARCH=arm64",
                 "make olddefconfig",
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
@@ -377,7 +409,12 @@ class Linux_Kernel_Builder(Builder):
 
             ext_mod_build_commands = [
                 f"cd {self._ext_modules_build_dir}",
-                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
                 "export ARCH=arm64",
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads} MAKE=make KERNEL_SRC={self._source_repo_dir}",
             ]
@@ -444,7 +481,12 @@ class Linux_Kernel_Builder(Builder):
 
             export_modules_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
                 "export ARCH=arm64",
                 f"make modules_install INSTALL_MOD_PATH={self._output_dir}",
             ]
@@ -512,7 +554,12 @@ class Linux_Kernel_Builder(Builder):
 
             export_headers_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
                 "export ARCH=arm64",
                 f"make headers_install INSTALL_HDR_PATH={self._output_dir}",
                 f"tar -P --xform='s:{self._output_dir}::' --numeric-owner -p -czf {self._headers_out_file} {self._output_dir}/include",

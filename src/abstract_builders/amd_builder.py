@@ -209,7 +209,7 @@ class AMD_Builder(Builder):
 
     def clean_source_xsa(self):
         """
-        This function cleans the source_xsa directory.
+        Cleans the source_xsa directory.
 
         Args:
             None
