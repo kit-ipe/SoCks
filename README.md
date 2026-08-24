@@ -108,7 +108,7 @@ $ pip install -e .
 
 ### Example Projects
 
-The easiest way to get started with SoCks is to exploring an example project. Repository [SoCks-example-projects](https://github.com/kit-ipe/SoCks-example-projects) contains a number of example projects for various supported SoC architectures. If you cannot find a suitable example project, please do not hesitate to contact [me](mailto:marvin.fuchs@kit.edu).
+The easiest way to get started with SoCks is to explore an example project. Repository [SoCks-example-projects](https://github.com/kit-ipe/SoCks-example-projects) contains a number of example projects for various supported SoC architectures. If you cannot find a suitable example project, please do not hesitate to contact [me](mailto:marvin.fuchs@kit.edu).
 
 ### Creating a Project from Scratch
 
