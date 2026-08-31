@@ -267,7 +267,7 @@ class RaspberryPi_Image_Builder(Builder):
 
         # Check if boot.scr is required
         if self.block_cfg.project.dependencies.ssbl is None:
-            pretty_print.print_build("No need to build boot.scr because there is no dependency on an ssbl...")
+            pretty_print.print_build("No need to build boot.scr because there is no dependency on the ssbl U-Boot...")
             return
 
         # Check whether the boot script image needs to be built

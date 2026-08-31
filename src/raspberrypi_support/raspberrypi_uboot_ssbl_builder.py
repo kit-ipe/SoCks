@@ -36,7 +36,7 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
         self.pre_action_warnings.append("This block is experimental, it should not be used for production.")
 
         # Project files
-        # File for version & build info tracking
+        # File to stores the Raspberry Pi model for which this block is configured
         self._rpi_model_file = self._block_temp_dir / "rpi_model.txt"
 
     @property
@@ -146,7 +146,12 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
 
         create_defconfig_commands = [
             f"cd {self._source_repo_dir}",
-            "export CROSS_COMPILE=aarch64-linux-gnu-",
+            # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+            'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+            '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+            "    exit 1; "
+            "fi",
+            "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
             "export ARCH=aarch64",
         ]
 
@@ -186,19 +191,27 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
         """
 
         if self.project_cfg.project.rpi_model == "RPi_4B":
-            self._create_config_snippet(
-                prep_env_commands=["export CROSS_COMPILE=aarch64-linux-gnu-", "export ARCH=arm64"],
-                defconfig_target="rpi_4_defconfig",
-            )
+            defconfig_target="rpi_4_defconfig"
         elif self.project_cfg.project.rpi_model == "RPi_5":
-            self._create_config_snippet(
-                prep_env_commands=["export CROSS_COMPILE=aarch64-linux-gnu-", "export ARCH=arm64"],
-                defconfig_target="rpi_arm64_defconfig",
-            )  # Maybe there will be an update with newer releases
+            # Maybe there will be an update with newer releases
+            defconfig_target="rpi_arm64_defconfig"
         else:
             raise ValueError(
                 f"The following Raspberry Pi Model is not supported: '{self.project_cfg.project.rpi_model}'"
             )
+
+        self._create_config_snippet(
+            prep_env_commands=[
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
+                "export ARCH=aarch64",
+            ],
+            defconfig_target=defconfig_target,
+        )
 
     def attach_config_snippets(self):
         """
@@ -214,7 +227,17 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
             None
         """
 
-        self._attach_config_snippets(prep_env_commands=["export CROSS_COMPILE=aarch64-linux-gnu-", "export ARCH=arm64"])
+        self._attach_config_snippets(
+            prep_env_commands=[
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
+                "export ARCH=aarch64",
+            ]
+        )
 
     def build_uboot(self):
         """
@@ -262,7 +285,12 @@ class RaspberryPi_UBoot_SSBL_Builder(ZynqMP_AMD_UBoot_SSBL_Builder):
 
             uboot_build_commands = [
                 f"cd {self._source_repo_dir}",
-                "export CROSS_COMPILE=aarch64-linux-gnu-",
+                # Environment variable SOCKS_AARCH64_CROSS_COMPILE can be empty, but it must be defined in the build environment
+                'if [ ! -n "${SOCKS_AARCH64_CROSS_COMPILE+x}" ]; then '
+                '    echo "ERROR: Environment variable SOCKS_AARCH64_CROSS_COMPILE not defined"; '
+                "    exit 1; "
+                "fi",
+                "export CROSS_COMPILE=$SOCKS_AARCH64_CROSS_COMPILE",
                 "export ARCH=aarch64",
                 "make olddefconfig",
                 f"make -j{self.project_cfg.external_tools.make.max_build_threads}",
