@@ -243,7 +243,17 @@ class ZynqMP_Dracut_RAMFS_Builder(File_System_Builder):
 
             ramfs_build_commands = [
                 f"cp {self._dracut_conf_file} {self._rootfs_dir}/tmp/{self._dracut_conf_file.name}",
-                f'chroot {self._rootfs_dir} /bin/sh -c "dracut --conf /tmp/{self._dracut_conf_file.name} --gzip --no-early-microcode --force --stdlog 0 /tmp/{self._file_system_name}.cpio.gz {kversion_param}"',
+                f'chroot {self._rootfs_dir} /bin/sh -c "'
+                f'  dracut --conf /tmp/{self._dracut_conf_file.name} --gzip --no-early-microcode '
+                f'  --stdlog 0 /tmp/{self._file_system_name}.cpio.gz {kversion_param} 2>&1 '
+                '   | tee /tmp/dracut.log'
+                '"', # Tee is required because dracut cannot write log files on its own in containerized environments.
+                # It is necessary to check the dracut log file because there are critical errors that do not affect the return value of dracut. At least in some versions of dracut.
+                f'if grep -qi "error" {self._rootfs_dir}/tmp/dracut.log; then '
+                '   echo "Error detected in dracut log (see dracut output above)" && '
+                f'  rm -rf {self._rootfs_dir}/tmp/{self._file_system_name}.cpio.gz && '
+                '   exit 1; '
+                'fi', # Deleting the archive is important to prevent dracut from using it the next time it runs.
                 f"mv {self._rootfs_dir}/tmp/{self._file_system_name}.cpio.gz {self._output_dir}/",
                 f"chmod 644 {self._output_dir / self._file_system_name}.cpio.gz",
             ]
